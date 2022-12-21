@@ -1,0 +1,17 @@
+/*! \page enviro 5.0 Environment and Build Definition
+
+This section describes the software development environment.
+
+\section enviro-build Build Process
+This section defines the build process and specifies all scripts used in the process.  
+(This is the object build and download to the target procedure)
+
+-# Step 1
+-# Step 2
+
+\section enviro-other Other Scripts Used
+This section describes and lists all scripts developed for this project.
+
+- link to script 1
+- link to script 2
+*/

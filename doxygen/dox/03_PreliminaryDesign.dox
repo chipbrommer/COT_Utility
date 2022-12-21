@@ -1,0 +1,31 @@
+/*! \page prelim 3.0 Preliminary Design
+
+\section prelim-csci CSCI Overview 
+This paragraph shall identify and describe the role of the CSCI within the system to which this SDD applies.  The overview shall identify and state the purpose of each external interface of the CSCI.  A system architecture diagram may be used to show the relationships between this CSCI and the other CIs in the system.
+
+- context diagram showing external interfaces
+
+\image html example.jpg
+
+\section prelim-arch CSCI Architecture
+This section shall describe the internal organizational structure of the CSCI.  The Computer Software Components (CSCs) and sub-level CSCs shall be identified and their purpose summarized.  The relationships among the CSCs shall be described.  The relationship description shall identify and state the purpose of each CSC-to-CSC interface and shall summarize the data transmitted via the interface.  This paragraph shall identify any non-developmental software to be incorporated into the CSCI.  The CSCI top-level architecture may be illustrated graphically
+
+- references to each class definition
+
+\section prelim-sys System states and modes
+This paragraph shall identify each system state and mode in which the CSCI operates and the CSCs that execute in each state and mode.  A state/CSC table may be provided to illustrate the system states and modes that each CSC executes.  In addition, this paragraph shall describe the general flow of both execution control and data between CSCs while operating in the different states and modes.  A flow diagram(s) may be used to illustrate the execution control and data flow in each state and mode
+
+\section prelim-mem Memory and processing time allocation.  
+This paragraph shall document the allocation of memory and processing time to the CSCs.  The allocation may be illustrated by a memory/processing time table (see Table I).  
+
+\section prelim-design CSCI Design Description
+This section provides the design description for each CSC/class of the CSCI.  Each class is documented in the source code and doxygen is used to provide the design information.
+
+- reference to class 1
+- reference to class 2
+
+The classes for this CSCI are listed at <a href=".\annotated.html">Classes</a>
+
+Note: reference can be done using defgroup tag.
+
+*/
