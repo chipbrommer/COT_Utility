@@ -4,6 +4,7 @@
 
 int main()
 {
+    // Testing string
     std::string test = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>";
     test += "<event version=\"2.0\" uid=\"ANDROID - bae3f2313cda7004\" type=\"a - f -G-U-C\" time=\"2022 - 11 - 18T19:40 : 47.443Z\" start=\"2022 - 11 - 18T19 : 40 : 47.443Z\" stale=\"2022 - 11 - 18T19 : 42 : 02.443Z\" how=\"h - e\">";
     test += "<point lat=\"37.1040299\" lon=\"-76.481972\" hae=\"-27.576\" ce=\"9999999.0\" le=\"9999999.0\"/>";
