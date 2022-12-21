@@ -83,17 +83,21 @@ int COTParser::ParseCOT(std::string& buffer, COTSchema& cot)
         // Read attribute value
         pugi::xml_attribute attr;
         (attr = event.attribute("version")) ? cot.event.version = attr.as_double() : cot.event.version = 0;
-        (attr = event.attribute("type")) ? cot.event.type = attr.as_string() : cot.event.type = "";
 
         // Parse Type attribute into data points.
+        (attr = event.attribute("type")) ? cot.event.type = attr.as_string() : cot.event.type = "";
         ParseTypeAttribute(cot.event.type, cot.event.indicator, cot.event.location);
 
+        // Parse times into data points in COT structure
         (attr = event.attribute("time")) ? time = attr.as_string() : time = "";
+        ParseTimeAttribute(time, cot.event.time);
         (attr = event.attribute("start")) ? start = attr.as_string() : start = "";
+        ParseTimeAttribute(start, cot.event.start);
         (attr = event.attribute("stale")) ? stale = attr.as_string() : stale = "";
-        (attr = event.attribute("how")) ? cot.event.how = attr.as_string() : cot.event.how = "";
+        ParseTimeAttribute(stale, cot.event.stale);
 
         // Parse How attribute into data points.
+        (attr = event.attribute("how")) ? cot.event.how = attr.as_string() : cot.event.how = "";
         ParseHowAttribute(cot.event.how, cot.event.howEntry, cot.event.howData);
 
         // Parse <event><point> tag and gather data. 
@@ -192,6 +196,111 @@ bool COTParser::ParseHowAttribute(std::string& type, HowEntryType& how, HowDataT
     {
         how = HowEntryTypeCharToEnum(values[0]);
         data = HowDataTypeCharToEnum(values[1], how);
+    }
+
+    return true;
+}
+
+bool COTParser::ParseTimeAttribute(std::string& type, DateTime& dt)
+{
+    // Read the data from the file as String Vector
+    std::vector<std::string> values;
+    values.clear();
+    std::string word;
+    char delimiter = 'T';
+    std::stringstream stream(type);
+
+    // read the row of data and store it in a string variable, 'word'
+    while (std::getline(stream, word, delimiter))
+    {
+        // Remove any spaces that may be in the stream.
+        word.erase(
+            remove_if(word.begin(), word.end(), static_cast<int(*)(int)>(isspace)),
+            word.end());
+
+        // Push word onto the vector
+        values.push_back(word);
+    }
+
+    // Time string must have minimum 2 type identifiers (Date and Time) to give us the data we need. 
+    if (values.size() < 2)
+    {
+        std::cerr << "Failed to parse time attribute!\n";
+        return false;
+    }
+    else if (!ParseDateStamp(values[0], dt))
+    {
+        std::cerr << "Failed to parse date stamp!\n";
+        return false;
+    }
+    else if (!ParseTimeStamp(values[1], dt))
+    {
+        std::cerr << "Failed to parse time stamp!\n";
+        return false;
+    }
+    return true;
+}
+
+bool COTParser::ParseDateStamp(std::string& type, DateTime& dt)
+{
+    // Read the data from the file as String Vector
+    std::vector<std::string> values;
+    values.clear();
+    std::string word;
+    char delimiter = '-';
+    std::stringstream stream(type);
+
+    // read the row of data and store it in a string variable, 'word'
+    while (std::getline(stream, word, delimiter))
+    {
+        // Push word onto the vector
+        values.push_back(word);
+    }
+
+    // Time string must have minimum 3 type identifiers (Year, Month, Day) to give us the data we need. 
+    if (values.size() < 3)
+    {
+        return false;
+    }
+    else
+    {
+        dt.year = std::stoi(values[0]);
+        dt.month = std::stoi(values[1]);
+        dt.day = std::stoi(values[2]);
+    }
+
+    return true;
+}
+
+bool COTParser::ParseTimeStamp(std::string& type, DateTime& dt)
+{
+    // Read the data from the file as String Vector
+    std::vector<std::string> values;
+    values.clear();
+    std::string word;
+    char delimiter = ':';
+    std::stringstream stream(type);
+
+    // read the row of data and store it in a string variable, 'word'
+    while (std::getline(stream, word, delimiter))
+    {
+        // Remove the T for Time. 
+        word.erase(remove(word.begin(), word.end(), 'T'), word.end());
+
+        // Push word onto the vector
+        values.push_back(word);
+    }
+
+    // Time string must have minimum 3 type identifiers (Hour, Minute, Secs) to give us the data we need. 
+    if (values.size() < 3)
+    {
+        return false;
+    }
+    else
+    {
+        dt.hour = std::stoi(values[0]);
+        dt.minute = std::stoi(values[1]);
+        dt.second = std::stoi(values[2]);
     }
 
     return true;

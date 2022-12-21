@@ -21,6 +21,7 @@
 #include <vector>                       // Vectors
 #include <sstream>                      // Stream for parsing strings
 #include <algorithm>                    // For removing spaces from strings.
+#include <string>                       // Strings
 //
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -55,12 +56,30 @@ private:
     //! @return true if parsed, false if not
     bool ParseTypeAttribute(std::string& type, PointType& ind, LocationType& loc);
 
-    //! @brief Parse a string "type" attriubute
-    //! @param type - [IN] - Type string to be parsed
+    //! @brief Parse a string "how" attriubute
+    //! @param type - [IN] - "How" string to be parsed
     //! @param how - [OUT] - enumeration value for the HowEntryType parsed from string.
     //! @param data  - [OUT] - enumeration value for the HowDataType parsed from string.
     //! @return true if parsed, false if not
     bool ParseHowAttribute(std::string& type, HowEntryType& how, HowDataType& data);
+
+    //! @brief Parse a string "time" attriubute
+    //! @param type - [IN] - Time string to be parsed
+    //! @param dt - [OUT] - DateTime struct to store the parsed data into.
+    //! @return true if parsed, false if not
+    bool ParseTimeAttribute(std::string& type, DateTime& dt);
+
+    //! @brief Parse a string date stamp
+    //! @param type - [IN] - Date string to be parsed
+    //! @param dt - [OUT] - DateTime struct to store the parsed data into.
+    //! @return true if parsed, false if not
+    bool ParseDateStamp(std::string& type, DateTime& dt);
+
+    //! @brief Parse a string time stamp
+    //! @param type - [IN] - Time string to be parsed
+    //! @param dt - [OUT] - DateTime struct to store the parsed data into.
+    //! @return true if parsed, false if not
+    bool ParseTimeStamp(std::string& type, DateTime& dt);
 
     //! @brief Converts a string into a RootType enumeration value
     //! @param root - [IN] - string to be converted.
