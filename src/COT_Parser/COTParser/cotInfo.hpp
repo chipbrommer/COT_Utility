@@ -1,6 +1,26 @@
-#include <iostream>
-#include <iomanip>
+///////////////////////////////////////////////////////////////////////////////
+//!
+//! @file		cotParser.hpp
+//! 
+//! @brief		A class to parse COT Messages.
+//! 
+//! @author		Chip Brommer
+//! 
+//! @date		< 12 / 19 / 2022 > Initial Start Date
+//!
+/*****************************************************************************/
+#pragma once
+///////////////////////////////////////////////////////////////////////////////
+//
+//  Include files:
+//          name                        reason included
+//          --------------------        ---------------------------------------
+#include <iostream>                     // out stream friend functions
+#include <iomanip>                      
+//
+///////////////////////////////////////////////////////////////////////////////
 
+//! @brief Enum for COT Root Type.
 enum RootType
 {
     ROOT_a = 0,
@@ -23,7 +43,7 @@ static const char* enumRootTypeToString[] = {
     "ERROR",
 };
 
-//! @brief Enum for COT types.
+//! @brief Enum for COT Point Type.
 enum PointType
 {
     POINT_p = 0,
@@ -56,7 +76,7 @@ static const char* enumPointTypeToString[] = {
     "ERROR",
 };
 
-//! @brief Enum for COT locations.
+//! @brief Enum for COT Locations Types.
 enum LocationType
 {
     LOCATION_P = 0,
@@ -507,9 +527,9 @@ public:
 class COTSchema
 {
 public:
-    Event event;
-    Point point;
-    Detail detail;
+    Event event;                    //! Holds Event Sub-schema
+    Point point;                    //! Holds Point Sub-schema
+    Detail detail;                  //! Holds Detail Sub-schema
 
     //! @brief Constructor - Initializes Everything
     COTSchema(const Event& event = Event(),

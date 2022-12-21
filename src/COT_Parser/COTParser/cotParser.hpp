@@ -16,7 +16,7 @@
 //          name                        reason included
 //          --------------------        ---------------------------------------
 #include "cotInfo.hpp"                  // Contains COT Structures
-#include "../../PugiXML/pugixml.hpp"          // For parsing XML
+#include "../../PugiXML/pugixml.hpp"    // For parsing XML
 //
 #include <vector>                       // Vectors
 #include <sstream>                      // Stream for parsing strings
