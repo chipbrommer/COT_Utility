@@ -5,20 +5,12 @@
 int main()
 {
     // Testing string
-    std::string test = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>";
-    test += "<event version=\"2.0\" uid=\"ANDROID - bae3f2313cda7004\" type=\"a - f -G-U-C\" time=\"2022 - 11 - 18T19:40 : 47.443Z\" start=\"2022 - 11 - 18T19 : 40 : 47.443Z\" stale=\"2022 - 11 - 18T19 : 42 : 02.443Z\" how=\"h - e\">";
-    test += "<point lat=\"37.1040299\" lon=\"-76.481972\" hae=\"-27.576\" ce=\"9999999.0\" le=\"9999999.0\"/>";
-    //test += "<point lat=\"3.19\" lon=\"6.492\" hae=\"-7.576\" ce=\"1.9510\" le=\"0.241654\"/>";
-    test += "<detail>";
-    test += "<takv os=\"30\" version=\"4.6.1.3 (eeda83c0).1652809158 - CIV\" device=\"SAMSUNG SM - T870\" platform=\"ATAK - CIV\"/>";
-    test += "<contact endpoint=\"tcpsrcreply:4242:srctcp\" callsign=\"HOOPER\"/>";
-    test += "<uid Droid=\"HOOPER\"/>";
-    test += "<precisionlocation altsrc=\"DTED2\" geopointsrc=\"USER\"/>";
-    test += "<__group role=\"Team Member\" name=\"Cyan\"/>";
-    test += "<status battery=\"92\"/>";
-    test += "<track course=\"342.6135387858228\" speed=\"10.0\"/>";
-    test += "</detail>";
-    test += "</event>";
+    std::string test = "ÆÊ½8(Û'BEÈÚü¼À¨ÒÀ¨Ò¡Êh´û<?xml version=\"1.0\" encoding=\"utf - 8\" standalone=\"yes\"?>";
+    test += "<event version=\"2.0\" uid=\"S-1-5-21-2515255310-331139352-785488330-3297\" type=\"a-f-G-E-V-A\" time=\"2022-12-22T18:06:59.36Z\" start=\"2022-12-22T18:06:59.36Z\" stale=\"2022-12-22T18:08:14.36Z\" how=\"h-e\">";
+    test += "<point lat=\"31.5990919461411\" lon=\"-81.7768698985248\" hae=\"9999999\" ce=\"9999999\" le=\"9999999\"/>";
+    test += "<detail><takv version=\"4.1.0.231\" platform=\"WinTAK-CIV\" os=\"Microsoft Windows 10 Pro\" device=\"Dell Inc. XPS 15 9510\"/>";
+    test += "<contact callsign=\"ASEIRS\" endpoint=\"tcpsrcreply:4242:srctcp\" xmppUsername=\"\"/><uid Droid=\"ASEIRS\"/><__group name=\"Blue\" role=\"HQ\"/><status battery=\"100\"/>";
+    test += "<track course=\"0.00000000\" speed=\"0.00000000\"/></detail></event>";
 
     COTSchema cot;
     COTParser c;

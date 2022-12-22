@@ -1,8 +1,8 @@
 ///////////////////////////////////////////////////////////////////////////////
 //!
-//! @file		cotParser.hpp
+//! @file		cotInfo.hpp
 //! 
-//! @brief		A class to parse COT Messages.
+//! @brief		An information header file for COT structures and enums. 
 //! 
 //! @author		Chip Brommer
 //! 
@@ -16,7 +16,7 @@
 //          name                        reason included
 //          --------------------        ---------------------------------------
 #include <iostream>                     // out stream friend functions
-#include <iomanip>                      
+#include <iomanip>                      // For manipulating output with setw
 //
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -349,7 +349,7 @@ public:
             << "\tLongitutde:     " << point.longitutde << "\n"
             << "\tHAE:            " << point.hae << "\n"
             << "\tCircular Error: " << point.circularError << "\n"
-            << "\tlinearError:    " << point.linearError << "\n"
+            << "\tLinear Error:   " << point.linearError << "\n"
             << "\n";
 
         return os;
@@ -369,8 +369,8 @@ public:
     DateTime     start;             //! Starting time when an event should be considered valid
     DateTime     stale;             //! Ending time when an event  should no longer be considered valid
     std::string  how;               //! Gives a hint about how the coordinates were generated
-    HowEntryType howEntry;
-    HowDataType  howData;
+    HowEntryType howEntry;          //! Grab how the entry point was created from how string.
+    HowDataType  howData;           //! Grab the data for the entry type from how string. 
 
     //! @brief Constructor - Initializes Everything
     Event(const double        version = 0,

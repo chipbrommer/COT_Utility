@@ -20,7 +20,6 @@
 //
 #include <vector>                       // Vectors
 #include <sstream>                      // Stream for parsing strings
-#include <algorithm>                    // For removing spaces from strings.
 #include <string>                       // Strings
 //
 ///////////////////////////////////////////////////////////////////////////////

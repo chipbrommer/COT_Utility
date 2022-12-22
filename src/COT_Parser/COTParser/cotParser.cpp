@@ -2,7 +2,7 @@
 //!
 //! @file		cotParser.cpp
 //! 
-//! @brief		Implementation for the cotParser class
+//! @brief		Implementation for the COTParser class
 //! 
 //! @author		Chip Brommer
 //! 
@@ -45,6 +45,10 @@ bool COTParser::VerifyXML(std::string& buffer)
 
 int COTParser::ParseCOT(std::string& buffer, COTSchema& cot)
 {
+    // Remove any trash that may come in before the "<?xml" tag.
+    size_t position = buffer.find("<?xml");
+    buffer.erase(0, position);
+
     // Verify buffer is good XML data first. 
     if (!VerifyXML(buffer))
     {
@@ -87,6 +91,9 @@ int COTParser::ParseCOT(std::string& buffer, COTSchema& cot)
         // Parse Type attribute into data points.
         (attr = event.attribute("type")) ? cot.event.type = attr.as_string() : cot.event.type = "";
         ParseTypeAttribute(cot.event.type, cot.event.indicator, cot.event.location);
+
+        // Parse UID
+        (attr = event.attribute("uid")) ? cot.event.uid = attr.as_string() : cot.event.uid = "";
 
         // Parse times into data points in COT structure
         (attr = event.attribute("time")) ? time = attr.as_string() : time = "";
