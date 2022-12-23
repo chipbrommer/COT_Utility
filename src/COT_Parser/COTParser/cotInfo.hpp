@@ -344,7 +344,8 @@ public:
     //! @brief Print the class
     friend std::ostream& operator<<(std::ostream& os, const Point& point)
     {
-        os << "Point:\n"
+        os << "Point: ";  if (!point.Valid()) { os << " -NOT VALID- "; }
+        os << "\n"
             << "\tLatitude:        " << point.latitude << "\n"
             << "\tLongitutde:      " << point.longitutde << "\n"
             << "\tHAE:             " << point.hae << "\n"
@@ -421,7 +422,8 @@ public:
     //! @brief Print the class
     friend std::ostream& operator<<(std::ostream& os, const Event& event)
     {
-        os << "Event:\n"
+        os << "Event: ";  if (!event.Valid()) { os << " -NOT VALID- "; }
+        os << "\n"
             << "\tVersion:         " << event.version << "\n"
             << "\tType:            " << event.type << "\n"
             << "\tIndicator:       " << event.indicator << " - " << enumPointTypeToString[event.indicator] << "\n"
@@ -480,7 +482,8 @@ public:
     //! @brief Print the class
     friend std::ostream& operator<<(std::ostream& os, const Takv& takv)
     {
-        os << "TAKV:\n"
+        os << "TAKV: ";  if (!takv.Valid()) { os << " -NOT VALID- "; }
+        os << "\n"
             << "\tVersion:         " << takv.version << "\n"
             << "\tDevice:          " << takv.device << "\n"
             << "\tOS:              " << takv.os << "\n"
@@ -529,7 +532,8 @@ public:
     //! @brief Print the class
     friend std::ostream& operator<<(std::ostream& os, const Contact& contact)
     {
-        os << "Contact:\n"
+        os << "Contact: ";  if (!contact.Valid()) { os << " -NOT VALID- "; }
+        os << "\n"
             << "\tEndpoint:        " << contact.endpoint << "\n"
             << "\tCallsign:        " << contact.callsign << "\n"
             << "\tXMP Username:    " << contact.xmppUsername << "\n"
@@ -571,7 +575,8 @@ public:
     //! @brief Print the class
     friend std::ostream& operator<<(std::ostream& os, const Uid& uid)
     {
-        os << "UID:\n"
+        os << "UID: ";  if (!uid.Valid()) { os << " -NOT VALID- "; }
+        os << "\n"
             << "\tDroid:           " << uid.droid << "\n"
             << "\n";
 
@@ -614,7 +619,8 @@ public:
     //! @brief Print the class
     friend std::ostream& operator<<(std::ostream& os, const PrecisionLocation& preloc)
     {
-        os << "Precision Location:\n"
+        os << "Precision Location: ";  if (!preloc.Valid()) { os << " -NOT VALID- "; }
+        os << "\n"
             << "\tAlt Source:      " << preloc.altsrc << "\n"
             << "\tGeopoint Source: " << preloc.geopointsrc << "\n"
             << "\n";
@@ -658,7 +664,8 @@ public:
     //! @brief Print the class
     friend std::ostream& operator<<(std::ostream& os, const Group& group)
     {
-        os << "Group:\n"
+        os << "Group: ";  if (!group.Valid()) { os << " -NOT VALID- "; }
+        os << "\n"
             << "\tRole:            " << group.role << "\n"
             << "\tName:            " << group.name << "\n"
             << "\n";
@@ -699,7 +706,8 @@ public:
     //! @brief Print the class
     friend std::ostream& operator<<(std::ostream& os, const Status& status)
     {
-         os << "Status:\n"
+         os << "Status: ";  if (!status.Valid()) { os << " -NOT VALID- "; }
+         os << "\n"
             << "\tBattery:         " << status.battery << "\n"
             << "\n";
 
@@ -742,7 +750,8 @@ public:
     //! @brief Print the class
     friend std::ostream& operator<<(std::ostream& os, const Track& track)
     {
-        os << "Track:\n"
+        os << "Track: ";  if (!track.Valid()) { os << " -NOT VALID- "; }
+        os << "\n"
             << "\tCourse:          " << track.course << "\n"
             << "\tSpeed:           " << track.speed << "\n"
             << "\n";
@@ -829,7 +838,8 @@ public:
 
         */
 
-        os << "Detail:\n"
+        os << "Detail: ";  if (!detail.Valid()) { os << " -NOT VALID- "; }
+        os << "\n"
         << detail.takv
         << detail.contact
         << detail.uid
@@ -881,7 +891,8 @@ public:
     //! @brief Print the class
     friend std::ostream& operator<<(std::ostream& os, const COTSchema& cot)
     {
-        os << "COT Data:\n"
+        os << "COT Data: ";  if (!cot.Valid()) { os << " -NOT VALID- "; }
+        os << "\n"
             << cot.event
             << cot.point
             << cot.detail
