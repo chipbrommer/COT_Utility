@@ -73,7 +73,7 @@ int COTParser::ParseCOT(std::string& buffer, COTSchema& cot)
     //      be exactly one of each schema. 
     //      We dont check <detail> because it is optional data. 
 
-    // This ccheck can be changed later in to take actual use of the following for loops
+    // This check can be changed later in to take actual use of the following for loops
     // in the event we start parsing into a vector. 
     if (eventsSize != 1)
     {
