@@ -309,11 +309,11 @@ public:
     double  linearError;            //! Linear Error in Meters
 
     //! @brief Constructor - Initializes Everything
-    Point(const double latitude = 0,
-        const double longitutde = 0,
-        const double hae = 0,
-        const double circularError = 0,
-        const double linearError = 0) :
+    Point(const double latitude = NAN,
+        const double longitutde = NAN,
+        const double hae = NAN,
+        const double circularError = NAN,
+        const double linearError = NAN) :
         latitude(latitude), longitutde(longitutde), hae(hae),
         circularError(circularError), linearError(linearError)
     {}
@@ -334,22 +334,22 @@ public:
         return !(*this == point);
     }
 
-    //! @brief Does class have valid data ? 
+    //! @brief Does class have valid latitude and longitude ? 
     bool Valid(void) const
     {
-        return  (latitude > 0) && (longitutde > 0) && (hae > 0) &&
-            (circularError > 0) && (linearError > 0);
+        return  (!isnan(latitude)) && (!isnan(longitutde)) && (!isnan(hae)) &&
+                (!isnan(circularError)) && (!isnan(linearError));
     }
 
     //! @brief Print the class
     friend std::ostream& operator<<(std::ostream& os, const Point& point)
     {
         os << "Point:\n"
-            << "\tLatitude:       " << point.latitude << "\n"
-            << "\tLongitutde:     " << point.longitutde << "\n"
-            << "\tHAE:            " << point.hae << "\n"
-            << "\tCircular Error: " << point.circularError << "\n"
-            << "\tLinear Error:   " << point.linearError << "\n"
+            << "\tLatitude:        " << point.latitude << "\n"
+            << "\tLongitutde:      " << point.longitutde << "\n"
+            << "\tHAE:             " << point.hae << "\n"
+            << "\tCircular Error:  " << point.circularError << "\n"
+            << "\tLinear Error:    " << point.linearError << "\n"
             << "\n";
 
         return os;
@@ -422,17 +422,285 @@ public:
     friend std::ostream& operator<<(std::ostream& os, const Event& event)
     {
         os << "Event:\n"
-            << "\tVersion:   " << event.version << "\n"
-            << "\tType:      " << event.type << "\n"
-            << "\tIndicator: " << event.indicator << " - " << enumPointTypeToString[event.indicator] << "\n"
-            << "\tLocation:  " << event.location << " - " << enumLocationTypeToString[event.location] << "\n"
-            << "\tUID:       " << event.uid << "\n"
-            << "\tTime:      " << event.time << "\n"
-            << "\tStart:     " << event.start << "\n"
-            << "\tStale:     " << event.stale << "\n"
-            << "\tHow:       " << event.how << "\n"
-            << "\tHow Entry: " << event.howEntry << " - " << enumHowEntryTypeToString[event.howEntry] << "\n"
-            << "\tHow Data:  " << event.howData << " - " << enumHowDataTypeToString[event.howData] << "\n"
+            << "\tVersion:         " << event.version << "\n"
+            << "\tType:            " << event.type << "\n"
+            << "\tIndicator:       " << event.indicator << " - " << enumPointTypeToString[event.indicator] << "\n"
+            << "\tLocation:        " << event.location << " - " << enumLocationTypeToString[event.location] << "\n"
+            << "\tUID:             " << event.uid << "\n"
+            << "\tTime:            " << event.time << "\n"
+            << "\tStart:           " << event.start << "\n"
+            << "\tStale:           " << event.stale << "\n"
+            << "\tHow:             " << event.how << "\n"
+            << "\tHow Entry:       " << event.howEntry << " - " << enumHowEntryTypeToString[event.howEntry] << "\n"
+            << "\tHow Data:        " << event.howData << " - " << enumHowDataTypeToString[event.howData] << "\n"
+            << "\n";
+
+        return os;
+    }
+};
+
+//! @brief Define a COT Message subschema class for Takv data 
+class Takv
+{
+public:
+    std::string version;            //! Role of the group member sending
+    std::string device;             //! Device type
+    std::string os;                 //! Operating system
+    std::string platform;           //! TAK platform (ATAK-CIV, WINTAK, ATAK-MIL, etc)
+
+    //! @brief Constructor - Initializes Everything
+    Takv(   const std::string version = "",
+            const std::string device = "",
+            const std::string os = "",
+            const std::string platform = "") :
+        version(version), device(device), os(os), platform(platform)
+    {}
+
+    //! @brief Equal comparison operator
+    bool operator == (const Takv& takv) const
+    {
+        return  (version == takv.version) &&
+                (device == takv.device)&&
+                (os == takv.os)&&
+                (platform == takv.platform);
+    }
+
+    //! @brief Equal comparison operator
+    bool operator != (const Takv& takv) const
+    {
+        return !(*this == takv);
+    }
+
+    //! @brief Does class have valid data ? 
+    bool Valid(void) const
+    {
+        return !version.empty() || !device.empty() || !os.empty() || !platform.empty();
+    }
+
+    //! @brief Print the class
+    friend std::ostream& operator<<(std::ostream& os, const Takv& takv)
+    {
+        os << "TAKV:\n"
+            << "\tVersion:         " << takv.version << "\n"
+            << "\tDevice:          " << takv.device << "\n"
+            << "\tOS:              " << takv.os << "\n"
+            << "\tPlatform:        " << takv.platform << "\n"
+            << "\n";
+
+        return os;
+    }
+};
+
+//! @brief Define a COT Message subschema class for Contact data 
+class Contact
+{
+public:
+    std::string endpoint;           //! Endpoint of the unit. usually a tcp address. 
+    std::string callsign;           //! Callsign (name) of the item.
+    std::string xmppUsername;       //! XMP Username
+
+    //! @brief Constructor - Initializes Everything
+    Contact(const std::string endpoint = "",
+            const std::string callsign = "",
+            const std::string xmppUsername = "") :
+            endpoint(endpoint), callsign(callsign), xmppUsername(xmppUsername)
+    {}
+
+    //! @brief Equal comparison operator
+    bool operator == (const Contact& contact) const
+    {
+        return  (endpoint == contact.endpoint) &&
+                (callsign == contact.callsign) &&
+                (xmppUsername == contact.xmppUsername);
+    }
+
+    //! @brief Equal comparison operator
+    bool operator != (const Contact& contact) const
+    {
+        return !(*this == contact);
+    }
+
+    //! @brief Does class have valid data ? 
+    bool Valid(void) const
+    {
+        return !endpoint.empty() || !callsign.empty() || !xmppUsername.empty();
+    }
+
+    //! @brief Print the class
+    friend std::ostream& operator<<(std::ostream& os, const Contact& contact)
+    {
+        os << "Contact:\n"
+            << "\tEndpoint:        " << contact.endpoint << "\n"
+            << "\tCallsign:        " << contact.callsign << "\n"
+            << "\tXMP Username:    " << contact.xmppUsername << "\n"
+            << "\n";
+
+        return os;
+    }
+};
+
+//! @brief Define a COT Message subschema class for Uid data 
+class Uid
+{
+public:
+    std::string droid;               //! User
+
+    //! @brief Constructor - Initializes Everything
+    Uid(const std::string droid = "") :
+        droid(droid)
+    {}
+
+    //! @brief Equal comparison operator
+    bool operator == (const Uid& uid) const
+    {
+        return  (droid == uid.droid);
+    }
+
+    //! @brief Equal comparison operator
+    bool operator != (const Uid& uid) const
+    {
+        return !(*this == uid);
+    }
+
+    //! @brief Does class have valid data ? 
+    bool Valid(void) const
+    {
+        return !droid.empty();
+    }
+
+    //! @brief Print the class
+    friend std::ostream& operator<<(std::ostream& os, const Uid& uid)
+    {
+        os << "UID:\n"
+            << "\tDroid:           " << uid.droid << "\n"
+            << "\n";
+
+        return os;
+    }
+};
+
+//! @brief Define a COT Message subschema class for PrecisionLocation data 
+class PrecisionLocation
+{
+public:
+    std::string altsrc;                 //! Role of the group member sending
+    std::string geopointsrc;            //! Group name
+
+    //! @brief Constructor - Initializes Everything
+    PrecisionLocation(  const std::string altsrc = "",
+                        const std::string geopointsrc = "") :
+                        altsrc(altsrc), geopointsrc(geopointsrc)
+    {}
+
+    //! @brief Equal comparison operator
+    bool operator == (const PrecisionLocation& preloc) const
+    {
+        return  (altsrc == preloc.altsrc) &&
+                (geopointsrc == preloc.geopointsrc);
+    }
+
+    //! @brief Equal comparison operator
+    bool operator != (const PrecisionLocation& preloc) const
+    {
+        return !(*this == preloc);
+    }
+
+    //! @brief Does class have valid data ? 
+    bool Valid(void) const
+    {
+        return !altsrc.empty() || !geopointsrc.empty();
+    }
+
+    //! @brief Print the class
+    friend std::ostream& operator<<(std::ostream& os, const PrecisionLocation& preloc)
+    {
+        os << "Precision Location:\n"
+            << "\tAlt Source:      " << preloc.altsrc << "\n"
+            << "\tGeopoint Source: " << preloc.geopointsrc << "\n"
+            << "\n";
+
+        return os;
+    }
+};
+
+//! @brief Define a COT Message subschema class for Group data 
+class Group
+{
+public:
+    std::string role;               //! Role of the group member sending
+    std::string name;               //! Group name
+
+    //! @brief Constructor - Initializes Everything
+    Group(const std::string role = "",
+          const std::string name = "") :
+            role(role), name(name)
+    {}
+
+    //! @brief Equal comparison operator
+    bool operator == (const Group& group) const
+    {
+        return  (role == group.role) &&
+                (name == group.name);
+    }
+
+    //! @brief Equal comparison operator
+    bool operator != (const Group& group) const
+    {
+        return !(*this == group);
+    }
+
+    //! @brief Does class have valid data ? 
+    bool Valid(void) const
+    {
+        return !role.empty() || !name.empty();
+    }
+
+    //! @brief Print the class
+    friend std::ostream& operator<<(std::ostream& os, const Group& group)
+    {
+        os << "Group:\n"
+            << "\tRole:            " << group.role << "\n"
+            << "\tName:            " << group.name << "\n"
+            << "\n";
+
+        return os;
+    }
+};
+
+//! @brief Define a COT Message subschema class for Status data 
+class Status
+{
+public:
+    double battery;           //! Battery percentage
+
+    //! @brief Constructor - Initializes Everything
+    Status(const double battery = NAN) :
+        battery(battery)
+    {}
+
+    //! @brief Equal comparison operator
+    bool operator == (const Status& status) const
+    {
+        return  (battery == status.battery);
+    }
+
+    //! @brief Equal comparison operator
+    bool operator != (const Status& status) const
+    {
+        return !(*this == status);
+    }
+
+    //! @brief Does class have valid data ? 
+    bool Valid(void) const
+    {
+        return !isnan(battery);
+    }
+
+    //! @brief Print the class
+    friend std::ostream& operator<<(std::ostream& os, const Status& status)
+    {
+         os << "Status:\n"
+            << "\tBattery:         " << status.battery << "\n"
             << "\n";
 
         return os;
@@ -447,16 +715,16 @@ public:
     double speed;                   //! Magnitude of motion measured in meters per second
 
     //! @brief Constructor - Initializes Everything
-    Track(const double course = 0,
-        const double speed = 0) :
-        course(course), speed(speed)
+    Track(  const double course = NAN,
+            const double speed = NAN) :
+            course(course), speed(speed)
     {}
 
     //! @brief Equal comparison operator
     bool operator == (const Track& track) const
     {
         return  (course == track.course) &&
-            (speed == track.speed);
+                (speed == track.speed);
     }
 
     //! @brief Equal comparison operator
@@ -468,15 +736,15 @@ public:
     //! @brief Does class have valid data ? 
     bool Valid(void) const
     {
-        return  (course > 0) && (speed > 0);
+        return !isnan(course) && !isnan(speed);
     }
 
     //! @brief Print the class
     friend std::ostream& operator<<(std::ostream& os, const Track& track)
     {
         os << "Track:\n"
-            << "\tCourse:    " << track.course << "\n"
-            << "\tSpeed:     " << track.speed << "\n"
+            << "\tCourse:          " << track.course << "\n"
+            << "\tSpeed:           " << track.speed << "\n"
             << "\n";
 
         return os;
@@ -487,17 +755,42 @@ public:
 class Detail
 {
 public:
-    Track track;                  //! Track Sub-Schema
+    Takv takv;                              //! TAKV Sub-Schema
+    Contact contact;                        //! Contact Sub-Schema
+    Uid uid;                                //! UID Sub-Schema
+    PrecisionLocation precisionLocation;    //! PrecisionLocation Sub-Schema
+    Group group;                            //! Group Sub-Schema
+    Status status;                          //! Status Sub-Schema
+    Track track;                            //! Track Sub-Schema
 
     //! @brief Constructor - Initializes Everything
-    Detail(const Track track = Track()) :
+    Detail( const Takv takv = Takv(),
+            const Contact contact = Contact(),
+            const Uid uid = Uid(),
+            const PrecisionLocation precisionLocation = PrecisionLocation(),
+            const Group group = Group(),
+            const Status status = Status(),
+            const Track track = Track()
+    ) :
+        takv(takv),
+        contact(contact),
+        uid(uid),
+        precisionLocation(precisionLocation),
+        group(group),
+        status(status),
         track(track)
     {}
 
     //! @brief Equal comparison operator
     bool operator == (const Detail& detail) const
     {
-        return  (track == detail.track);
+        return  (takv == detail.takv) &&
+                (contact == detail.contact) &&
+                (uid == detail.uid) &&
+                (precisionLocation == detail.precisionLocation) &&
+                (group == detail.group) &&
+                (status == detail.status) &&
+                (track == detail.track);
     }
 
     //! @brief Equal comparison operator
@@ -509,15 +802,42 @@ public:
     //! @brief Does class have valid data ? 
     bool Valid(void) const
     {
-        return  (track.Valid());
+        return (takv.Valid() &&
+                contact.Valid() && 
+                uid.Valid() &&
+                precisionLocation.Valid() && 
+                group.Valid() && 
+                status.Valid() && 
+                track.Valid());
     }
 
     //! @brief Print the class
     friend std::ostream& operator<<(std::ostream& os, const Detail& detail)
     {
+        /*
+        *  NOTE: This will print only the valid sub-schemas. 
+         
+            os << "Detail:\n";
+            if (detail.takv.Valid()) { os << detail.takv; }
+            if (detail.contact.Valid()) { os << detail.contact; }
+            if (detail.uid.Valid()) { os << detail.uid; }
+            if (detail.precisionLocation.Valid()) { os << detail.precisionLocation; }
+            if (detail.group.Valid()) { os << detail.group; }
+            if (detail.status.Valid()) { os << detail.status; }
+            if (detail.track.Valid()) { os << detail.track; }
+            os << "\n";
+
+        */
+
         os << "Detail:\n"
-            << detail.track
-            << "\n";
+        << detail.takv
+        << detail.contact
+        << detail.uid
+        << detail.precisionLocation
+        << detail.group
+        << detail.status
+        << detail.track
+        << "\n";
 
         return os;
     }
@@ -542,8 +862,8 @@ public:
     bool operator == (const COTSchema& cot) const
     {
         return  (event == cot.event) &&
-            (point == cot.point) &&
-            (detail == cot.detail);
+                (point == cot.point) &&
+                (detail == cot.detail);
     }
 
     //! @brief Equal comparison operator
@@ -555,7 +875,7 @@ public:
     //! @brief Does class have valid data ? 
     bool Valid(void) const
     {
-        return  (event.Valid()) && (point.Valid()) && (detail.Valid());
+        return  (event.Valid()) || (point.Valid()) || (detail.Valid());
     }
 
     //! @brief Print the class

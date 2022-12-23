@@ -36,7 +36,7 @@ bool COTParser::VerifyXML(std::string& buffer)
 
     if (!result)
     {
-        std::cout << "Error: " << result.description() << "\n";
+        std::cout << "ERROR: " << result.description() << "\n";
         return false;
     }
 
@@ -68,16 +68,22 @@ int COTParser::ParseCOT(std::string& buffer, COTSchema& cot)
     int pointsSize = (int)events.select_nodes("point").size();
     int detailsSize = (int)events.select_nodes("details").size();
 
-    // Catch empty data:
-    //      <event> and <point> are required data for COT message. 
+    // Catch bad data:
+    //      <event> and <point> are required data for COT message and there should
+    //      be exactly one of each schema. 
     //      We dont check <detail> because it is optional data. 
-    if (eventsSize == 0)
+
+    // This ccheck can be changed later in to take actual use of the following for loops
+    // in the event we start parsing into a vector. 
+    if (eventsSize != 1)
     {
-        return 0;
+        std::cerr << "\nERROR: Event Size Error\n";
+        return -1;
     }
-    else if (pointsSize == 0)
+    else if (pointsSize != 1)
     {
-        return 0;
+        std::cerr << "\nERROR: Point Size Error\n";
+        return -1;
     }
 
     // Parse <event> tag and gather data. 
@@ -120,10 +126,60 @@ int COTParser::ParseCOT(std::string& buffer, COTSchema& cot)
         }
 
         // Parse <event><detail> tag and gather data. 
-        //  NOTE: The only data we gather here currently is the subschema <track>
         for (auto&& detail : events.children("detail"))
         {
             pugi::xml_attribute attr1;
+
+            // Parse <takv>
+            pugi::xml_node takv = detail.child("takv");
+            if (takv)
+            {
+                (attr1 = takv.attribute("version")) ? cot.detail.takv.version = attr1.as_string() : cot.detail.takv.version = "";
+                (attr1 = takv.attribute("device")) ? cot.detail.takv.device = attr1.as_string() : cot.detail.takv.device = "";
+                (attr1 = takv.attribute("os")) ? cot.detail.takv.os = attr1.as_string() : cot.detail.takv.os = "";
+                (attr1 = takv.attribute("platform")) ? cot.detail.takv.platform = attr1.as_string() : cot.detail.takv.platform = "";
+            }
+
+            // Parse <contact>
+            pugi::xml_node contact = detail.child("contact");
+            if (contact)
+            {
+                (attr1 = contact.attribute("endpoint")) ? cot.detail.contact.endpoint = attr1.as_string() : cot.detail.contact.endpoint = "";
+                (attr1 = contact.attribute("callsign")) ? cot.detail.contact.callsign = attr1.as_string() : cot.detail.contact.callsign = "";
+                (attr1 = contact.attribute("xmppUsername")) ? cot.detail.contact.xmppUsername = attr1.as_string() : cot.detail.contact.xmppUsername = "";
+            }
+
+            // Parse <uid>
+            pugi::xml_node uid = detail.child("uid");
+            if (uid)
+            {
+                (attr1 = uid.attribute("Droid")) ? cot.detail.uid.droid = attr1.as_string() : cot.detail.uid.droid = "";
+            }
+
+            // Parse <precisionlocation>
+            pugi::xml_node precision = detail.child("precisionlocation");
+            if (precision)
+            {
+                (attr1 = precision.attribute("altsrc")) ? cot.detail.precisionLocation.altsrc = attr1.as_string() : cot.detail.precisionLocation.altsrc = "";
+                (attr1 = precision.attribute("geopointsrc")) ? cot.detail.precisionLocation.geopointsrc = attr1.as_string() : cot.detail.precisionLocation.geopointsrc = "";
+            }
+
+            // Parse <__group>
+            pugi::xml_node group = detail.child("__group");
+            if (group)
+            {
+                (attr1 = group.attribute("role")) ? cot.detail.group.role = attr1.as_string() : cot.detail.group.role = "";
+                (attr1 = group.attribute("name")) ? cot.detail.group.name = attr1.as_string() : cot.detail.group.name = "";
+            }
+
+            // Parse <status>
+            pugi::xml_node status = detail.child("status");
+            if (status)
+            {
+                (attr1 = status.attribute("battery")) ? cot.detail.status.battery = attr1.as_double() : cot.detail.status.battery = 0;
+            }
+
+            // Parse <track>
             pugi::xml_node track = detail.child("track");
             if (track)
             {
@@ -135,6 +191,20 @@ int COTParser::ParseCOT(std::string& buffer, COTSchema& cot)
 
     // return number of points read
     return pointsSize;
+}
+
+int COTParser::ParseCOT(const uint8_t* buffer, COTSchema& cot)
+{
+    std::string str = (char*)buffer;
+    int num = ParseCOT(str, cot);
+    return num;
+}
+
+COTSchema COTParser::ParseBufferToCOT(const uint8_t* buffer)
+{
+    COTSchema cot;
+    int temp = ParseCOT(buffer, cot);
+    return cot;
 }
 
 bool COTParser::ParseTypeAttribute(std::string& type, PointType& ind, LocationType& loc)
