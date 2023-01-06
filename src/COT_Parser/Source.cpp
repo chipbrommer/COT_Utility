@@ -41,7 +41,7 @@ int main()
     // EXAMPLE: How to parse from a uint8_t buffer with returned COTSchema. 
     std::cout << "\n\n";
     COTSchema cot3 = c.ParseBufferToCOT(t2);
-    if (cot2.Valid())
+    if (cot3.Valid())
     {
         std::cout << cot3;
     }
