@@ -1,6 +1,0 @@
-/*! \page detail 4.0 Detail Design Description
-\section detail-dd Detail Design Description
-This section provides the detail design description for each CSU of the CSCI.  Each CSU is documented in the source code and doxygen is used to provide the detail design information.
-
-Detail information on all class members may be found in the <a href=".\classes.html">Class Index</a>.
-*/

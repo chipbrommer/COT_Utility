@@ -128,15 +128,21 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\PugiXML\pugixml.cpp" />
     <ClCompile Include="COT_Utility\cot_utility.cpp" />
     <ClCompile Include="Examples.cpp" />
+    <ClCompile Include="PugiXML\pugixml.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\PugiXML\pugiconfig.hpp" />
-    <ClInclude Include="..\PugiXML\pugixml.hpp" />
     <ClInclude Include="COT_Utility\cot_info.h" />
     <ClInclude Include="COT_Utility\cot_utility.h" />
+    <ClInclude Include="PugiXML\pugiconfig.hpp" />
+    <ClInclude Include="PugiXML\pugixml.hpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include=".gitignore" />
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="README.txt" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -18,25 +18,31 @@
     <ClCompile Include="Examples.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\PugiXML\pugixml.cpp">
+    <ClCompile Include="COT_Utility\cot_utility.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="COT_Utility\cot_utility.cpp">
+    <ClCompile Include="PugiXML\pugixml.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\PugiXML\pugiconfig.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\PugiXML\pugixml.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="COT_Utility\cot_info.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="COT_Utility\cot_utility.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="PugiXML\pugiconfig.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="PugiXML\pugixml.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include=".gitignore" />
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="README.txt" />
   </ItemGroup>
 </Project>

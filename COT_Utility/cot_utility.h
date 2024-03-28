@@ -15,7 +15,7 @@
 #include <unordered_map>                    // maps
 //
 #include "cot_info.h"                       // schemas
-#include "../../PugiXML/pugixml.hpp"        // XML
+#include "../PugiXML/pugixml.hpp"           // XML
 // 
 /////////////////////////////////////////////////////////////////////////////////
 
