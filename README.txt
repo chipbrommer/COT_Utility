@@ -1,6 +1,6 @@
 CoT Utility v0.2.0. 
 
-This project was originally created to parse XML CoT messages being received from an external source into my C++11 and legacy C applications. 
+This project was originally created to parse XML CoT messages being received from an external source into my C++11 and legacy C applications under the name COT_Parser.
 
 Since, I have decided to expand upon my initial creation to transition this into more of a full CoT utility that will parse and generate XML CoT messages.
 
