@@ -24,6 +24,7 @@
     <ProjectGuid>{7b2e626a-4490-49bc-9899-80f4ca0e227a}</ProjectGuid>
     <RootNamespace>COTParser</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+    <ProjectName>COT_Utility</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -128,14 +129,14 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\PugiXML\pugixml.cpp" />
-    <ClCompile Include="COTParser\cotParser.cpp" />
-    <ClCompile Include="Source.cpp" />
+    <ClCompile Include="COT_Utility\cot_utility.cpp" />
+    <ClCompile Include="Examples.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\PugiXML\pugiconfig.hpp" />
     <ClInclude Include="..\PugiXML\pugixml.hpp" />
-    <ClInclude Include="COTParser\cotInfo.hpp" />
-    <ClInclude Include="COTParser\cotParser.hpp" />
+    <ClInclude Include="COT_Utility\cot_info.h" />
+    <ClInclude Include="COT_Utility\cot_utility.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
