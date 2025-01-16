@@ -15,7 +15,7 @@
 #include <unordered_map>                    // maps
 //
 #include "cot_info.h"                       // schemas
-#include "../PugiXML/pugixml.hpp"           // XML
+#include <pugixml.hpp>                      // pugi xml
 // 
 /////////////////////////////////////////////////////////////////////////////////
 
@@ -24,10 +24,10 @@ class COT_Utility
 public:
 
     /// @brief Default Construtor
-    COT_Utility();
+    COT_Utility() = default;
 
     /// @brief Default Deconstructor
-    ~COT_Utility();
+    ~COT_Utility() = default;
 
     /// @brief Verify a string buffer is XML
     /// @param buffer - [in] - string buffer to be verified
@@ -135,5 +135,5 @@ private:
 
     const int MAJOR = 0;
     const int MINOR = 2;
-    const int BUILD = 0;
+    const int BUILD = 1;
 };

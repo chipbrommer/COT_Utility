@@ -16,10 +16,6 @@
 //
 ///////////////////////////////////////////////////////////////////////////////
 
-COT_Utility::COT_Utility() {}
-
-COT_Utility::~COT_Utility() {}
-
 bool COT_Utility::VerifyXML(std::string& buffer)
 {
     pugi::xml_document doc;

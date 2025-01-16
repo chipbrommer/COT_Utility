@@ -1,6 +1,6 @@
 
 #include <iostream>
-#include "COT_Utility/cot_utility.h"
+#include "cot_utility.h"
 
 int main()
 {
