@@ -16,7 +16,7 @@ project("cot_utility_example")
 
 # Include the pugi_xml.cmake to fetch the pugixml library
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
-include(pugi_xml)
+include(pugixml)
 
 # Add the cot_utility subdirectory
 add_subdirectory("cot_utility")
