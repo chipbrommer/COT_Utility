@@ -10,6 +10,7 @@
 //  Include files:
 //          name                        reason included
 //          --------------------        ---------------------------------------
+#include <cmath>                        // isnan
 #include <iostream>                     // ostream
 #include <iomanip>                      // setw
 #include <unordered_map>                // maps
@@ -154,7 +155,7 @@ namespace Location
 
 namespace How
 {
-
+    /// @brief Type section of the 'how' data
     namespace Entry
     {
         enum class Type : int
@@ -385,7 +386,7 @@ public:
     }
 
     /// @brief Does class have valid data ? 
-    bool Valid(void) const
+    bool IsValid() const
     {
         return  (version > 0) && (!type.empty()) && (!uid.empty()) && (time.IsValid()) &&
             (start.IsValid()) && (stale.IsValid()) && (!how.empty());
@@ -394,7 +395,7 @@ public:
     /// @brief Print the class
     friend std::ostream& operator<<(std::ostream& os, const Event& event)
     {
-        os << "Event: ";  if (!event.Valid()) { os << " -NOT VALID- "; }
+        os << "Event: ";  if (!event.IsValid()) { os << " -NOT VALID- "; }
         os << "\n"
             << "\tVersion:         " << event.version << "\n"
             << "\tType:            " << event.type << "\n"
@@ -417,7 +418,7 @@ public:
 class Takv
 {
 public:
-    std::string version;            /// Role of the group member sending
+    std::string version;            /// version
     std::string device;             /// Device type
     std::string os;                 /// Operating system
     std::string platform;           /// TAK platform (ATAK-CIV, WINTAK, ATAK-MIL, etc)
@@ -446,7 +447,7 @@ public:
     }
 
     /// @brief Does class have valid data ? 
-    bool Valid(void) const
+    bool IsValid() const
     {
         return !version.empty() || !device.empty() || !os.empty() || !platform.empty();
     }
@@ -454,7 +455,7 @@ public:
     /// @brief Print the class
     friend std::ostream& operator<<(std::ostream& os, const Takv& takv)
     {
-        os << "TAKV: ";  if (!takv.Valid()) { os << " -NOT VALID- "; }
+        os << "TAKV: ";  if (!takv.IsValid()) { os << " -NOT VALID- "; }
         os << "\n"
             << "\tVersion:         " << takv.version << "\n"
             << "\tDevice:          " << takv.device << "\n"
@@ -496,7 +497,7 @@ public:
     }
 
     /// @brief Does class have valid data ? 
-    bool Valid(void) const
+    bool IsValid() const
     {
         return !endpoint.empty() || !callsign.empty() || !xmppUsername.empty();
     }
@@ -504,7 +505,7 @@ public:
     /// @brief Print the class
     friend std::ostream& operator<<(std::ostream& os, const Contact& contact)
     {
-        os << "Contact: ";  if (!contact.Valid()) { os << " -NOT VALID- "; }
+        os << "Contact: ";  if (!contact.IsValid()) { os << " -NOT VALID- "; }
         os << "\n"
             << "\tEndpoint:        " << contact.endpoint << "\n"
             << "\tCallsign:        " << contact.callsign << "\n"
@@ -539,7 +540,7 @@ public:
     }
 
     /// @brief Does class have valid data ? 
-    bool Valid(void) const
+    bool IsValid() const
     {
         return !droid.empty();
     }
@@ -547,7 +548,7 @@ public:
     /// @brief Print the class
     friend std::ostream& operator<<(std::ostream& os, const Uid& uid)
     {
-        os << "UID: ";  if (!uid.Valid()) { os << " -NOT VALID- "; }
+        os << "UID: ";  if (!uid.IsValid()) { os << " -NOT VALID- "; }
         os << "\n"
             << "\tDroid:           " << uid.droid << "\n"
             << "\n";
@@ -583,7 +584,7 @@ public:
     }
 
     /// @brief Does class have valid data ? 
-    bool Valid(void) const
+    bool IsValid() const
     {
         return !altsrc.empty() || !geopointsrc.empty();
     }
@@ -591,7 +592,7 @@ public:
     /// @brief Print the class
     friend std::ostream& operator<<(std::ostream& os, const PrecisionLocation& preloc)
     {
-        os << "Precision Location: ";  if (!preloc.Valid()) { os << " -NOT VALID- "; }
+        os << "Precision Location: ";  if (!preloc.IsValid()) { os << " -NOT VALID- "; }
         os << "\n"
             << "\tAlt Source:      " << preloc.altsrc << "\n"
             << "\tGeopoint Source: " << preloc.geopointsrc << "\n"
@@ -628,7 +629,7 @@ public:
     }
 
     /// @brief Does class have valid data ? 
-    bool Valid(void) const
+    bool IsValid() const
     {
         return !role.empty() || !name.empty();
     }
@@ -636,7 +637,7 @@ public:
     /// @brief Print the class
     friend std::ostream& operator<<(std::ostream& os, const Group& group)
     {
-        os << "Group: ";  if (!group.Valid()) { os << " -NOT VALID- "; }
+        os << "Group: ";  if (!group.IsValid()) { os << " -NOT VALID- "; }
         os << "\n"
             << "\tRole:            " << group.role << "\n"
             << "\tName:            " << group.name << "\n"
@@ -670,15 +671,15 @@ public:
     }
 
     /// @brief Does class have valid data ? 
-    bool Valid(void) const
+    bool IsValid() const
     {
-        return !isnan(battery);
+        return !std::isnan(battery);
     }
 
     /// @brief Print the class
     friend std::ostream& operator<<(std::ostream& os, const Status& status)
     {
-        os << "Status: ";  if (!status.Valid()) { os << " -NOT VALID- "; }
+        os << "Status: ";  if (!status.IsValid()) { os << " -NOT VALID- "; }
         os << "\n"
             << "\tBattery:         " << status.battery << "\n"
             << "\n";
@@ -714,15 +715,15 @@ public:
     }
 
     /// @brief Does class have valid data ? 
-    bool Valid(void) const
+    bool IsValid() const
     {
-        return !isnan(course) && !isnan(speed);
+        return !std::isnan(course) && !std::isnan(speed);
     }
 
     /// @brief Print the class
     friend std::ostream& operator<<(std::ostream& os, const Track& track)
     {
-        os << "Track: ";  if (!track.Valid()) { os << " -NOT VALID- "; }
+        os << "Track: ";  if (!track.IsValid()) { os << " -NOT VALID- "; }
         os << "\n"
             << "\tCourse:          " << track.course << "\n"
             << "\tSpeed:           " << track.speed << "\n"
@@ -781,15 +782,15 @@ public:
     }
 
     /// @brief Does class have valid data ? 
-    bool Valid(void) const
+    bool IsValid() const
     {
-        return (takv.Valid() &&
-            contact.Valid() &&
-            uid.Valid() &&
-            precisionLocation.Valid() &&
-            group.Valid() &&
-            status.Valid() &&
-            track.Valid());
+        return (takv.IsValid() &&
+            contact.IsValid() &&
+            uid.IsValid() &&
+            precisionLocation.IsValid() &&
+            group.IsValid() &&
+            status.IsValid() &&
+            track.IsValid());
     }
 
     /// @brief Print the class
@@ -799,18 +800,18 @@ public:
         *  NOTE: This will print only the valid sub-schemas.
 
             os << "Detail:\n";
-            if (detail.takv.Valid()) { os << detail.takv; }
-            if (detail.contact.Valid()) { os << detail.contact; }
-            if (detail.uid.Valid()) { os << detail.uid; }
-            if (detail.precisionLocation.Valid()) { os << detail.precisionLocation; }
-            if (detail.group.Valid()) { os << detail.group; }
-            if (detail.status.Valid()) { os << detail.status; }
-            if (detail.track.Valid()) { os << detail.track; }
+            if (detail.takv.IsValid()) { os << detail.takv; }
+            if (detail.contact.IsValid()) { os << detail.contact; }
+            if (detail.uid.IsValid()) { os << detail.uid; }
+            if (detail.precisionLocation.IsValid()) { os << detail.precisionLocation; }
+            if (detail.group.IsValid()) { os << detail.group; }
+            if (detail.status.IsValid()) { os << detail.status; }
+            if (detail.track.IsValid()) { os << detail.track; }
             os << "\n";
 
         */
 
-        os << "Detail: ";  if (!detail.Valid()) { os << " -NOT VALID- "; }
+        os << "Detail: ";  if (!detail.IsValid()) { os << " -NOT VALID- "; }
         os << "\n"
             << detail.takv
             << detail.contact
@@ -855,15 +856,15 @@ public:
     }
 
     /// @brief Does class have valid data ? 
-    bool Valid(void) const
+    bool IsValid() const
     {
-        return  (event.Valid()) || (point.IsValid()) || (detail.Valid());
+        return  (event.IsValid()) || (point.IsValid()) || (detail.IsValid());
     }
 
     /// @brief Print the class
     friend std::ostream& operator<<(std::ostream& os, const COTSchema& cot)
     {
-        os << "COT Data: ";  if (!cot.Valid()) { os << " -NOT VALID- "; }
+        os << "COT Data: ";  if (!cot.IsValid()) { os << " -NOT VALID- "; }
         os << "\n"
             << cot.event
             << cot.point

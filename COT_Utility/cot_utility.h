@@ -66,11 +66,11 @@ public:
 
     /// @brief Parse a COT Message
     /// @param Buffer  - [in]  - char buffer containing the XML data to be parsed.
-    /// @return A COT Structures containing the parsed data, use "COTSchema.Valid()" function for verify validity. 
+    /// @return A COT Structures containing the parsed data, use "COTSchema.IsValid()" function for verify validity. 
     COTSchema ParseBufferToCOT(const char* buffer);
 
     /// @brief Get a string containing the current version information
-    std::string GetVersion();
+    std::string GetVersion() const;
 
 protected:
 private:

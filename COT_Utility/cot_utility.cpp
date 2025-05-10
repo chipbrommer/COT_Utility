@@ -11,6 +11,7 @@
 //          name                        reason included
 //          --------------------        ---------------------------------------
 #include <sstream>                      // Stringstream
+#include <vector>                       // vectors
 //
 #include "cot_utility.h"                // COT Parser header.
 //
@@ -38,8 +39,13 @@ std::string COT_Utility::GenerateXMLCOTMessage(COTSchema& cot)
     msg << "<?xml version=\"1.0\" encoding=\"utf-8\" standalone=\"yes\"?>";
 
     // Event start
-    msg << "<event version=\"2.0\" uid=\"" << cot.event.uid << "\" type=\"" << cot.event.type << "\" time=\"" << cot.event.time.ToCOTTimestamp() <<
-        "\" start=\"" << cot.event.time.ToCOTTimestamp() << "\" stale=\"" << cot.event.stale.ToCOTTimestamp() << "\" how=\"" << cot.event.how << "\">";
+    msg << "<event version=\"2.0\" uid=\"" << cot.event.uid 
+        << "\" type=\"" << cot.event.type 
+        << "\" time=\"" << cot.event.time.ToCOTTimestamp() 
+        << "\" start=\"" << cot.event.time.ToCOTTimestamp() 
+        << "\" stale=\"" << cot.event.stale.ToCOTTimestamp() 
+        << "\" how=\"" << cot.event.how 
+        << "\">";
 
     // Point data
     msg << "<point lat=\"" << cot.point.latitude << "\" lon=\"" << cot.point.longitude << "\" hae=\"" << cot.point.hae << "\" ce=\"" << cot.point.circularError << "\" le=\"" << cot.point.linearError << "\"/>";
@@ -336,7 +342,7 @@ COTSchema COT_Utility::ParseBufferToCOT(const char* buffer)
     return cot;
 }
 
-std::string COT_Utility::GetVersion()
+std::string COT_Utility::GetVersion() const
 {
     return "COT Utility v" + std::to_string(MAJOR) + "." + std::to_string(MINOR) + "." + std::to_string(BUILD);
 }

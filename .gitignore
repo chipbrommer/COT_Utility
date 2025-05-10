@@ -4,3 +4,6 @@
 
 /out/build/x64-debug
 /.vs
+/COT_Utility/.vs
+/COT_Utility/x64
+/out
