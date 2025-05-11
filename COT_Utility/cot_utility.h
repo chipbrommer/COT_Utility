@@ -1,6 +1,6 @@
 #pragma once
 /////////////////////////////////////////////////////////////////////////////////
-// @file            cot_utility.h
+// @file            CoT_Utility.h
 // @brief           A class for generating and parsing CoT messages
 // @author          Chip Brommer
 /////////////////////////////////////////////////////////////////////////////////
@@ -19,15 +19,15 @@
 // 
 /////////////////////////////////////////////////////////////////////////////////
 
-class COT_Utility
+class CoT_Utility
 {
 public:
 
     /// @brief Default Construtor
-    COT_Utility() = default;
+    CoT_Utility() = default;
 
     /// @brief Default Deconstructor
-    ~COT_Utility() = default;
+    ~CoT_Utility() = default;
 
     /// @brief Verify a string buffer is XML
     /// @param buffer - [in] - string buffer to be verified
@@ -37,40 +37,47 @@ public:
     /// @brief Create an XML COT message from a schema
     /// @param cot - [in] - COT Schema to be created into a message
     /// @return std::string containing the xml message. 
-    std::string GenerateXMLCOTMessage(COTSchema& cot);
+    std::string GenerateXMLCOTMessage(CoT_Schema& cot);
 
     /// @brief Update fields withing a received message to preserve its original content
     /// @param receivedMessage - the original received message
-    /// @param cot - the COTSchema to update the fields with
+    /// @param cot - the CoT_Schema to update the fields with
     /// @param modifiedMessage - the resulting modified message if any edits were made
     /// @param acknowledgment - [in/opt] - A flag to indicate the message as an acknowledgement
-    /// @return true if modifications were made, else false
-    bool UpdateReceivedCOTMessage(std::string& receivedMessage, COTSchema& cot, std::string& modifiedMessage, bool acknowledgment = false);
+    /// @return CoT_UtilityResult enumeration, CoT_UtilityResult::Success or other, use CoT_UtilityResultToString to find out more info
+    CoT_UtilityResult UpdateReceivedCOTMessage(std::string& receivedMessage, CoT_Schema& cot, std::string& modifiedMessage, bool acknowledgment = false);
 
     /// @brief Add an acknowledgement to a received message for response
     /// @param receivedMessage - the message received
-    /// @return true if modified, else false. 
-    bool AcknowledgeReceivedCOTMessage(std::string& receivedMessage, std::string& responseMessage);
+    /// @return CoT_UtilityResult enumeration, CoT_UtilityResult::Success or other, use CoT_UtilityResultToString to find out more info
+    CoT_UtilityResult AcknowledgeReceivedCOTMessage(std::string& receivedMessage, std::string& responseMessage);
 
     /// @brief Parse a COT Message from std::string
     /// @param buffer  - [in]  - String buffer containing the XML data to be parsed.
     /// @param cot     - [out] - Vector of COT Structures to store the parsed data into. 
-    /// @return -1 on error, 1 on good parse.
-    int ParseCOT(std::string& buffer, COTSchema& cot);
+    /// @return CoT_UtilityResult enumeration, CoT_UtilityResult::Success or other, use CoT_UtilityResultToString to find out more info
+    CoT_UtilityResult ParseCOT(std::string& buffer, CoT_Schema& cot);
 
     /// @brief Overloaded - Parse a COT Message from uint8_t buffer
     /// @param buffer  - [in]  - char buffer containing the XML data to be parsed.
     /// @param Targets - [out] - Vector of COT Structures to store the parsed data into. 
-    /// @return -1 on error, 1 on good parse.
-    int ParseCOT(const char* buffer, COTSchema& cot);
+    /// @return CoT_UtilityResult enumeration, CoT_UtilityResult::Success or other, use CoT_UtilityResultToString to find out more info
+    CoT_UtilityResult ParseCOT(const char* buffer, CoT_Schema& cot);
 
     /// @brief Parse a COT Message
     /// @param Buffer  - [in]  - char buffer containing the XML data to be parsed.
-    /// @return A COT Structures containing the parsed data, use "COTSchema.IsValid()" function for verify validity. 
-    COTSchema ParseBufferToCOT(const char* buffer);
+    /// @return A COT Structures containing the parsed data, use "CoT_Schema.IsValid()" function for verify validity. 
+    CoT_Schema ParseBufferToCOT(const char* buffer);
+
+    /// @brief Utility function to convert CoT_UtilityResult to string
+    std::string UtilityResultToString(CoT_UtilityResult error);
 
     /// @brief Get a string containing the current version information
     std::string GetVersion() const;
+
+    /// @brief Get the last XML related error description, set when a CoT_UtilityResult::ProcessingError occurs
+    /// @return string containing the last description from the XML parsing. 
+    std::string GetLastXmlError() const;
 
 protected:
 private:
@@ -79,33 +86,33 @@ private:
     /// @param type - [in]  - Type string to be parsed
     /// @param ind  - [out] - enumeration value for the PointType parsed from string.
     /// @param loc  - [out] - enumeration value for the LocationType parsed from string.
-    /// @return true if parsed, false if not
-    bool ParseTypeAttribute(std::string& type, Point::Type& ind, Location::Type& loc);
+    /// @return CoT_UtilityResult enumeration, CoT_UtilityResult::Success or other, use CoT_UtilityResultToString to find out more info
+    CoT_UtilityResult ParseTypeAttribute(std::string& type, Point::Type& ind, Location::Type& loc);
 
     /// @brief Parse a string "how" attriubute
     /// @param type - [in]  - "How" string to be parsed
     /// @param how  - [out] - enumeration value for the HowEntryType parsed from string.
     /// @param data - [out] - enumeration value for the HowDataType parsed from string.
-    /// @return true if parsed, false if not
-    bool ParseHowAttribute(std::string& type, How::Entry::Type& how, How::Data::Type& data);
+    /// @return CoT_UtilityResult enumeration, CoT_UtilityResult::Success or other, use CoT_UtilityResultToString to find out more info
+    CoT_UtilityResult ParseHowAttribute(std::string& type, How::Entry::Type& how, How::Data::Type& data);
 
     /// @brief Parse a string "time" attriubute
     /// @param type - [in]  - Time string to be parsed
     /// @param dt   - [out] - DateTime struct to store the parsed data into.
-    /// @return true if parsed, false if not
-    bool ParseTimeAttribute(std::string& type, DateTime& dt);
+    /// @return CoT_UtilityResult enumeration, CoT_UtilityResult::Success or other, use CoT_UtilityResultToString to find out more info
+    CoT_UtilityResult ParseTimeAttribute(std::string& type, DateTime& dt);
 
     /// @brief Parse a string date stamp
     /// @param type - [in]  - Date string to be parsed
     /// @param dt   - [out] - DateTime struct to store the parsed data into.
-    /// @return true if parsed, false if not
-    bool ParseDateStamp(std::string& type, DateTime& dt);
+    /// @return CoT_UtilityResult enumeration, CoT_UtilityResult::Success or other, use CoT_UtilityResultToString to find out more info
+    CoT_UtilityResult ParseDateStamp(std::string& type, DateTime& dt);
 
     /// @brief Parse a string time stamp
     /// @param type - [in]  - Time string to be parsed
     /// @param dt   - [out] - DateTime struct to store the parsed data into.
-    /// @return true if parsed, false if not
-    bool ParseTimeStamp(std::string& type, DateTime& dt);
+    /// @return CoT_UtilityResult enumeration, CoT_UtilityResult::Success or other, use CoT_UtilityResultToString to find out more info
+    CoT_UtilityResult ParseTimeStamp(std::string& type, DateTime& dt);
 
     /// @brief Converts a string into a RootType enumeration value
     /// @param root - [in] - string to be converted.
@@ -134,6 +141,8 @@ private:
     How::Data::Type HowDataTypeCharToEnum(std::string& data, How::Entry::Type entry);
 
     const int MAJOR = 0;
-    const int MINOR = 2;
-    const int BUILD = 1;
+    const int MINOR = 3;
+    const int BUILD = 0;
+
+    std::string m_lastPugiResult;
 };

@@ -1,6 +1,6 @@
 
 /////////////////////////////////////////////////////////////////////////////////
-// @file            cot_utility.cpp
+// @file            CoT_Utility.cpp
 // @brief           Implementation of CoT Utility
 // @author          Chip Brommer
 /////////////////////////////////////////////////////////////////////////////////
@@ -17,7 +17,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////////
 
-bool COT_Utility::VerifyXML(std::string& buffer)
+bool CoT_Utility::VerifyXML(std::string& buffer)
 {
     pugi::xml_document doc;
     pugi::xml_parse_result result = doc.load_string(buffer.c_str());
@@ -31,7 +31,7 @@ bool COT_Utility::VerifyXML(std::string& buffer)
     return true;
 }
 
-std::string COT_Utility::GenerateXMLCOTMessage(COTSchema& cot) 
+std::string CoT_Utility::GenerateXMLCOTMessage(CoT_Schema& cot) 
 {
     std::stringstream msg;
 
@@ -79,7 +79,7 @@ std::string COT_Utility::GenerateXMLCOTMessage(COTSchema& cot)
     return msg.str();
 }
 
-bool COT_Utility::UpdateReceivedCOTMessage(std::string& receivedMessage, COTSchema& cot, std::string& modifiedMessage, bool acknowledgment)
+CoT_UtilityResult CoT_Utility::UpdateReceivedCOTMessage(std::string& receivedMessage, CoT_Schema& cot, std::string& modifiedMessage, bool acknowledgment)
 {
     // Create XML document to load in the receivedMessage
     pugi::xml_document doc;
@@ -121,20 +121,20 @@ bool COT_Utility::UpdateReceivedCOTMessage(std::string& receivedMessage, COTSche
             std::stringstream modifiedXmlStream;
             doc.save(modifiedXmlStream);
             modifiedMessage = modifiedXmlStream.str();
-            return true;
+            return CoT_UtilityResult::Success;
         }
 
         // No modification made
-        return false;
+        return CoT_UtilityResult::NoModificationMade;
     }
     else 
     {
-        std::cerr << "Failed to parse XML: " << result.description() << std::endl;
-        return false;
+        m_lastPugiResult = result.description();
+        return CoT_UtilityResult::ProcessingError;
     }
 }
 
-bool COT_Utility::AcknowledgeReceivedCOTMessage(std::string& receivedMessage, std::string& responseMessage)
+CoT_UtilityResult CoT_Utility::AcknowledgeReceivedCOTMessage(std::string& receivedMessage, std::string& responseMessage)
 {
     // Create XML document to load in the receivedMessage
     pugi::xml_document doc;
@@ -165,20 +165,20 @@ bool COT_Utility::AcknowledgeReceivedCOTMessage(std::string& receivedMessage, st
             std::stringstream modifiedXmlStream;
             doc.save(modifiedXmlStream);
             responseMessage = modifiedXmlStream.str();
-            return true;
+            return CoT_UtilityResult::Success;
         }
 
         // No modification made
-        return false;
+        return CoT_UtilityResult::NoModificationMade;
     }
     else
     {
-        std::cerr << "Failed to parse XML: " << result.description() << std::endl;
-        return false;
+        m_lastPugiResult = result.description();
+        return CoT_UtilityResult::ProcessingError;
     }
 }
 
-int COT_Utility::ParseCOT(std::string& buffer, COTSchema& cot)
+CoT_UtilityResult CoT_Utility::ParseCOT(std::string& buffer, CoT_Schema& cot)
 {
     // Remove any trash that may come in before the "<?xml" tag.
     size_t position = buffer.find("<?xml");
@@ -187,7 +187,7 @@ int COT_Utility::ParseCOT(std::string& buffer, COTSchema& cot)
     // Verify buffer is good XML data first. 
     if (!VerifyXML(buffer))
     {
-        return -1;
+        return CoT_UtilityResult::InvalidXml;
     }
 
     // Create a parsed xml document.
@@ -212,13 +212,11 @@ int COT_Utility::ParseCOT(std::string& buffer, COTSchema& cot)
     // in the event we start parsing into a vector. 
     if (eventsSize != 1)
     {
-        std::cerr << "\nERROR: Event Size Error\n";
-        return -1;
+        return CoT_UtilityResult::InvalidEvent;
     }
     else if (pointsSize != 1)
     {
-        std::cerr << "\nERROR: Point Size Error\n";
-        return -1;
+        return CoT_UtilityResult::InvalidPoint;
     }
 
     // Parse <event> tag and gather data. 
@@ -324,30 +322,67 @@ int COT_Utility::ParseCOT(std::string& buffer, COTSchema& cot)
         }
     }
 
-    // return number of points read
-    return pointsSize;
+    // Success
+    return CoT_UtilityResult::Success;
 }
 
-int COT_Utility::ParseCOT(const char* buffer, COTSchema& cot)
+CoT_UtilityResult CoT_Utility::ParseCOT(const char* buffer, CoT_Schema& cot)
 {
     std::string str = buffer;
-    int num = ParseCOT(str, cot);
-    return num;
+    return ParseCOT(str, cot);
 }
 
-COTSchema COT_Utility::ParseBufferToCOT(const char* buffer)
+CoT_Schema CoT_Utility::ParseBufferToCOT(const char* buffer)
 {
-    COTSchema cot;
+    CoT_Schema cot;
     ParseCOT(buffer, cot);
     return cot;
 }
 
-std::string COT_Utility::GetVersion() const
+std::string CoT_Utility::UtilityResultToString(CoT_UtilityResult error)
+{
+    switch (error)
+    {
+    case CoT_UtilityResult::Success:
+        return "Success";
+    case CoT_UtilityResult::InvalidEvent:
+        return "XML has invalid Event tag";
+    case CoT_UtilityResult::InvalidPoint:
+        return "XML has invalid Point tag";
+    case CoT_UtilityResult::InvalidDate:
+        return "XML has invalid Date tag; Date string must have minimum 3 type identifiers (Year, Month, Day)";
+    case CoT_UtilityResult::InvalidTime:
+        return "XML has invalid Time tag; Time must have minimum 3 type identifiers (Hour, Minute, Secs)";
+    case CoT_UtilityResult::InvalidHow:
+        return "XML has invalid How tag";
+    case CoT_UtilityResult::InvalidType:
+        return "XML has invalid Type tag";
+    case CoT_UtilityResult::InvalidXml:
+        return "Invalid XML input";
+    case CoT_UtilityResult::InvalidInput:
+        return "Invalid or empty input";
+    case CoT_UtilityResult::InvalidTimeSubSchema:
+        return "Invalid Time sub-schema";
+    case CoT_UtilityResult::ProcessingError:
+        return "Processing error";
+    case CoT_UtilityResult::NoModificationMade:
+        return "No modification made";
+    default:
+        return "Unknown error";
+    }
+}
+
+std::string CoT_Utility::GetVersion() const
 {
     return "COT Utility v" + std::to_string(MAJOR) + "." + std::to_string(MINOR) + "." + std::to_string(BUILD);
 }
 
-bool COT_Utility::ParseTypeAttribute(std::string& type, Point::Type& ind, Location::Type& loc)
+std::string CoT_Utility::GetLastXmlError() const
+{
+    return m_lastPugiResult;
+}
+
+CoT_UtilityResult CoT_Utility::ParseTypeAttribute(std::string& type, Point::Type& ind, Location::Type& loc)
 {
     // Read the data from the file as String Vector
     std::vector<std::string> values;
@@ -372,7 +407,7 @@ bool COT_Utility::ParseTypeAttribute(std::string& type, Point::Type& ind, Locati
     //      Must also start with an "a" as its the onlt identifier we currently support. 
     if ((values.size() < 2) || (values[0] != "a"))
     {
-        return false;
+        return CoT_UtilityResult::InvalidType;
     }
     else
     {
@@ -380,10 +415,10 @@ bool COT_Utility::ParseTypeAttribute(std::string& type, Point::Type& ind, Locati
         loc = LocationTypeCharToEnum(values[2]);
     }
 
-    return true;
+    return CoT_UtilityResult::Success;
 }
 
-bool COT_Utility::ParseHowAttribute(std::string& type, How::Entry::Type& how, How::Data::Type& data)
+CoT_UtilityResult CoT_Utility::ParseHowAttribute(std::string& type, How::Entry::Type& how, How::Data::Type& data)
 {
     // Read the data from the file as String Vector
     std::vector<std::string> values;
@@ -407,7 +442,7 @@ bool COT_Utility::ParseHowAttribute(std::string& type, How::Entry::Type& how, Ho
     // Type string must have minimum 2 type identifiers to give us the data we need. 
     if (values.size() < 1)
     {
-        return false;
+        return CoT_UtilityResult::InvalidHow;
     }
     else
     {
@@ -415,10 +450,10 @@ bool COT_Utility::ParseHowAttribute(std::string& type, How::Entry::Type& how, Ho
         data = HowDataTypeCharToEnum(values[1], how);
     }
 
-    return true;
+    return CoT_UtilityResult::Success;
 }
 
-bool COT_Utility::ParseTimeAttribute(std::string& type, DateTime& dt)
+CoT_UtilityResult CoT_Utility::ParseTimeAttribute(std::string& type, DateTime& dt)
 {
     // Read the data from the file as String Vector
     std::vector<std::string> values;
@@ -442,23 +477,25 @@ bool COT_Utility::ParseTimeAttribute(std::string& type, DateTime& dt)
     // Time string must have minimum 2 type identifiers (Date and Time) to give us the data we need. 
     if (values.size() < 2)
     {
-        std::cerr << "Failed to parse time attribute!\n";
-        return false;
+        return CoT_UtilityResult::InvalidTimeSubSchema;
     }
-    else if (!ParseDateStamp(values[0], dt))
+
+    CoT_UtilityResult res = ParseDateStamp(values[0], dt);
+    if (res != CoT_UtilityResult::Success)
     {
-        std::cerr << "Failed to parse date stamp!\n";
-        return false;
+        return res;
     }
-    else if (!ParseTimeStamp(values[1], dt))
+
+    res = ParseTimeStamp(values[1], dt);
+    if (res != CoT_UtilityResult::Success)
     {
-        std::cerr << "Failed to parse time stamp!\n";
-        return false;
+        return res;
     }
-    return true;
+
+    return CoT_UtilityResult::Success;
 }
 
-bool COT_Utility::ParseDateStamp(std::string& type, DateTime& dt)
+CoT_UtilityResult CoT_Utility::ParseDateStamp(std::string& type, DateTime& dt)
 {
     // Read the data from the file as String Vector
     std::vector<std::string> values;
@@ -474,10 +511,10 @@ bool COT_Utility::ParseDateStamp(std::string& type, DateTime& dt)
         values.push_back(word);
     }
 
-    // Time string must have minimum 3 type identifiers (Year, Month, Day) to give us the data we need. 
+    // Date string must have minimum 3 type identifiers (Year, Month, Day) to give us the data we need. 
     if (values.size() < 3)
     {
-        return false;
+        return CoT_UtilityResult::InvalidDate;
     }
     else
     {
@@ -486,10 +523,10 @@ bool COT_Utility::ParseDateStamp(std::string& type, DateTime& dt)
         dt.day = std::stoi(values[2]);
     }
 
-    return true;
+    return CoT_UtilityResult::Success;
 }
 
-bool COT_Utility::ParseTimeStamp(std::string& type, DateTime& dt)
+CoT_UtilityResult CoT_Utility::ParseTimeStamp(std::string& type, DateTime& dt)
 {
     // Read the data from the file as String Vector
     std::vector<std::string> values;
@@ -511,7 +548,7 @@ bool COT_Utility::ParseTimeStamp(std::string& type, DateTime& dt)
     // Time string must have minimum 3 type identifiers (Hour, Minute, Secs) to give us the data we need. 
     if (values.size() < 3)
     {
-        return false;
+        return CoT_UtilityResult::InvalidTime;
     }
     else
     {
@@ -520,10 +557,10 @@ bool COT_Utility::ParseTimeStamp(std::string& type, DateTime& dt)
         dt.second = std::stoi(values[2]);
     }
 
-    return true;
+    return CoT_UtilityResult::Success;
 }
 
-Root::Type COT_Utility::RootTypeCharToEnum(std::string& root)
+Root::Type CoT_Utility::RootTypeCharToEnum(std::string& root)
 {
          if (root == "a")   return Root::Type::a;
     else if (root == "b")   return Root::Type::b;
@@ -534,7 +571,7 @@ Root::Type COT_Utility::RootTypeCharToEnum(std::string& root)
     else return Root::Type::Error;
 }
 
-Point::Type COT_Utility::PointTypeCharToEnum(std::string& type)
+Point::Type CoT_Utility::PointTypeCharToEnum(std::string& type)
 {
          if (type == "p") return Point::Type::p;
     else if (type == "u") return Point::Type::u;
@@ -550,7 +587,7 @@ Point::Type COT_Utility::PointTypeCharToEnum(std::string& type)
     else return Point::Type::Error;
 }
 
-Location::Type COT_Utility::LocationTypeCharToEnum(std::string& loc)
+Location::Type CoT_Utility::LocationTypeCharToEnum(std::string& loc)
 {
          if (loc == "P") return Location::Type::P;
     else if (loc == "A") return Location::Type::A;
@@ -561,14 +598,14 @@ Location::Type COT_Utility::LocationTypeCharToEnum(std::string& loc)
     else return Location::Type::Error;
 }
 
-How::Entry::Type COT_Utility::HowEntryTypeCharToEnum(std::string& entry)
+How::Entry::Type CoT_Utility::HowEntryTypeCharToEnum(std::string& entry)
 {
          if (entry == "h")   return How::Entry::Type::h;
     else if (entry == "m")   return How::Entry::Type::m;
     else return How::Entry::Type::Error;
 }
 
-How::Data::Type COT_Utility::HowDataTypeCharToEnum(std::string& data, How::Entry::Type entry)
+How::Data::Type CoT_Utility::HowDataTypeCharToEnum(std::string& data, How::Entry::Type entry)
 {
     if (entry == How::Entry::Type::h)
     {

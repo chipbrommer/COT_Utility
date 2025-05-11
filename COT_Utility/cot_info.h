@@ -744,6 +744,8 @@ public:
     Group group;                            /// Group Sub-Schema
     Status status;                          /// Status Sub-Schema
     Track track;                            /// Track Sub-Schema
+    std::string remarks;                    /// Remarks information
+    std::string iconSetPath;                /// Icon Set path information
 
     /// @brief Constructor - Initializes Everything
     Detail(const Takv takv = Takv(),
@@ -772,7 +774,9 @@ public:
             (precisionLocation == detail.precisionLocation) &&
             (group == detail.group) &&
             (status == detail.status) &&
-            (track == detail.track);
+            (track == detail.track) && 
+            (remarks == detail.remarks) &&
+            (iconSetPath == detail.iconSetPath);
     }
 
     /// @brief Equal comparison operator
@@ -820,6 +824,8 @@ public:
             << detail.group
             << detail.status
             << detail.track
+            << detail.remarks
+            << detail.iconSetPath
             << "\n";
 
         return os;
@@ -827,7 +833,7 @@ public:
 };
 
 /// @brief A Root COT Message schema class for entire message data. 
-class COTSchema
+class CoT_Schema
 {
 public:
     Event event;                    /// Holds Event Sub-schema
@@ -835,14 +841,14 @@ public:
     Detail detail;                  /// Holds Detail Sub-schema
 
     /// @brief Constructor - Initializes Everything
-    COTSchema(const Event& event = Event(),
+    CoT_Schema(const Event& event = Event(),
         const Point::Data& point = Point::Data(),
         const Detail& detail = Detail()) :
         event(event), point(point), detail(detail)
     {}
 
     /// @brief Equal comparison operator
-    bool operator == (const COTSchema& cot) const
+    bool operator == (const CoT_Schema& cot) const
     {
         return  (event == cot.event) &&
             (point == cot.point) &&
@@ -850,7 +856,7 @@ public:
     }
 
     /// @brief Equal comparison operator
-    bool operator != (const COTSchema& cot) const
+    bool operator != (const CoT_Schema& cot) const
     {
         return !(*this == cot);
     }
@@ -862,7 +868,7 @@ public:
     }
 
     /// @brief Print the class
-    friend std::ostream& operator<<(std::ostream& os, const COTSchema& cot)
+    friend std::ostream& operator<<(std::ostream& os, const CoT_Schema& cot)
     {
         os << "COT Data: ";  if (!cot.IsValid()) { os << " -NOT VALID- "; }
         os << "\n"
@@ -874,3 +880,21 @@ public:
         return os;
     }
 };
+
+/// @brief Error codes for parsing operations
+enum class CoT_UtilityResult : int
+{
+    Success,                // No error
+    InvalidEvent,           // XML is Missing Event tag
+    InvalidPoint,           // XML is Missing Point tag
+    InvalidDate,
+    InvalidTime,
+    InvalidHow,
+    InvalidType,
+    InvalidXml,             // String is not valid XML
+    InvalidInput,           // Input string is empty or malformed
+    InvalidTimeSubSchema,
+    ProcessingError,         // Generic processing failure (e.g., internal logic error)
+    NoModificationMade,
+};
+
