@@ -10,6 +10,7 @@
 //  Include files:
 //          name                        reason included
 //          --------------------        ---------------------------------------
+#include <cmath>                        // isnan
 #include <iostream>                     // ostream
 #include <iomanip>                      // setw
 #include <unordered_map>                // maps
@@ -154,7 +155,7 @@ namespace Location
 
 namespace How
 {
-
+    /// @brief Type section of the 'how' data
     namespace Entry
     {
         enum class Type : int
@@ -385,7 +386,7 @@ public:
     }
 
     /// @brief Does class have valid data ? 
-    bool Valid(void) const
+    bool IsValid() const
     {
         return  (version > 0) && (!type.empty()) && (!uid.empty()) && (time.IsValid()) &&
             (start.IsValid()) && (stale.IsValid()) && (!how.empty());
@@ -394,7 +395,7 @@ public:
     /// @brief Print the class
     friend std::ostream& operator<<(std::ostream& os, const Event& event)
     {
-        os << "Event: ";  if (!event.Valid()) { os << " -NOT VALID- "; }
+        os << "Event: ";  if (!event.IsValid()) { os << " -NOT VALID- "; }
         os << "\n"
             << "\tVersion:         " << event.version << "\n"
             << "\tType:            " << event.type << "\n"
@@ -417,7 +418,7 @@ public:
 class Takv
 {
 public:
-    std::string version;            /// Role of the group member sending
+    std::string version;            /// version
     std::string device;             /// Device type
     std::string os;                 /// Operating system
     std::string platform;           /// TAK platform (ATAK-CIV, WINTAK, ATAK-MIL, etc)
@@ -446,7 +447,7 @@ public:
     }
 
     /// @brief Does class have valid data ? 
-    bool Valid(void) const
+    bool IsValid() const
     {
         return !version.empty() || !device.empty() || !os.empty() || !platform.empty();
     }
@@ -454,7 +455,7 @@ public:
     /// @brief Print the class
     friend std::ostream& operator<<(std::ostream& os, const Takv& takv)
     {
-        os << "TAKV: ";  if (!takv.Valid()) { os << " -NOT VALID- "; }
+        os << "TAKV: ";  if (!takv.IsValid()) { os << " -NOT VALID- "; }
         os << "\n"
             << "\tVersion:         " << takv.version << "\n"
             << "\tDevice:          " << takv.device << "\n"
@@ -496,7 +497,7 @@ public:
     }
 
     /// @brief Does class have valid data ? 
-    bool Valid(void) const
+    bool IsValid() const
     {
         return !endpoint.empty() || !callsign.empty() || !xmppUsername.empty();
     }
@@ -504,7 +505,7 @@ public:
     /// @brief Print the class
     friend std::ostream& operator<<(std::ostream& os, const Contact& contact)
     {
-        os << "Contact: ";  if (!contact.Valid()) { os << " -NOT VALID- "; }
+        os << "Contact: ";  if (!contact.IsValid()) { os << " -NOT VALID- "; }
         os << "\n"
             << "\tEndpoint:        " << contact.endpoint << "\n"
             << "\tCallsign:        " << contact.callsign << "\n"
@@ -539,7 +540,7 @@ public:
     }
 
     /// @brief Does class have valid data ? 
-    bool Valid(void) const
+    bool IsValid() const
     {
         return !droid.empty();
     }
@@ -547,7 +548,7 @@ public:
     /// @brief Print the class
     friend std::ostream& operator<<(std::ostream& os, const Uid& uid)
     {
-        os << "UID: ";  if (!uid.Valid()) { os << " -NOT VALID- "; }
+        os << "UID: ";  if (!uid.IsValid()) { os << " -NOT VALID- "; }
         os << "\n"
             << "\tDroid:           " << uid.droid << "\n"
             << "\n";
@@ -583,7 +584,7 @@ public:
     }
 
     /// @brief Does class have valid data ? 
-    bool Valid(void) const
+    bool IsValid() const
     {
         return !altsrc.empty() || !geopointsrc.empty();
     }
@@ -591,7 +592,7 @@ public:
     /// @brief Print the class
     friend std::ostream& operator<<(std::ostream& os, const PrecisionLocation& preloc)
     {
-        os << "Precision Location: ";  if (!preloc.Valid()) { os << " -NOT VALID- "; }
+        os << "Precision Location: ";  if (!preloc.IsValid()) { os << " -NOT VALID- "; }
         os << "\n"
             << "\tAlt Source:      " << preloc.altsrc << "\n"
             << "\tGeopoint Source: " << preloc.geopointsrc << "\n"
@@ -628,7 +629,7 @@ public:
     }
 
     /// @brief Does class have valid data ? 
-    bool Valid(void) const
+    bool IsValid() const
     {
         return !role.empty() || !name.empty();
     }
@@ -636,7 +637,7 @@ public:
     /// @brief Print the class
     friend std::ostream& operator<<(std::ostream& os, const Group& group)
     {
-        os << "Group: ";  if (!group.Valid()) { os << " -NOT VALID- "; }
+        os << "Group: ";  if (!group.IsValid()) { os << " -NOT VALID- "; }
         os << "\n"
             << "\tRole:            " << group.role << "\n"
             << "\tName:            " << group.name << "\n"
@@ -670,15 +671,15 @@ public:
     }
 
     /// @brief Does class have valid data ? 
-    bool Valid(void) const
+    bool IsValid() const
     {
-        return !isnan(battery);
+        return !std::isnan(battery);
     }
 
     /// @brief Print the class
     friend std::ostream& operator<<(std::ostream& os, const Status& status)
     {
-        os << "Status: ";  if (!status.Valid()) { os << " -NOT VALID- "; }
+        os << "Status: ";  if (!status.IsValid()) { os << " -NOT VALID- "; }
         os << "\n"
             << "\tBattery:         " << status.battery << "\n"
             << "\n";
@@ -714,18 +715,150 @@ public:
     }
 
     /// @brief Does class have valid data ? 
-    bool Valid(void) const
+    bool IsValid() const
     {
-        return !isnan(course) && !isnan(speed);
+        return !std::isnan(course) && !std::isnan(speed);
     }
 
     /// @brief Print the class
     friend std::ostream& operator<<(std::ostream& os, const Track& track)
     {
-        os << "Track: ";  if (!track.Valid()) { os << " -NOT VALID- "; }
+        os << "Track: ";  if (!track.IsValid()) { os << " -NOT VALID- "; }
         os << "\n"
             << "\tCourse:          " << track.course << "\n"
             << "\tSpeed:           " << track.speed << "\n"
+            << "\n";
+
+        return os;
+    }
+};
+
+/// @brief A COT Message subschema class for Stroke Color data 
+class StrokeColor
+{
+public:
+    int value; // Color value (ARGB as signed 32-bit integer)
+
+    /// @brief Constructor - Initializes Everything
+    StrokeColor(int value = 0) : value(value) {}
+
+    /// @brief Equal comparison operator
+    bool operator==(const StrokeColor& color) const {
+        return value == color.value;
+    }
+
+    /// @brief Not-equal comparison operator
+    bool operator!=(const StrokeColor& color) const {
+        return !(*this == color);
+    }
+
+    /// @brief Print the class
+    friend std::ostream& operator<<(std::ostream& os, const StrokeColor& color) {
+        os << "Stroke Color: ";
+        os << "\n"
+            << "\tValue:          " << color.value << "\n"
+            << "\n";
+        return os;
+    }
+};
+
+/// @brief A COT Message subschema class for Fill Color data 
+class FillColor 
+{
+public:
+    int value; // Color value (ARGB as signed 32-bit integer)
+
+    /// @brief Constructor - Initializes Everything
+    FillColor(int value = 0) : value(value) {}
+
+    /// @brief Equal comparison operator
+    bool operator==(const FillColor& color) const 
+    {
+        return value == color.value;
+    }
+
+    /// @brief Not-equal comparison operator
+    bool operator!=(const FillColor& color) const 
+    {
+        return !(*this == color);
+    }
+
+    /// @brief Print the class
+    friend std::ostream& operator<<(std::ostream& os, const FillColor& color) 
+    {
+        os << "Fill Color: ";
+        os << "\n"
+            << "\tValue:          " << color.value << "\n"
+            << "\n";
+        return os;
+    }
+};
+
+/// @brief A COT Message subschema class for Color data 
+class Color
+{
+public:
+    int argb;                /// ARGB color value 
+
+    /// @brief Constructor - Initializes Everything
+    Color(const int argb = 0) :
+        argb(argb)
+    {}
+
+    /// @brief Equal comparison operator
+    bool operator == (const Color& color) const
+    {
+        return  (argb == color.argb);
+    }
+
+    /// @brief Equal comparison operator
+    bool operator != (const Color& color) const
+    {
+        return !(*this == color);
+    }
+
+    /// @brief Print the class
+    friend std::ostream& operator<<(std::ostream& os, const Color& color)
+    {
+        os << "Color: "; 
+        os << "\n"
+            << "\tARGB:          " << color.argb << "\n"
+            << "\n";
+
+        return os;
+    }
+};
+
+/// @brief A COT Message subschema class for User Icon data 
+class UserIcon
+{
+public:
+    std::string iconSetPath;        /// icon set path 
+
+    /// @brief Constructor - Initializes Everything
+    UserIcon(const std::string iconpath = "") :
+        iconSetPath(iconpath)
+    {
+    }
+
+    /// @brief Equal comparison operator
+    bool operator == (const UserIcon& ui) const
+    {
+        return  (iconSetPath == ui.iconSetPath);
+    }
+
+    /// @brief Equal comparison operator
+    bool operator != (const UserIcon& ui) const
+    {
+        return !(*this == ui);
+    }
+
+    /// @brief Print the class
+    friend std::ostream& operator<<(std::ostream& os, const UserIcon& ui)
+    {
+        os << "UserIcon: ";
+        os << "\n"
+            << "\nIconSetPath:          " << ui.iconSetPath << "\n"
             << "\n";
 
         return os;
@@ -743,6 +876,11 @@ public:
     Group group;                            /// Group Sub-Schema
     Status status;                          /// Status Sub-Schema
     Track track;                            /// Track Sub-Schema
+    StrokeColor strokeColor;                /// StrokeColor Sub-Schema
+    FillColor fillColor;                    /// FillColor Sub-Schema
+    Color color;                            /// Color Sub-Schema
+    UserIcon userIcon;                      /// UserIcon Sub-Schema
+    std::string remarks;                    /// Remarks information
 
     /// @brief Constructor - Initializes Everything
     Detail(const Takv takv = Takv(),
@@ -751,7 +889,8 @@ public:
         const PrecisionLocation precisionLocation = PrecisionLocation(),
         const Group group = Group(),
         const Status status = Status(),
-        const Track track = Track()
+        const Track track = Track(),
+        const UserIcon ui = UserIcon()
     ) :
         takv(takv),
         contact(contact),
@@ -759,7 +898,8 @@ public:
         precisionLocation(precisionLocation),
         group(group),
         status(status),
-        track(track)
+        track(track),
+        userIcon(ui)
     {}
 
     /// @brief Equal comparison operator
@@ -771,7 +911,9 @@ public:
             (precisionLocation == detail.precisionLocation) &&
             (group == detail.group) &&
             (status == detail.status) &&
-            (track == detail.track);
+            (track == detail.track) && 
+            (remarks == detail.remarks) &&
+            (userIcon == detail.userIcon);
     }
 
     /// @brief Equal comparison operator
@@ -781,15 +923,15 @@ public:
     }
 
     /// @brief Does class have valid data ? 
-    bool Valid(void) const
+    bool IsValid() const
     {
-        return (takv.Valid() &&
-            contact.Valid() &&
-            uid.Valid() &&
-            precisionLocation.Valid() &&
-            group.Valid() &&
-            status.Valid() &&
-            track.Valid());
+        return (takv.IsValid() &&
+            contact.IsValid() &&
+            uid.IsValid() &&
+            precisionLocation.IsValid() &&
+            group.IsValid() &&
+            status.IsValid() &&
+            track.IsValid());
     }
 
     /// @brief Print the class
@@ -799,18 +941,18 @@ public:
         *  NOTE: This will print only the valid sub-schemas.
 
             os << "Detail:\n";
-            if (detail.takv.Valid()) { os << detail.takv; }
-            if (detail.contact.Valid()) { os << detail.contact; }
-            if (detail.uid.Valid()) { os << detail.uid; }
-            if (detail.precisionLocation.Valid()) { os << detail.precisionLocation; }
-            if (detail.group.Valid()) { os << detail.group; }
-            if (detail.status.Valid()) { os << detail.status; }
-            if (detail.track.Valid()) { os << detail.track; }
+            if (detail.takv.IsValid()) { os << detail.takv; }
+            if (detail.contact.IsValid()) { os << detail.contact; }
+            if (detail.uid.IsValid()) { os << detail.uid; }
+            if (detail.precisionLocation.IsValid()) { os << detail.precisionLocation; }
+            if (detail.group.IsValid()) { os << detail.group; }
+            if (detail.status.IsValid()) { os << detail.status; }
+            if (detail.track.IsValid()) { os << detail.track; }
             os << "\n";
 
         */
 
-        os << "Detail: ";  if (!detail.Valid()) { os << " -NOT VALID- "; }
+        os << "Detail: ";  if (!detail.IsValid()) { os << " -NOT VALID- "; }
         os << "\n"
             << detail.takv
             << detail.contact
@@ -819,6 +961,11 @@ public:
             << detail.group
             << detail.status
             << detail.track
+            << detail.remarks
+            << detail.strokeColor
+            << detail.fillColor
+            << detail.color
+            << detail.userIcon
             << "\n";
 
         return os;
@@ -826,7 +973,7 @@ public:
 };
 
 /// @brief A Root COT Message schema class for entire message data. 
-class COTSchema
+class CoT_Schema
 {
 public:
     Event event;                    /// Holds Event Sub-schema
@@ -834,14 +981,14 @@ public:
     Detail detail;                  /// Holds Detail Sub-schema
 
     /// @brief Constructor - Initializes Everything
-    COTSchema(const Event& event = Event(),
+    CoT_Schema(const Event& event = Event(),
         const Point::Data& point = Point::Data(),
         const Detail& detail = Detail()) :
         event(event), point(point), detail(detail)
     {}
 
     /// @brief Equal comparison operator
-    bool operator == (const COTSchema& cot) const
+    bool operator == (const CoT_Schema& cot) const
     {
         return  (event == cot.event) &&
             (point == cot.point) &&
@@ -849,21 +996,21 @@ public:
     }
 
     /// @brief Equal comparison operator
-    bool operator != (const COTSchema& cot) const
+    bool operator != (const CoT_Schema& cot) const
     {
         return !(*this == cot);
     }
 
     /// @brief Does class have valid data ? 
-    bool Valid(void) const
+    bool IsValid() const
     {
-        return  (event.Valid()) || (point.IsValid()) || (detail.Valid());
+        return  (event.IsValid()) || (point.IsValid()) || (detail.IsValid());
     }
 
     /// @brief Print the class
-    friend std::ostream& operator<<(std::ostream& os, const COTSchema& cot)
+    friend std::ostream& operator<<(std::ostream& os, const CoT_Schema& cot)
     {
-        os << "COT Data: ";  if (!cot.Valid()) { os << " -NOT VALID- "; }
+        os << "COT Data: ";  if (!cot.IsValid()) { os << " -NOT VALID- "; }
         os << "\n"
             << cot.event
             << cot.point
@@ -873,3 +1020,21 @@ public:
         return os;
     }
 };
+
+/// @brief Error codes for parsing operations
+enum class CoT_UtilityResult : int
+{
+    Success,                // No error
+    InvalidEvent,           // XML is Missing Event tag
+    InvalidPoint,           // XML is Missing Point tag
+    InvalidDate,
+    InvalidTime,
+    InvalidHow,
+    InvalidType,
+    InvalidXml,             // String is not valid XML
+    InvalidInput,           // Input string is empty or malformed
+    InvalidTimeSubSchema,
+    ProcessingError,         // Generic processing failure (e.g., internal logic error)
+    NoModificationMade,
+};
+

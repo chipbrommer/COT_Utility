@@ -1,6 +1,6 @@
 
 /////////////////////////////////////////////////////////////////////////////////
-// @file            cot_utility.cpp
+// @file            CoT_Utility.cpp
 // @brief           Implementation of CoT Utility
 // @author          Chip Brommer
 /////////////////////////////////////////////////////////////////////////////////
@@ -11,12 +11,13 @@
 //          name                        reason included
 //          --------------------        ---------------------------------------
 #include <sstream>                      // Stringstream
+#include <vector>                       // vectors
 //
 #include "cot_utility.h"                // COT Parser header.
 //
 ///////////////////////////////////////////////////////////////////////////////
 
-bool COT_Utility::VerifyXML(std::string& buffer)
+bool CoT_Utility::VerifyXML(std::string& buffer)
 {
     pugi::xml_document doc;
     pugi::xml_parse_result result = doc.load_string(buffer.c_str());
@@ -30,7 +31,7 @@ bool COT_Utility::VerifyXML(std::string& buffer)
     return true;
 }
 
-std::string COT_Utility::GenerateXMLCOTMessage(COTSchema& cot) 
+std::string CoT_Utility::GenerateXMLCOTMessage(CoT_Schema& cot) 
 {
     std::stringstream msg;
 
@@ -38,8 +39,13 @@ std::string COT_Utility::GenerateXMLCOTMessage(COTSchema& cot)
     msg << "<?xml version=\"1.0\" encoding=\"utf-8\" standalone=\"yes\"?>";
 
     // Event start
-    msg << "<event version=\"2.0\" uid=\"" << cot.event.uid << "\" type=\"" << cot.event.type << "\" time=\"" << cot.event.time.ToCOTTimestamp() <<
-        "\" start=\"" << cot.event.time.ToCOTTimestamp() << "\" stale=\"" << cot.event.stale.ToCOTTimestamp() << "\" how=\"" << cot.event.how << "\">";
+    msg << "<event version=\"2.0\" uid=\"" << cot.event.uid 
+        << "\" type=\"" << cot.event.type 
+        << "\" time=\"" << cot.event.time.ToCOTTimestamp() 
+        << "\" start=\"" << cot.event.time.ToCOTTimestamp() 
+        << "\" stale=\"" << cot.event.stale.ToCOTTimestamp() 
+        << "\" how=\"" << cot.event.how 
+        << "\">";
 
     // Point data
     msg << "<point lat=\"" << cot.point.latitude << "\" lon=\"" << cot.point.longitude << "\" hae=\"" << cot.point.hae << "\" ce=\"" << cot.point.circularError << "\" le=\"" << cot.point.linearError << "\"/>";
@@ -73,7 +79,7 @@ std::string COT_Utility::GenerateXMLCOTMessage(COTSchema& cot)
     return msg.str();
 }
 
-bool COT_Utility::UpdateReceivedCOTMessage(std::string& receivedMessage, COTSchema& cot, std::string& modifiedMessage, bool acknowledgment)
+CoT_UtilityResult CoT_Utility::UpdateReceivedCOTMessage(std::string& receivedMessage, CoT_Schema& cot, std::string& modifiedMessage, bool acknowledgment)
 {
     // Create XML document to load in the receivedMessage
     pugi::xml_document doc;
@@ -115,20 +121,20 @@ bool COT_Utility::UpdateReceivedCOTMessage(std::string& receivedMessage, COTSche
             std::stringstream modifiedXmlStream;
             doc.save(modifiedXmlStream);
             modifiedMessage = modifiedXmlStream.str();
-            return true;
+            return CoT_UtilityResult::Success;
         }
 
         // No modification made
-        return false;
+        return CoT_UtilityResult::NoModificationMade;
     }
     else 
     {
-        std::cerr << "Failed to parse XML: " << result.description() << std::endl;
-        return false;
+        m_lastPugiResult = result.description();
+        return CoT_UtilityResult::ProcessingError;
     }
 }
 
-bool COT_Utility::AcknowledgeReceivedCOTMessage(std::string& receivedMessage, std::string& responseMessage)
+CoT_UtilityResult CoT_Utility::AcknowledgeReceivedCOTMessage(std::string& receivedMessage, std::string& responseMessage)
 {
     // Create XML document to load in the receivedMessage
     pugi::xml_document doc;
@@ -159,20 +165,20 @@ bool COT_Utility::AcknowledgeReceivedCOTMessage(std::string& receivedMessage, st
             std::stringstream modifiedXmlStream;
             doc.save(modifiedXmlStream);
             responseMessage = modifiedXmlStream.str();
-            return true;
+            return CoT_UtilityResult::Success;
         }
 
         // No modification made
-        return false;
+        return CoT_UtilityResult::NoModificationMade;
     }
     else
     {
-        std::cerr << "Failed to parse XML: " << result.description() << std::endl;
-        return false;
+        m_lastPugiResult = result.description();
+        return CoT_UtilityResult::ProcessingError;
     }
 }
 
-int COT_Utility::ParseCOT(std::string& buffer, COTSchema& cot)
+CoT_UtilityResult CoT_Utility::ParseCOT(std::string& buffer, CoT_Schema& cot)
 {
     // Remove any trash that may come in before the "<?xml" tag.
     size_t position = buffer.find("<?xml");
@@ -181,12 +187,17 @@ int COT_Utility::ParseCOT(std::string& buffer, COTSchema& cot)
     // Verify buffer is good XML data first. 
     if (!VerifyXML(buffer))
     {
-        return -1;
+        return CoT_UtilityResult::InvalidXml;
     }
 
     // Create a parsed xml document.
     pugi::xml_document doc;
     pugi::xml_parse_result result = doc.load_string(buffer.c_str());
+
+    if (!result)
+    {
+        return CoT_UtilityResult::ProcessingError;
+    }
 
     // Set up nodes for ease and easier reading later
     pugi::xml_node root = doc.root();
@@ -206,13 +217,11 @@ int COT_Utility::ParseCOT(std::string& buffer, COTSchema& cot)
     // in the event we start parsing into a vector. 
     if (eventsSize != 1)
     {
-        std::cerr << "\nERROR: Event Size Error\n";
-        return -1;
+        return CoT_UtilityResult::InvalidEvent;
     }
     else if (pointsSize != 1)
     {
-        std::cerr << "\nERROR: Point Size Error\n";
-        return -1;
+        return CoT_UtilityResult::InvalidPoint;
     }
 
     // Parse <event> tag and gather data. 
@@ -268,6 +277,10 @@ int COT_Utility::ParseCOT(std::string& buffer, COTSchema& cot)
                 (attr1 = takv.attribute("os")) ? cot.detail.takv.os = attr1.as_string() : cot.detail.takv.os = "";
                 (attr1 = takv.attribute("platform")) ? cot.detail.takv.platform = attr1.as_string() : cot.detail.takv.platform = "";
             }
+            else
+            {
+                cot.detail.takv = Takv();
+            }
 
             // Parse <contact>
             pugi::xml_node contact = detail.child("contact");
@@ -277,12 +290,20 @@ int COT_Utility::ParseCOT(std::string& buffer, COTSchema& cot)
                 (attr1 = contact.attribute("callsign")) ? cot.detail.contact.callsign = attr1.as_string() : cot.detail.contact.callsign = "";
                 (attr1 = contact.attribute("xmppUsername")) ? cot.detail.contact.xmppUsername = attr1.as_string() : cot.detail.contact.xmppUsername = "";
             }
+            else
+            {
+                cot.detail.contact = Contact();
+            }
 
             // Parse <uid>
             pugi::xml_node uid = detail.child("uid");
             if (uid)
             {
                 (attr1 = uid.attribute("Droid")) ? cot.detail.uid.droid = attr1.as_string() : cot.detail.uid.droid = "";
+            }
+            else
+            {
+                cot.detail.uid = Uid();
             }
 
             // Parse <precisionlocation>
@@ -292,6 +313,10 @@ int COT_Utility::ParseCOT(std::string& buffer, COTSchema& cot)
                 (attr1 = precision.attribute("altsrc")) ? cot.detail.precisionLocation.altsrc = attr1.as_string() : cot.detail.precisionLocation.altsrc = "";
                 (attr1 = precision.attribute("geopointsrc")) ? cot.detail.precisionLocation.geopointsrc = attr1.as_string() : cot.detail.precisionLocation.geopointsrc = "";
             }
+            else
+            {
+                cot.detail.precisionLocation = PrecisionLocation();
+            }
 
             // Parse <__group>
             pugi::xml_node group = detail.child("__group");
@@ -300,12 +325,20 @@ int COT_Utility::ParseCOT(std::string& buffer, COTSchema& cot)
                 (attr1 = group.attribute("role")) ? cot.detail.group.role = attr1.as_string() : cot.detail.group.role = "";
                 (attr1 = group.attribute("name")) ? cot.detail.group.name = attr1.as_string() : cot.detail.group.name = "";
             }
+            else
+            {
+                cot.detail.group = Group();
+            }
 
             // Parse <status>
             pugi::xml_node status = detail.child("status");
             if (status)
             {
                 (attr1 = status.attribute("battery")) ? cot.detail.status.battery = attr1.as_double() : cot.detail.status.battery = 0;
+            }
+            else
+            {
+                cot.detail.status = Status();
             }
 
             // Parse <track>
@@ -315,33 +348,116 @@ int COT_Utility::ParseCOT(std::string& buffer, COTSchema& cot)
                 (attr1 = track.attribute("course")) ? cot.detail.track.course = attr1.as_double() : cot.detail.track.course = 0;
                 (attr1 = track.attribute("speed")) ? cot.detail.track.speed = attr1.as_double() : cot.detail.track.speed = 0;
             }
+            else
+            {
+                cot.detail.track = Track();
+            }
+
+            // Parse <remarks> 
+            pugi::xml_node remarks = detail.child("remarks");
+            cot.detail.remarks = remarks ? remarks.child_value() : "";
+
+            // Parse <strokeColor>
+            pugi::xml_node strokeColor = detail.child("strokeColor");
+            if (strokeColor) {
+                (attr1 = strokeColor.attribute("value")) ? cot.detail.strokeColor.value = attr1.as_int() : cot.detail.strokeColor.value = 0;
+            }
+            else {
+                cot.detail.strokeColor = StrokeColor();
+            }
+
+            // Parse <fillColor>
+            pugi::xml_node fillColor = detail.child("fillColor");
+            if (fillColor) {
+                (attr1 = fillColor.attribute("value")) ? cot.detail.fillColor.value = attr1.as_int() : cot.detail.fillColor.value = 0;
+            }
+            else {
+                cot.detail.fillColor = FillColor();
+            }
+
+            // Parse <color>
+            pugi::xml_node color = detail.child("color");
+            if (color) 
+            {
+                (attr1 = color.attribute("argb")) ? cot.detail.color.argb = attr1.as_int() : cot.detail.color.argb = 0;
+            }
+            else {
+                cot.detail.color = Color();
+            }
+
+            // Parse <usericon>
+            pugi::xml_node usericon = detail.child("usericon");
+            if (usericon) {
+                (attr1 = usericon.attribute("iconsetpath")) ? cot.detail.userIcon.iconSetPath = attr1.as_string() : cot.detail.userIcon.iconSetPath = "";
+            }
+            else {
+                cot.detail.userIcon = UserIcon();
+            }
+
         }
     }
 
-    // return number of points read
-    return pointsSize;
+    // Success
+    return CoT_UtilityResult::Success;
 }
 
-int COT_Utility::ParseCOT(const char* buffer, COTSchema& cot)
+CoT_UtilityResult CoT_Utility::ParseCOT(const char* buffer, CoT_Schema& cot)
 {
     std::string str = buffer;
-    int num = ParseCOT(str, cot);
-    return num;
+    return ParseCOT(str, cot);
 }
 
-COTSchema COT_Utility::ParseBufferToCOT(const char* buffer)
+CoT_Schema CoT_Utility::ParseBufferToCOT(const char* buffer)
 {
-    COTSchema cot;
+    CoT_Schema cot;
     ParseCOT(buffer, cot);
     return cot;
 }
 
-std::string COT_Utility::GetVersion()
+std::string CoT_Utility::UtilityResultToString(CoT_UtilityResult error)
+{
+    switch (error)
+    {
+    case CoT_UtilityResult::Success:
+        return "Success";
+    case CoT_UtilityResult::InvalidEvent:
+        return "XML has invalid Event tag";
+    case CoT_UtilityResult::InvalidPoint:
+        return "XML has invalid Point tag";
+    case CoT_UtilityResult::InvalidDate:
+        return "XML has invalid Date tag; Date string must have minimum 3 type identifiers (Year, Month, Day)";
+    case CoT_UtilityResult::InvalidTime:
+        return "XML has invalid Time tag; Time must have minimum 3 type identifiers (Hour, Minute, Secs)";
+    case CoT_UtilityResult::InvalidHow:
+        return "XML has invalid How tag";
+    case CoT_UtilityResult::InvalidType:
+        return "XML has invalid Type tag";
+    case CoT_UtilityResult::InvalidXml:
+        return "Invalid XML input";
+    case CoT_UtilityResult::InvalidInput:
+        return "Invalid or empty input";
+    case CoT_UtilityResult::InvalidTimeSubSchema:
+        return "Invalid Time sub-schema";
+    case CoT_UtilityResult::ProcessingError:
+        return "Processing error";
+    case CoT_UtilityResult::NoModificationMade:
+        return "No modification made";
+    default:
+        return "Unknown error";
+    }
+}
+
+std::string CoT_Utility::GetVersion() const
 {
     return "COT Utility v" + std::to_string(MAJOR) + "." + std::to_string(MINOR) + "." + std::to_string(BUILD);
 }
 
-bool COT_Utility::ParseTypeAttribute(std::string& type, Point::Type& ind, Location::Type& loc)
+std::string CoT_Utility::GetLastXmlError() const
+{
+    return m_lastPugiResult;
+}
+
+CoT_UtilityResult CoT_Utility::ParseTypeAttribute(std::string& type, Point::Type& ind, Location::Type& loc)
 {
     // Read the data from the file as String Vector
     std::vector<std::string> values;
@@ -366,7 +482,7 @@ bool COT_Utility::ParseTypeAttribute(std::string& type, Point::Type& ind, Locati
     //      Must also start with an "a" as its the onlt identifier we currently support. 
     if ((values.size() < 2) || (values[0] != "a"))
     {
-        return false;
+        return CoT_UtilityResult::InvalidType;
     }
     else
     {
@@ -374,10 +490,10 @@ bool COT_Utility::ParseTypeAttribute(std::string& type, Point::Type& ind, Locati
         loc = LocationTypeCharToEnum(values[2]);
     }
 
-    return true;
+    return CoT_UtilityResult::Success;
 }
 
-bool COT_Utility::ParseHowAttribute(std::string& type, How::Entry::Type& how, How::Data::Type& data)
+CoT_UtilityResult CoT_Utility::ParseHowAttribute(std::string& type, How::Entry::Type& how, How::Data::Type& data)
 {
     // Read the data from the file as String Vector
     std::vector<std::string> values;
@@ -401,7 +517,7 @@ bool COT_Utility::ParseHowAttribute(std::string& type, How::Entry::Type& how, Ho
     // Type string must have minimum 2 type identifiers to give us the data we need. 
     if (values.size() < 1)
     {
-        return false;
+        return CoT_UtilityResult::InvalidHow;
     }
     else
     {
@@ -409,10 +525,10 @@ bool COT_Utility::ParseHowAttribute(std::string& type, How::Entry::Type& how, Ho
         data = HowDataTypeCharToEnum(values[1], how);
     }
 
-    return true;
+    return CoT_UtilityResult::Success;
 }
 
-bool COT_Utility::ParseTimeAttribute(std::string& type, DateTime& dt)
+CoT_UtilityResult CoT_Utility::ParseTimeAttribute(std::string& type, DateTime& dt)
 {
     // Read the data from the file as String Vector
     std::vector<std::string> values;
@@ -436,23 +552,25 @@ bool COT_Utility::ParseTimeAttribute(std::string& type, DateTime& dt)
     // Time string must have minimum 2 type identifiers (Date and Time) to give us the data we need. 
     if (values.size() < 2)
     {
-        std::cerr << "Failed to parse time attribute!\n";
-        return false;
+        return CoT_UtilityResult::InvalidTimeSubSchema;
     }
-    else if (!ParseDateStamp(values[0], dt))
+
+    CoT_UtilityResult res = ParseDateStamp(values[0], dt);
+    if (res != CoT_UtilityResult::Success)
     {
-        std::cerr << "Failed to parse date stamp!\n";
-        return false;
+        return res;
     }
-    else if (!ParseTimeStamp(values[1], dt))
+
+    res = ParseTimeStamp(values[1], dt);
+    if (res != CoT_UtilityResult::Success)
     {
-        std::cerr << "Failed to parse time stamp!\n";
-        return false;
+        return res;
     }
-    return true;
+
+    return CoT_UtilityResult::Success;
 }
 
-bool COT_Utility::ParseDateStamp(std::string& type, DateTime& dt)
+CoT_UtilityResult CoT_Utility::ParseDateStamp(std::string& type, DateTime& dt)
 {
     // Read the data from the file as String Vector
     std::vector<std::string> values;
@@ -468,10 +586,10 @@ bool COT_Utility::ParseDateStamp(std::string& type, DateTime& dt)
         values.push_back(word);
     }
 
-    // Time string must have minimum 3 type identifiers (Year, Month, Day) to give us the data we need. 
+    // Date string must have minimum 3 type identifiers (Year, Month, Day) to give us the data we need. 
     if (values.size() < 3)
     {
-        return false;
+        return CoT_UtilityResult::InvalidDate;
     }
     else
     {
@@ -480,10 +598,10 @@ bool COT_Utility::ParseDateStamp(std::string& type, DateTime& dt)
         dt.day = std::stoi(values[2]);
     }
 
-    return true;
+    return CoT_UtilityResult::Success;
 }
 
-bool COT_Utility::ParseTimeStamp(std::string& type, DateTime& dt)
+CoT_UtilityResult CoT_Utility::ParseTimeStamp(std::string& type, DateTime& dt)
 {
     // Read the data from the file as String Vector
     std::vector<std::string> values;
@@ -505,7 +623,7 @@ bool COT_Utility::ParseTimeStamp(std::string& type, DateTime& dt)
     // Time string must have minimum 3 type identifiers (Hour, Minute, Secs) to give us the data we need. 
     if (values.size() < 3)
     {
-        return false;
+        return CoT_UtilityResult::InvalidTime;
     }
     else
     {
@@ -514,10 +632,10 @@ bool COT_Utility::ParseTimeStamp(std::string& type, DateTime& dt)
         dt.second = std::stoi(values[2]);
     }
 
-    return true;
+    return CoT_UtilityResult::Success;
 }
 
-Root::Type COT_Utility::RootTypeCharToEnum(std::string& root)
+Root::Type CoT_Utility::RootTypeCharToEnum(std::string& root)
 {
          if (root == "a")   return Root::Type::a;
     else if (root == "b")   return Root::Type::b;
@@ -528,7 +646,7 @@ Root::Type COT_Utility::RootTypeCharToEnum(std::string& root)
     else return Root::Type::Error;
 }
 
-Point::Type COT_Utility::PointTypeCharToEnum(std::string& type)
+Point::Type CoT_Utility::PointTypeCharToEnum(std::string& type)
 {
          if (type == "p") return Point::Type::p;
     else if (type == "u") return Point::Type::u;
@@ -544,7 +662,7 @@ Point::Type COT_Utility::PointTypeCharToEnum(std::string& type)
     else return Point::Type::Error;
 }
 
-Location::Type COT_Utility::LocationTypeCharToEnum(std::string& loc)
+Location::Type CoT_Utility::LocationTypeCharToEnum(std::string& loc)
 {
          if (loc == "P") return Location::Type::P;
     else if (loc == "A") return Location::Type::A;
@@ -555,14 +673,14 @@ Location::Type COT_Utility::LocationTypeCharToEnum(std::string& loc)
     else return Location::Type::Error;
 }
 
-How::Entry::Type COT_Utility::HowEntryTypeCharToEnum(std::string& entry)
+How::Entry::Type CoT_Utility::HowEntryTypeCharToEnum(std::string& entry)
 {
          if (entry == "h")   return How::Entry::Type::h;
     else if (entry == "m")   return How::Entry::Type::m;
     else return How::Entry::Type::Error;
 }
 
-How::Data::Type COT_Utility::HowDataTypeCharToEnum(std::string& data, How::Entry::Type entry)
+How::Data::Type CoT_Utility::HowDataTypeCharToEnum(std::string& data, How::Entry::Type entry)
 {
     if (entry == How::Entry::Type::h)
     {
