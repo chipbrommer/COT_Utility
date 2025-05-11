@@ -1,3 +1,15 @@
+CoT Utility v0.3.1.
+Updates: 
+  Fix compile issues for Linux;
+  Add support for dedicated returned error types
+  Add support for new sub schemas and additional information: 
+    Color
+    StrokeColor
+    FillColor
+    UserIcon
+    Remarks
+___________________________________________________________________________
+
 CoT Utility v0.2.0. 
 
 This project was originally created to parse XML CoT messages being received from an external source into my C++11 and legacy C applications under the name COT_Parser.
