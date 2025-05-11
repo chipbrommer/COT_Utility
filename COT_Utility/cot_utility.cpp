@@ -194,6 +194,11 @@ CoT_UtilityResult CoT_Utility::ParseCOT(std::string& buffer, CoT_Schema& cot)
     pugi::xml_document doc;
     pugi::xml_parse_result result = doc.load_string(buffer.c_str());
 
+    if (!result)
+    {
+        return CoT_UtilityResult::ProcessingError;
+    }
+
     // Set up nodes for ease and easier reading later
     pugi::xml_node root = doc.root();
     pugi::xml_node events = doc.child("event");
@@ -272,6 +277,10 @@ CoT_UtilityResult CoT_Utility::ParseCOT(std::string& buffer, CoT_Schema& cot)
                 (attr1 = takv.attribute("os")) ? cot.detail.takv.os = attr1.as_string() : cot.detail.takv.os = "";
                 (attr1 = takv.attribute("platform")) ? cot.detail.takv.platform = attr1.as_string() : cot.detail.takv.platform = "";
             }
+            else
+            {
+                cot.detail.takv = Takv();
+            }
 
             // Parse <contact>
             pugi::xml_node contact = detail.child("contact");
@@ -281,12 +290,20 @@ CoT_UtilityResult CoT_Utility::ParseCOT(std::string& buffer, CoT_Schema& cot)
                 (attr1 = contact.attribute("callsign")) ? cot.detail.contact.callsign = attr1.as_string() : cot.detail.contact.callsign = "";
                 (attr1 = contact.attribute("xmppUsername")) ? cot.detail.contact.xmppUsername = attr1.as_string() : cot.detail.contact.xmppUsername = "";
             }
+            else
+            {
+                cot.detail.contact = Contact();
+            }
 
             // Parse <uid>
             pugi::xml_node uid = detail.child("uid");
             if (uid)
             {
                 (attr1 = uid.attribute("Droid")) ? cot.detail.uid.droid = attr1.as_string() : cot.detail.uid.droid = "";
+            }
+            else
+            {
+                cot.detail.uid = Uid();
             }
 
             // Parse <precisionlocation>
@@ -296,6 +313,10 @@ CoT_UtilityResult CoT_Utility::ParseCOT(std::string& buffer, CoT_Schema& cot)
                 (attr1 = precision.attribute("altsrc")) ? cot.detail.precisionLocation.altsrc = attr1.as_string() : cot.detail.precisionLocation.altsrc = "";
                 (attr1 = precision.attribute("geopointsrc")) ? cot.detail.precisionLocation.geopointsrc = attr1.as_string() : cot.detail.precisionLocation.geopointsrc = "";
             }
+            else
+            {
+                cot.detail.precisionLocation = PrecisionLocation();
+            }
 
             // Parse <__group>
             pugi::xml_node group = detail.child("__group");
@@ -304,12 +325,20 @@ CoT_UtilityResult CoT_Utility::ParseCOT(std::string& buffer, CoT_Schema& cot)
                 (attr1 = group.attribute("role")) ? cot.detail.group.role = attr1.as_string() : cot.detail.group.role = "";
                 (attr1 = group.attribute("name")) ? cot.detail.group.name = attr1.as_string() : cot.detail.group.name = "";
             }
+            else
+            {
+                cot.detail.group = Group();
+            }
 
             // Parse <status>
             pugi::xml_node status = detail.child("status");
             if (status)
             {
                 (attr1 = status.attribute("battery")) ? cot.detail.status.battery = attr1.as_double() : cot.detail.status.battery = 0;
+            }
+            else
+            {
+                cot.detail.status = Status();
             }
 
             // Parse <track>
@@ -319,6 +348,52 @@ CoT_UtilityResult CoT_Utility::ParseCOT(std::string& buffer, CoT_Schema& cot)
                 (attr1 = track.attribute("course")) ? cot.detail.track.course = attr1.as_double() : cot.detail.track.course = 0;
                 (attr1 = track.attribute("speed")) ? cot.detail.track.speed = attr1.as_double() : cot.detail.track.speed = 0;
             }
+            else
+            {
+                cot.detail.track = Track();
+            }
+
+            // Parse <remarks> 
+            pugi::xml_node remarks = detail.child("remarks");
+            cot.detail.remarks = remarks ? remarks.child_value() : "";
+
+            // Parse <strokeColor>
+            pugi::xml_node strokeColor = detail.child("strokeColor");
+            if (strokeColor) {
+                (attr1 = strokeColor.attribute("value")) ? cot.detail.strokeColor = StrokeColor(attr1.as_int()) : cot.detail.strokeColor = StrokeColor();
+            }
+            else {
+                cot.detail.strokeColor = StrokeColor();
+            }
+
+            // Parse <fillColor>
+            pugi::xml_node fillColor = detail.child("fillColor");
+            if (fillColor) {
+                (attr1 = fillColor.attribute("value")) ? cot.detail.fillColor = FillColor(attr1.as_int()) : cot.detail.fillColor = FillColor();
+            }
+            else {
+                cot.detail.fillColor = FillColor();
+            }
+
+            // Parse <color>
+            pugi::xml_node color = detail.child("color");
+            if (color) 
+            {
+                (attr1 = color.attribute("argb")) ? cot.detail.color.argb = Color(attr1.as_int()) : cot.detail.color = Color(0);
+            }
+            else {
+                cot.detail.color = Color();
+            }
+
+            // Parse <usericon>
+            pugi::xml_node usericon = detail.child("usericon");
+            if (usericon) {
+                (attr1 = usericon.attribute("iconsetpath")) ? cot.detail.userIcon.iconSetPath = attr1.as_string() : cot.detail.userIcon.iconSetPath = "";
+            }
+            else {
+                cot.detail.userIcon = UserIcon();
+            }
+
         }
     }
 

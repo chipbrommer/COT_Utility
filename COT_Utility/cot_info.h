@@ -733,6 +733,138 @@ public:
     }
 };
 
+/// @brief A COT Message subschema class for Stroke Color data 
+class StrokeColor
+{
+public:
+    int value; // Color value (ARGB as signed 32-bit integer)
+
+    /// @brief Constructor - Initializes Everything
+    StrokeColor(int value = 0) : value(value) {}
+
+    /// @brief Equal comparison operator
+    bool operator==(const StrokeColor& color) const {
+        return value == color.value;
+    }
+
+    /// @brief Not-equal comparison operator
+    bool operator!=(const StrokeColor& color) const {
+        return !(*this == color);
+    }
+
+    /// @brief Print the class
+    friend std::ostream& operator<<(std::ostream& os, const StrokeColor& color) {
+        os << "Stroke Color: ";
+        os << "\n"
+            << "\tValue:          " << color.value << "\n"
+            << "\n";
+        return os;
+    }
+};
+
+/// @brief A COT Message subschema class for Fill Color data 
+class FillColor 
+{
+public:
+    int value; // Color value (ARGB as signed 32-bit integer)
+
+    /// @brief Constructor - Initializes Everything
+    FillColor(int value = 0) : value(value) {}
+
+    /// @brief Equal comparison operator
+    bool operator==(const FillColor& color) const 
+    {
+        return value == color.value;
+    }
+
+    /// @brief Not-equal comparison operator
+    bool operator!=(const FillColor& color) const 
+    {
+        return !(*this == color);
+    }
+
+    /// @brief Print the class
+    friend std::ostream& operator<<(std::ostream& os, const FillColor& color) 
+    {
+        os << "Fill Color: ";
+        os << "\n"
+            << "\tValue:          " << color.value << "\n"
+            << "\n";
+        return os;
+    }
+};
+
+/// @brief A COT Message subschema class for Color data 
+class Color
+{
+public:
+    int argb;                /// ARGB color value 
+
+    /// @brief Constructor - Initializes Everything
+    Color(const int argb = 0) :
+        argb(argb)
+    {}
+
+    /// @brief Equal comparison operator
+    bool operator == (const Color& color) const
+    {
+        return  (argb == color.argb);
+    }
+
+    /// @brief Equal comparison operator
+    bool operator != (const Color& color) const
+    {
+        return !(*this == color);
+    }
+
+    /// @brief Print the class
+    friend std::ostream& operator<<(std::ostream& os, const Color& color)
+    {
+        os << "Color: "; 
+        os << "\n"
+            << "\tARGB:          " << color.argb << "\n"
+            << "\n";
+
+        return os;
+    }
+};
+
+/// @brief A COT Message subschema class for User Icon data 
+class UserIcon
+{
+public:
+    std::string iconSetPath;        /// icon set path 
+
+    /// @brief Constructor - Initializes Everything
+    UserIcon(const std::string iconpath = "") :
+        iconSetPath(iconpath)
+    {
+    }
+
+    /// @brief Equal comparison operator
+    bool operator == (const UserIcon& ui) const
+    {
+        return  (iconSetPath == ui.iconSetPath);
+    }
+
+    /// @brief Equal comparison operator
+    bool operator != (const UserIcon& ui) const
+    {
+        return !(*this == ui);
+    }
+
+    /// @brief Print the class
+    friend std::ostream& operator<<(std::ostream& os, const UserIcon& ui)
+    {
+        os << "UserIcon: ";
+        os << "\n"
+            << "\nIconSetPath:          " << ui.iconSetPath << "\n"
+            << "\n";
+
+        return os;
+    }
+};
+
 /// @brief A COT Message subschema class for Detail data 
 class Detail
 {
@@ -744,8 +876,11 @@ public:
     Group group;                            /// Group Sub-Schema
     Status status;                          /// Status Sub-Schema
     Track track;                            /// Track Sub-Schema
+    StrokeColor strokeColor;                /// StrokeColor Sub-Schema
+    FillColor fillColor;                    /// FillColor Sub-Schema
+    Color color;                            /// Color Sub-Schema
+    UserIcon userIcon;                      /// UserIcon Sub-Schema
     std::string remarks;                    /// Remarks information
-    std::string iconSetPath;                /// Icon Set path information
 
     /// @brief Constructor - Initializes Everything
     Detail(const Takv takv = Takv(),
@@ -754,7 +889,8 @@ public:
         const PrecisionLocation precisionLocation = PrecisionLocation(),
         const Group group = Group(),
         const Status status = Status(),
-        const Track track = Track()
+        const Track track = Track(),
+        const UserIcon ui = UserIcon()
     ) :
         takv(takv),
         contact(contact),
@@ -762,7 +898,8 @@ public:
         precisionLocation(precisionLocation),
         group(group),
         status(status),
-        track(track)
+        track(track),
+        userIcon(ui)
     {}
 
     /// @brief Equal comparison operator
@@ -776,7 +913,7 @@ public:
             (status == detail.status) &&
             (track == detail.track) && 
             (remarks == detail.remarks) &&
-            (iconSetPath == detail.iconSetPath);
+            (userIcon == detail.userIcon);
     }
 
     /// @brief Equal comparison operator
@@ -825,7 +962,7 @@ public:
             << detail.status
             << detail.track
             << detail.remarks
-            << detail.iconSetPath
+            << detail.userIcon
             << "\n";
 
         return os;
