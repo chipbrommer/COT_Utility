@@ -962,6 +962,9 @@ public:
             << detail.status
             << detail.track
             << detail.remarks
+            << detail.strokeColor
+            << detail.fillColor
+            << detail.color
             << detail.userIcon
             << "\n";
 

@@ -82,10 +82,10 @@ int main()
 
     std::cout << "\n\n";
     CoT_Schema cotA;
-    res = c.ParseCOT(badTest, cot);
+    res = c.ParseCOT(badTest, cotA);
     if (res == CoT_UtilityResult::Success)
     {
-        std::cout << cot;
+        std::cout << cotA;
     }
     else
     {

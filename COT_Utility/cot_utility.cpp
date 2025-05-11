@@ -360,7 +360,7 @@ CoT_UtilityResult CoT_Utility::ParseCOT(std::string& buffer, CoT_Schema& cot)
             // Parse <strokeColor>
             pugi::xml_node strokeColor = detail.child("strokeColor");
             if (strokeColor) {
-                (attr1 = strokeColor.attribute("value")) ? cot.detail.strokeColor = StrokeColor(attr1.as_int()) : cot.detail.strokeColor = StrokeColor();
+                (attr1 = strokeColor.attribute("value")) ? cot.detail.strokeColor.value = attr1.as_int() : cot.detail.strokeColor.value = 0;
             }
             else {
                 cot.detail.strokeColor = StrokeColor();
@@ -369,7 +369,7 @@ CoT_UtilityResult CoT_Utility::ParseCOT(std::string& buffer, CoT_Schema& cot)
             // Parse <fillColor>
             pugi::xml_node fillColor = detail.child("fillColor");
             if (fillColor) {
-                (attr1 = fillColor.attribute("value")) ? cot.detail.fillColor = FillColor(attr1.as_int()) : cot.detail.fillColor = FillColor();
+                (attr1 = fillColor.attribute("value")) ? cot.detail.fillColor.value = attr1.as_int() : cot.detail.fillColor.value = 0;
             }
             else {
                 cot.detail.fillColor = FillColor();
@@ -379,7 +379,7 @@ CoT_UtilityResult CoT_Utility::ParseCOT(std::string& buffer, CoT_Schema& cot)
             pugi::xml_node color = detail.child("color");
             if (color) 
             {
-                (attr1 = color.attribute("argb")) ? cot.detail.color.argb = Color(attr1.as_int()) : cot.detail.color = Color(0);
+                (attr1 = color.attribute("argb")) ? cot.detail.color.argb = attr1.as_int() : cot.detail.color.argb = 0;
             }
             else {
                 cot.detail.color = Color();
