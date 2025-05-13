@@ -1,4 +1,4 @@
-CoT Utility v0.3.2.
+CoT Utility v0.3.3.
 Updates: 
   Fix compile issues for Linux;
   Add support for dedicated returned error types
@@ -9,6 +9,7 @@ Updates:
     UserIcon
     Remarks
     Model
+    Links (Multiple links in single a detail supported)
 ___________________________________________________________________________
 
 CoT Utility v0.2.0. 
