@@ -14,6 +14,7 @@
 #include <iostream>                     // ostream
 #include <iomanip>                      // setw
 #include <unordered_map>                // maps
+#include <vector>                       // links vector
 #include <sstream>                      // sstream
 //
 /////////////////////////////////////////////////////////////////////////////////
@@ -397,17 +398,17 @@ public:
     {
         os << "Event: ";  if (!event.IsValid()) { os << " -NOT VALID- "; }
         os << "\n"
-            << "\tVersion:         " << event.version << "\n"
-            << "\tType:            " << event.type << "\n"
-            << "\tIndicator:       " << static_cast<int>(event.indicator) << " - " << Point::TypeToString.at(event.indicator) << "\n"
-            << "\tLocation:        " << static_cast<int>(event.location) << " - " << Location::TypeToString.at(event.location) << "\n"
-            << "\tUID:             " << event.uid << "\n"
-            << "\tTime:            " << event.time << "\n"
-            << "\tStart:           " << event.start << "\n"
-            << "\tStale:           " << event.stale << "\n"
-            << "\tHow:             " << event.how << "\n"
-            << "\tHow Entry:       " << static_cast<int>(event.howEntry) << " - " << How::Entry::TypeToString.at(event.howEntry) << "\n"
-            << "\tHow Data:        " << static_cast<int>(event.howData) << " - " << How::Data::TypeToString.at(event.howData) << "\n"
+            << "\tVersion:\t" << event.version << "\n"
+            << "\tType:\t" << event.type << "\n"
+            << "\tIndicator:\t" << static_cast<int>(event.indicator) << " - " << Point::TypeToString.at(event.indicator) << "\n"
+            << "\tLocation:\t" << static_cast<int>(event.location) << " - " << Location::TypeToString.at(event.location) << "\n"
+            << "\tUID:\t" << event.uid << "\n"
+            << "\tTime:\t" << event.time << "\n"
+            << "\tStart:\t" << event.start << "\n"
+            << "\tStale:\t" << event.stale << "\n"
+            << "\tHow:\t" << event.how << "\n"
+            << "\tHow Entry:\t" << static_cast<int>(event.howEntry) << " - " << How::Entry::TypeToString.at(event.howEntry) << "\n"
+            << "\tHow Data:\t" << static_cast<int>(event.howData) << " - " << How::Data::TypeToString.at(event.howData) << "\n"
             << "\n";
 
         return os;
@@ -457,10 +458,10 @@ public:
     {
         os << "TAKV: ";  if (!takv.IsValid()) { os << " -NOT VALID- "; }
         os << "\n"
-            << "\tVersion:         " << takv.version << "\n"
-            << "\tDevice:          " << takv.device << "\n"
-            << "\tOS:              " << takv.os << "\n"
-            << "\tPlatform:        " << takv.platform << "\n"
+            << "\tVersion:\t" << takv.version << "\n"
+            << "\tDevice:\t" << takv.device << "\n"
+            << "\tOS:\t" << takv.os << "\n"
+            << "\tPlatform:\t" << takv.platform << "\n"
             << "\n";
 
         return os;
@@ -507,9 +508,9 @@ public:
     {
         os << "Contact: ";  if (!contact.IsValid()) { os << " -NOT VALID- "; }
         os << "\n"
-            << "\tEndpoint:        " << contact.endpoint << "\n"
-            << "\tCallsign:        " << contact.callsign << "\n"
-            << "\tXMP Username:    " << contact.xmppUsername << "\n"
+            << "\tEndpoint:\t" << contact.endpoint << "\n"
+            << "\tCallsign:\t" << contact.callsign << "\n"
+            << "\tXMP Username:\t" << contact.xmppUsername << "\n"
             << "\n";
 
         return os;
@@ -550,7 +551,7 @@ public:
     {
         os << "UID: ";  if (!uid.IsValid()) { os << " -NOT VALID- "; }
         os << "\n"
-            << "\tDroid:           " << uid.droid << "\n"
+            << "\tDroid:\t" << uid.droid << "\n"
             << "\n";
 
         return os;
@@ -594,8 +595,8 @@ public:
     {
         os << "Precision Location: ";  if (!preloc.IsValid()) { os << " -NOT VALID- "; }
         os << "\n"
-            << "\tAlt Source:      " << preloc.altsrc << "\n"
-            << "\tGeopoint Source: " << preloc.geopointsrc << "\n"
+            << "\tAlt Source:\t" << preloc.altsrc << "\n"
+            << "\tGeopoint Source:\t" << preloc.geopointsrc << "\n"
             << "\n";
 
         return os;
@@ -639,8 +640,8 @@ public:
     {
         os << "Group: ";  if (!group.IsValid()) { os << " -NOT VALID- "; }
         os << "\n"
-            << "\tRole:            " << group.role << "\n"
-            << "\tName:            " << group.name << "\n"
+            << "\tRole:\t" << group.role << "\n"
+            << "\tName:\t" << group.name << "\n"
             << "\n";
 
         return os;
@@ -681,7 +682,7 @@ public:
     {
         os << "Status: ";  if (!status.IsValid()) { os << " -NOT VALID- "; }
         os << "\n"
-            << "\tBattery:         " << status.battery << "\n"
+            << "\tBattery:\n" << status.battery << "\n"
             << "\n";
 
         return os;
@@ -725,8 +726,8 @@ public:
     {
         os << "Track: ";  if (!track.IsValid()) { os << " -NOT VALID- "; }
         os << "\n"
-            << "\tCourse:          " << track.course << "\n"
-            << "\tSpeed:           " << track.speed << "\n"
+            << "\tCourse:\t" << track.course << "\n"
+            << "\tSpeed:\t" << track.speed << "\n"
             << "\n";
 
         return os;
@@ -754,9 +755,8 @@ public:
 
     /// @brief Print the class
     friend std::ostream& operator<<(std::ostream& os, const StrokeColor& color) {
-        os << "Stroke Color: ";
-        os << "\n"
-            << "\tValue:          " << color.value << "\n"
+        os << "Stroke Color:\n"
+            << "\tValue:\t" << color.value << "\n"
             << "\n";
         return os;
     }
@@ -786,9 +786,8 @@ public:
     /// @brief Print the class
     friend std::ostream& operator<<(std::ostream& os, const FillColor& color) 
     {
-        os << "Fill Color: ";
-        os << "\n"
-            << "\tValue:          " << color.value << "\n"
+        os << "Fill Color:\n"
+            << "\tValue:\t" << color.value << "\n"
             << "\n";
         return os;
     }
@@ -820,9 +819,8 @@ public:
     /// @brief Print the class
     friend std::ostream& operator<<(std::ostream& os, const Color& color)
     {
-        os << "Color: "; 
-        os << "\n"
-            << "\tARGB:          " << color.argb << "\n"
+        os << "Color:\n"
+            << "\tARGB:\t" << color.argb << "\n"
             << "\n";
 
         return os;
@@ -856,9 +854,8 @@ public:
     /// @brief Print the class
     friend std::ostream& operator<<(std::ostream& os, const UserIcon& ui)
     {
-        os << "UserIcon: ";
-        os << "\n"
-            << "\nIconSetPath:          " << ui.iconSetPath << "\n"
+        os << "UserIcon:\n"
+            << "\tIconSetPath:\t" << ui.iconSetPath << "\n"
             << "\n";
 
         return os;
@@ -892,11 +889,81 @@ public:
     /// @brief Print the class
     friend std::ostream& operator<<(std::ostream& os, const Model& m)
     {
-        os << "Model: ";
-        os << "\n"
-            << "\nValue:          " << m.value << "\n"
+        os << "Model:\n"
+            << "\tValue:\t" << m.value << "\n"
             << "\n";
 
+        return os;
+    }
+};
+
+/// @brief A COT Message subschema class for Link data
+class Link 
+{
+public:
+    std::string uid;          /// Unique identifier
+    std::string remarks;      /// Remarks
+    std::string relation;     /// Relation
+    std::string callsign;     /// Callsign
+    std::string type;         /// Type
+    std::string point;        /// Point as a string (e.g., "lat,lon")
+    double latitude;          /// Latitude portion of the point
+    double longitude;         /// Longitude portion of the point
+
+    /// @brief Constructor - Initializes Everything
+    Link(const std::string& uid = "",
+        const std::string& remarks = "",
+        const std::string& relation = "",
+        const std::string& callsign = "",
+        const std::string& type = "",
+        const std::string& point = "",
+        const double lat = 0, 
+        const double lon = 0) :
+        uid(uid), remarks(remarks), relation(relation),
+        callsign(callsign), type(type), point(point), latitude(lat), longitude(lon) {
+    }
+
+    /// @brief Equal comparison operator
+    bool operator==(const Link& other) const {
+        return uid == other.uid &&
+            remarks == other.remarks &&
+            relation == other.relation &&
+            callsign == other.callsign &&
+            type == other.type &&
+            point == other.point &&
+            latitude == other.latitude &&
+            longitude == other.longitude;
+    }
+
+    /// @brief Not-equal comparison operator
+    bool operator!=(const Link& other) const {
+        return !(*this == other);
+    }
+
+    /// @brief Parse point into latitude and longitude
+    std::pair<double, double> GetLatLonFromPoint() const 
+    {
+        size_t commaPos = point.find(',');
+        if (commaPos != std::string::npos) 
+        {
+            double lat = std::stod(point.substr(0, commaPos));
+            double lon = std::stod(point.substr(commaPos + 1));
+            return { lat, lon };
+        }
+        return { 0.0, 0.0 }; // Default value if parsing fails
+    }
+
+    /// @brief Print the class
+    friend std::ostream& operator<<(std::ostream& os, const Link& link) {
+        os << "Link:\n"
+            << "\t\tUID:\t" << link.uid << "\n"
+            << "\t\tRemarks:\t" << link.remarks << "\n"
+            << "\t\tRelation:\t" << link.relation << "\n"
+            << "\t\tCallsign:\t" << link.callsign << "\n"
+            << "\t\tType:\t" << link.type << "\n"
+            << "\t\tPoint:\t" << link.point << "\n"
+            << "\t\tLatitude:\t" << std::to_string(link.latitude) << "\n"
+            << "\t\tLongitude:\t" << std::to_string(link.longitude) << "\n";
         return os;
     }
 };
@@ -918,6 +985,7 @@ public:
     Color color;                            /// Color Sub-Schema
     UserIcon userIcon;                      /// UserIcon Sub-Schema
     std::string remarks;                    /// Remarks information
+    std::vector<Link> links;                /// Links Sub-Schema
 
     /// @brief Constructor - Initializes Everything
     Detail(const Takv takv = Takv(),
@@ -942,18 +1010,21 @@ public:
     {}
 
     /// @brief Equal comparison operator
-    bool operator == (const Detail& detail) const
-    {
-        return  (takv == detail.takv) &&
-            (contact == detail.contact) &&
-            (uid == detail.uid) &&
-            (model == detail.model) &&
-            (precisionLocation == detail.precisionLocation) &&
-            (group == detail.group) &&
-            (status == detail.status) &&
-            (track == detail.track) && 
-            (remarks == detail.remarks) &&
-            (userIcon == detail.userIcon);
+    bool operator==(const Detail& detail) const {
+        return takv == detail.takv          &&
+            contact == detail.contact       &&
+            uid == detail.uid               &&
+            model == detail.model           &&
+            precisionLocation == detail.precisionLocation &&
+            group == detail.group           &&
+            status == detail.status         &&
+            track == detail.track           &&
+            strokeColor == detail.strokeColor &&
+            fillColor == detail.fillColor   &&
+            color == detail.color           &&
+            userIcon == detail.userIcon     &&
+            remarks == detail.remarks       &&
+            links == detail.links;
     }
 
     /// @brief Equal comparison operator
@@ -975,7 +1046,7 @@ public:
     }
 
     /// @brief Print the class
-    friend std::ostream& operator<<(std::ostream& os, const Detail& detail)
+    friend std::ostream& operator<<(std::ostream& os, const Detail& detail) 
     {
         /*
         *  NOTE: This will print only the valid sub-schemas.
@@ -992,23 +1063,35 @@ public:
 
         */
 
-        os << "Detail: ";  if (!detail.IsValid()) { os << " -NOT VALID- "; }
+        os << "Detail: "; 
+        if (!detail.IsValid()) { os << " -NOT VALID- "; }
         os << "\n"
-            << detail.takv
-            << detail.contact
-            << detail.uid
-            << detail.model
-            << detail.precisionLocation
-            << detail.group
-            << detail.status
-            << detail.track
-            << detail.remarks
-            << detail.strokeColor
-            << detail.fillColor
-            << detail.color
-            << detail.userIcon
-            << "\n";
+           << detail.takv
+           << detail.contact
+           << detail.uid
+           << detail.model
+           << detail.precisionLocation
+           << detail.group
+           << detail.status
+           << detail.track
+           << detail.strokeColor
+           << detail.fillColor
+           << detail.color
+           << detail.userIcon
+           << "Remarks: " << detail.remarks << "\n";
 
+        os << "Links:\n";
+        if (detail.links.empty()) 
+        {
+            os << "\tNone\n";
+        } else 
+        {
+            for (const auto& link : detail.links) 
+            {
+                os << "\t" << link;
+            }
+        }
+        os << "\n";
         return os;
     }
 };

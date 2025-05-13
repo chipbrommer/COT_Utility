@@ -206,15 +206,13 @@ CoT_UtilityResult CoT_Utility::ParseCOT(std::string& buffer, CoT_Schema& cot)
     pugi::xml_node details = doc.child("event").child("detail");
     int eventsSize = (int)doc.root().select_nodes("event").size();
     int pointsSize = (int)events.select_nodes("point").size();
-    int detailsSize = (int)events.select_nodes("details").size();
+    int detailsSize = (int)events.select_nodes("detail").size();
 
     // Catch bad data:
     //      <event> and <point> are required data for COT message and there should
     //      be exactly one of each schema. 
-    //      We dont check <detail> because it is optional data. 
+    //      We don't check <detail> because it is optional data. 
 
-    // This check can be changed later on to take actual use of the following for loops
-    // in the event we start parsing into a vector. 
     if (eventsSize != 1)
     {
         return CoT_UtilityResult::InvalidEvent;
@@ -264,7 +262,7 @@ CoT_UtilityResult CoT_Utility::ParseCOT(std::string& buffer, CoT_Schema& cot)
         }
 
         // Parse <event><detail> tag and gather data. 
-        for (auto&& detail : events.children("detail"))
+        for (auto&& detail : event.children("detail"))
         {
             pugi::xml_attribute attr1;
 
@@ -310,7 +308,7 @@ CoT_UtilityResult CoT_Utility::ParseCOT(std::string& buffer, CoT_Schema& cot)
             pugi::xml_node model = detail.child("model");
             if (model)
             {
-                (attr1 = uid.attribute("value")) ? cot.detail.model.value = attr1.as_string() : cot.detail.model.value = "";
+                (attr1 = model.attribute("value")) ? cot.detail.model.value = attr1.as_string() : cot.detail.model.value = "";
             }
             else
             {
@@ -388,7 +386,7 @@ CoT_UtilityResult CoT_Utility::ParseCOT(std::string& buffer, CoT_Schema& cot)
 
             // Parse <color>
             pugi::xml_node color = detail.child("color");
-            if (color) 
+            if (color)
             {
                 (attr1 = color.attribute("argb")) ? cot.detail.color.argb = attr1.as_int() : cot.detail.color.argb = 0;
             }
@@ -405,6 +403,24 @@ CoT_UtilityResult CoT_Utility::ParseCOT(std::string& buffer, CoT_Schema& cot)
                 cot.detail.userIcon = UserIcon();
             }
 
+            // Parse <link> elements
+            for (auto&& linkNode : detail.children("link"))
+            {
+                Link link;
+                (attr1 = linkNode.attribute("uid")) ? link.uid = attr1.as_string() : link.uid = "";
+                (attr1 = linkNode.attribute("remarks")) ? link.remarks = attr1.as_string() : link.remarks = "";
+                (attr1 = linkNode.attribute("relation")) ? link.relation = attr1.as_string() : link.relation = "";
+                (attr1 = linkNode.attribute("callsign")) ? link.callsign = attr1.as_string() : link.callsign = "";
+                (attr1 = linkNode.attribute("type")) ? link.type = attr1.as_string() : link.type = "";
+                (attr1 = linkNode.attribute("point")) ? link.point = attr1.as_string() : link.point = "";
+
+                // Set lat and lon using getLatLon
+                auto [lat, lon] = link.GetLatLonFromPoint();
+                link.latitude = lat;
+                link.longitude = lon;
+
+                cot.detail.links.push_back(link);
+            }
         }
     }
 

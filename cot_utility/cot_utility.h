@@ -54,7 +54,7 @@ public:
 
     /// @brief Parse a COT Message from std::string
     /// @param buffer  - [in]  - String buffer containing the XML data to be parsed.
-    /// @param cot     - [out] - Vector of COT Structures to store the parsed data into. 
+    /// @param cot     - [out] - COT Structures to store the parsed data into. 
     /// @return CoT_UtilityResult enumeration, CoT_UtilityResult::Success or other, use CoT_UtilityResultToString to find out more info
     CoT_UtilityResult ParseCOT(std::string& buffer, CoT_Schema& cot);
 
@@ -142,7 +142,7 @@ private:
 
     const int MAJOR = 0;
     const int MINOR = 3;
-    const int BUILD = 2;
+    const int BUILD = 3;
 
     std::string m_lastPugiResult;
 };

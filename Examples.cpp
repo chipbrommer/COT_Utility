@@ -81,11 +81,45 @@ int main()
         badTest += "<detail>";
 
     std::cout << "\n\n";
-    CoT_Schema cotA;
-    res = c.ParseCOT(badTest, cotA);
+    CoT_Schema cot4;
+    res = c.ParseCOT(badTest, cot4);
     if (res == CoT_UtilityResult::Success)
     {
-        std::cout << cotA;
+        std::cout << cot4;
+    }
+    else
+    {
+        std::cerr << c.UtilityResultToString(res) << "\n";
+    }
+
+    // EXAMPLE: Links.
+    std::string linkTest = R"("<?xml version="1.0" encoding="utf-16"?>
+        <event version="2.0" uid="5d062bca-8828-49fe-8351-fdac40f0f8e2" type="b-m-r" how="h-e" time="2025-05-11T19:05:24.000Z" start="2025-05-11T19:05:24.000Z" stale="2025-06-10T19:05:24.000Z">
+            <point lat="0" lon="0" hae="0" ce="9999999" le="9999999" />
+            <detail>
+                <contact callsign="Route 1" />
+                <link uid="b7d81d74-8eb2-4c95-a273-3bd1bb658dcf" remarks="" relation="" callsign="Route 1 SP" type="b-m-p-w" point="34.911072,-85.754034" />
+                <link uid="c28233bd-0fba-452d-b09a-8c89a9355ed3" remarks="" relation="" callsign="" type="b-m-p-c" point="36.100849,-81.596748" />
+                <link uid="132310d0-fffa-406a-b607-11c0ec48f32d" remarks="" relation="" callsign="" type="b-m-p-c" point="34.529618,-81.338185" />
+                <link uid="a1488d2d-e2b1-414e-89d7-028f96c2949c" remarks="" relation="" callsign="" type="b-m-p-c" point="32.489615,-81.703468" />
+                <link uid="c2a287b2-59ac-4acf-a48a-02ca3d27dfce" remarks="" relation="" callsign="" type="b-m-p-c" point="31.324285,-84.254756" />
+                <link uid="aa6dc12c-f5b1-4e6e-ad03-03cb32397a67" remarks="" relation="" callsign="" type="b-m-p-c" point="32.410202,-86.241709" />
+                <link uid="0caa1cec-6f39-43c7-84bd-58adcce769c9" remarks="" relation="" callsign="TGT" type="b-m-p-c" point="34.005914,-86.152126" />
+                <link_attr color="-16777089" method="Walking" direction="Infil" routetype="Primary" order="Ascending Check Points" />
+                <remarks />
+                <archive />
+                <__routeinfo>
+                    <__navcues />
+                </__routeinfo>
+            </detail>
+        </event>)";
+
+    std::cout << "\n\n";
+    CoT_Schema cot5;
+    res = c.ParseCOT(linkTest, cot5);
+    if (res == CoT_UtilityResult::Success)
+    {
+        std::cout << cot5;
     }
     else
     {
