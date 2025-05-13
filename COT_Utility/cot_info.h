@@ -865,6 +865,42 @@ public:
     }
 };
 
+/// @brief A COT Message subschema class for Model data 
+class Model
+{
+public:
+    std::string value;        /// model value
+
+    /// @brief Constructor - Initializes Everything
+    Model(const std::string val = "") :
+        value(val)
+    {
+    }
+
+    /// @brief Equal comparison operator
+    bool operator == (const Model& m) const
+    {
+        return  (value == m.value);
+    }
+
+    /// @brief Equal comparison operator
+    bool operator != (const Model& m) const
+    {
+        return !(*this == m);
+    }
+
+    /// @brief Print the class
+    friend std::ostream& operator<<(std::ostream& os, const UserIcon& ui)
+    {
+        os << "Model: ";
+        os << "\n"
+            << "\nValue:          " << ui.iconSetPath << "\n"
+            << "\n";
+
+        return os;
+    }
+};
+
 /// @brief A COT Message subschema class for Detail data 
 class Detail
 {
@@ -872,6 +908,7 @@ public:
     Takv takv;                              /// TAKV Sub-Schema
     Contact contact;                        /// Contact Sub-Schema
     Uid uid;                                /// UID Sub-Schema
+    Model model;                            /// Model Sub-Schema
     PrecisionLocation precisionLocation;    /// PrecisionLocation Sub-Schema
     Group group;                            /// Group Sub-Schema
     Status status;                          /// Status Sub-Schema
@@ -886,6 +923,7 @@ public:
     Detail(const Takv takv = Takv(),
         const Contact contact = Contact(),
         const Uid uid = Uid(),
+        const Model model = Model(),
         const PrecisionLocation precisionLocation = PrecisionLocation(),
         const Group group = Group(),
         const Status status = Status(),
@@ -895,6 +933,7 @@ public:
         takv(takv),
         contact(contact),
         uid(uid),
+        model(model),
         precisionLocation(precisionLocation),
         group(group),
         status(status),
@@ -908,6 +947,7 @@ public:
         return  (takv == detail.takv) &&
             (contact == detail.contact) &&
             (uid == detail.uid) &&
+            (model == detail.model) &&
             (precisionLocation == detail.precisionLocation) &&
             (group == detail.group) &&
             (status == detail.status) &&
@@ -957,6 +997,7 @@ public:
             << detail.takv
             << detail.contact
             << detail.uid
+            << detail.model
             << detail.precisionLocation
             << detail.group
             << detail.status

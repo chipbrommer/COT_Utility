@@ -306,6 +306,17 @@ CoT_UtilityResult CoT_Utility::ParseCOT(std::string& buffer, CoT_Schema& cot)
                 cot.detail.uid = Uid();
             }
 
+            // Parse <model>
+            pugi::xml_node uid = detail.child("model");
+            if (uid)
+            {
+                (attr1 = uid.attribute("value")) ? cot.detail.model.value = attr1.as_string() : cot.detail.model.value = "";
+            }
+            else
+            {
+                cot.detail.model = Model();
+            }
+
             // Parse <precisionlocation>
             pugi::xml_node precision = detail.child("precisionlocation");
             if (precision)
