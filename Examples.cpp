@@ -126,5 +126,11 @@ int main()
         std::cerr << c.UtilityResultToString(res) << "\n";
     }
 
+    // Example: Adding custom attributes 
+    CoT_Schema cot6;
+    std::map<std::string, std::string> atts{ {"color", "blue"}, {"location","sky"}};
+    cot6.detail.AddCustomDetail("link_attr", atts, "Hello World");
+    std::cout << cot6;
+
     return 0;
 }

@@ -1,3 +1,10 @@
+CoT Utility v0.4.0.
+Update: 
+    Significantly updated the abilities of each subschema to parse into and out of XML format directly. 
+    Added ability to add custom fields in the Detail subschema with attributes and content.
+
+___________________________________________________________________________
+
 CoT Utility v0.3.3.
 Updates: 
   Fix compile issues for Linux;
