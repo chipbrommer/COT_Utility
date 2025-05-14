@@ -121,8 +121,8 @@ private:
     CoT_UtilityResult ParseTimeStamp(std::string& type, DateTime& dt);
 
     const int MAJOR = 0;
-    const int MINOR = 3;
-    const int BUILD = 4;
+    const int MINOR = 4;
+    const int BUILD = 0;
 
     std::string m_lastPugiResult;
 };
