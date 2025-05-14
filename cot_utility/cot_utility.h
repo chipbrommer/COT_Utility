@@ -142,7 +142,7 @@ private:
 
     const int MAJOR = 0;
     const int MINOR = 3;
-    const int BUILD = 3;
+    const int BUILD = 4;
 
     std::string m_lastPugiResult;
 };
