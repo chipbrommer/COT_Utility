@@ -120,32 +120,6 @@ private:
     /// @return CoT_UtilityResult enumeration, CoT_UtilityResult::Success or other, use CoT_UtilityResultToString to find out more info
     CoT_UtilityResult ParseTimeStamp(std::string& type, DateTime& dt);
 
-    /// @brief Converts a string into a RootType enumeration value
-    /// @param root - [in] - string to be converted.
-    /// @return RootType enum conversion
-    Root::Type RootTypeCharToEnum(std::string& root);
-
-    /// @brief Converts a string into a RootType enumeration value
-    /// @param root - [in] - string to be converted.
-    /// @return RootType enum conversion
-    Point::Type PointTypeCharToEnum(std::string& type);
-
-    /// @brief Converts a string into a RootType enumeration value
-    /// @param root - [in] - string to be converted.
-    /// @return RootType enum conversion
-    Location::Type LocationTypeCharToEnum(std::string& loc);
-
-    /// @brief Converts a string into a RootType enumeration value
-    /// @param root - [in] - string to be converted.
-    /// @return RootType enum conversion
-    How::Entry::Type HowEntryTypeCharToEnum(std::string& entry);
-
-    /// @brief Converts a string into a RootType enumeration value
-    /// @param root  - [in] - string to be converted.
-    /// @param entry - [in] - Entry Type to correspond to proper data type. 
-    /// @return RootType enum conversion
-    How::Data::Type HowDataTypeCharToEnum(std::string& data, How::Entry::Type entry);
-
     const int MAJOR = 0;
     const int MINOR = 3;
     const int BUILD = 4;

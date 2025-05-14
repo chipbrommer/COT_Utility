@@ -57,6 +57,20 @@ namespace Root
         {"Capability", Type::c}, 
         {"Reservation", Type::res}
     };
+
+    /// @brief Converts a string into a RootType enumeration value
+    /// @param root string to be converted.
+    /// @return RootType enum conversion
+    static const Type CharToType(std::string& root)
+    {
+             if (root == "a")   return Root::Type::a;
+        else if (root == "b")   return Root::Type::b;
+        else if (root == "t")   return Root::Type::t;
+        else if (root == "r")   return Root::Type::r;
+        else if (root == "c")   return Root::Type::c;
+        else if (root == "res") return Root::Type::res;
+        else return Root::Type::Error;
+    }
 };
 
 namespace Point
@@ -105,6 +119,25 @@ namespace Point
         {"None Specified", Type::o}, 
         {"Other", Type::x}
     };
+
+    /// @brief Converts a string into a Type enumeration value
+    /// @param type string to be converted.
+    /// @return Type enum conversion
+    static const Type CharToType(std::string& type)
+    {
+             if (type == "p") return Point::Type::p;
+        else if (type == "u") return Point::Type::u;
+        else if (type == "a") return Point::Type::a;
+        else if (type == "f") return Point::Type::f;
+        else if (type == "n") return Point::Type::n;
+        else if (type == "s") return Point::Type::s;
+        else if (type == "h") return Point::Type::h;
+        else if (type == "j") return Point::Type::j;
+        else if (type == "k") return Point::Type::k;
+        else if (type == "o") return Point::Type::o;
+        else if (type == "x") return Point::Type::x;
+        else return Point::Type::Error;
+    }
 
     class Data 
     {
@@ -226,6 +259,20 @@ namespace Location
         {"Sea Subsurface", Type::U}, 
         {"Other", Type::X}
     };
+
+    /// @brief Converts a string into a Type enumeration value
+    /// @param loc string to be converted.
+    /// @return Type enum conversion
+    static const Type CharToType(std::string& loc)
+    {
+             if (loc == "P") return Location::Type::P;
+        else if (loc == "A") return Location::Type::A;
+        else if (loc == "G") return Location::Type::G;
+        else if (loc == "S") return Location::Type::S;
+        else if (loc == "U") return Location::Type::U;
+        else if (loc == "X") return Location::Type::X;
+        else return Location::Type::Error;
+    }
 };
 
 namespace How
@@ -252,6 +299,16 @@ namespace How
             {"Human", Type::h}, 
             {"Machine", Type::m}
         };
+
+        /// @brief Converts a string into a Type enumeration value
+        /// @param entry string to be converted.
+        /// @return Type enum conversion
+        Type CharToType(std::string& entry)
+        {
+                 if (entry == "h")   return How::Entry::Type::h;
+            else if (entry == "m")   return How::Entry::Type::m;
+            else return How::Entry::Type::Error;
+        }
     };
 
     /// @brief Data section of the 'how' data
@@ -304,6 +361,38 @@ namespace How
         //    {"Predicted", Type::pred}, 
         //    {"Relayed", Type::r}
         };
+
+        /// @brief Converts a string into a Type enumeration value
+        /// @param data string to be converted.
+        /// @param entry How Entry Type to correspond to proper data type. 
+        /// @return Type enum conversion
+        static const Type CharToType(std::string& data, How::Entry::Type entry)
+        {
+            if (entry == How::Entry::Type::h)
+            {
+                     if (data == "e")   return How::Data::Type::e;
+                else if (data == "c")   return How::Data::Type::cal;
+                else if (data == "t")   return How::Data::Type::t;
+                else if (data == "p")   return How::Data::Type::paste;
+                else return How::Data::Type::Error;
+            }
+            else if (entry == How::Entry::Type::m)
+            {
+                     if (data == "i")   return How::Data::Type::i;
+                else if (data == "g")   return How::Data::Type::g;
+                else if (data == "m")   return How::Data::Type::m;
+                else if (data == "s")   return How::Data::Type::s;
+                else if (data == "f")   return How::Data::Type::f;
+                else if (data == "c")   return How::Data::Type::con;
+                else if (data == "p")   return How::Data::Type::pred;
+                else if (data == "r")   return How::Data::Type::r;
+                else return How::Data::Type::Error;
+            }
+            else
+            {
+                return How::Data::Type::Error;
+            }
+        }
     };
 };
 
@@ -723,18 +812,9 @@ public:
                 }
                 if (typeParts.size() >= 3)
                 {
-                    auto rootIt = Root::StringToType.find(Root::TypeToString.at(
-                        Root::TypeToString.find(typeParts[0]) != Root::TypeToString.end() ?
-                        static_cast<Root::Type>(std::stoi(typeParts[0])) : Root::Type::Error));
-                    event.rootType = rootIt != Root::StringToType.end() ? rootIt->second : Root::Type::Error;
-                    auto indIt = Point::StringToType.find(Point::TypeToString.at(
-                        Point::TypeToString.find(typeParts[1]) != Point::TypeToString.end() ?
-                        static_cast<Point::Type>(std::stoi(typeParts[1])) : Point::Type::Error));
-                    event.indicator = indIt != Point::StringToType.end() ? indIt->second : Point::Type::Error;
-                    auto locIt = Location::StringToType.find(Location::TypeToString.at(
-                        Location::TypeToString.find(typeParts[2]) != Root::TypeToString.end() ?
-                        static_cast<Location::Type>(std::stoi(typeParts[2])) : Location::Type::Error));
-                    event.location = locIt != Location::StringToType.end() ? locIt->second : Location::Type::Error;
+                    event.rootType = Root::CharToType(typeParts[0]);
+                    event.indicator = Point::CharToType(typeParts[1]);
+                    event.location = Location::CharToType(typeParts[2]);
                 }
             }
             if (auto attr = node.attribute("uid")) event.uid = attr.as_string();
@@ -769,14 +849,8 @@ public:
                 }
                 if (howParts.size() >= 2)
                 {
-                    auto entryIt = How::Entry::StringToType.find(How::Entry::TypeToString.at(
-                        How::Entry::TypeToString.find(howParts[0]) != How::Entry::TypeToString.end() ?
-                        static_cast<How::Entry::Type>(std::stoi(howParts[0])) : How::Entry::Type::Error));
-                    event.howEntry = entryIt != How::Entry::StringToType.end() ? entryIt->second : How::Entry::Type::Error;
-                    auto dataIt = How::Data::StringToType.find(How::Data::TypeToString.at(
-                        How::Data::TypeToString.find(howParts[1]) != How::Data::TypeToString.end() ?
-                        static_cast<How::Data::Type>(std::stoi(howParts[1])) : How::Data::Type::Error));
-                    event.howData = dataIt != How::Data::StringToType.end() ? dataIt->second : How::Data::Type::Error;
+                    event.howEntry = How::Entry::CharToType(howParts[0]);
+                    event.howData = How::Data::Type::CharToType(howParts[1], event.howEntry);
                 }
             }
         }
