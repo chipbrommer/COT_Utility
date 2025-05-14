@@ -69,6 +69,12 @@ public:
     /// @return A COT Structures containing the parsed data, use "CoT_Schema.IsValid()" function for verify validity. 
     CoT_Schema ParseBufferToCOT(const char* buffer);
 
+    /// @brief Parse the Track element from a Cursor on Target message
+    /// @param buffer - [in] - char buffer containing the XML data to be parsed.
+    /// @param track - [in] - reference to a Track instance to parse data into.
+    /// @return Track instance with parsed data. 
+    CoT_UtilityResult ParseTrackFromCoT(const char* buffer, Track& track);
+
     /// @brief Utility function to convert CoT_UtilityResult to string
     std::string UtilityResultToString(CoT_UtilityResult error);
 
@@ -142,7 +148,7 @@ private:
 
     const int MAJOR = 0;
     const int MINOR = 3;
-    const int BUILD = 3;
+    const int BUILD = 4;
 
     std::string m_lastPugiResult;
 };

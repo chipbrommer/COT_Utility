@@ -11,11 +11,12 @@
 //          name                        reason included
 //          --------------------        ---------------------------------------
 #include <cmath>                        // isnan
-#include <iostream>                     // ostream
 #include <iomanip>                      // setw
+#include <limits>                     
+#include <pugixml.hpp>                  // pugi xml
+#include <sstream>                      // sstream
 #include <unordered_map>                // maps
 #include <vector>                       // links vector
-#include <sstream>                      // sstream
 //
 /////////////////////////////////////////////////////////////////////////////////
 
@@ -689,49 +690,158 @@ public:
     }
 };
 
-/// @brief A COT Message subschema class for Track data 
+/// @brief A COT Message subschema class for Track data
 class Track
 {
 public:
-    double course;                  /// Direction of motion with respect to true north
-    double speed;                   /// Magnitude of motion measured in meters per second
+    /// @brief Direction of motion with respect to true north in degrees (0 to 360). XML attribute: "course".
+    double course;
+    /// @brief Magnitude of motion in meters per second (non-negative). XML attribute: "speed".
+    double speed;
+    /// @brief Vertical component of motion in degrees (-90 to 90, negative for downward). XML attribute: "slope".
+    double slope;
+    /// @brief 1-sigma error for course in degrees (non-negative). XML attribute: "eCourse".
+    double eCourse;
+    /// @brief 1-sigma error for speed in meters per second (non-negative). XML attribute: "eSpeed".
+    double eSpeed;
+    /// @brief 1-sigma error for slope in degrees (non-negative). XML attribute: "eSlope".
+    double eSlope;
+    /// @brief Version of the track schema (positive). XML attribute: "version".
+    double version;
 
-    /// @brief Constructor - Initializes Everything
-    Track(const double course = NAN,
-        const double speed = NAN) :
-        course(course), speed(speed)
+    /// @brief Constructor - Initializes everything. course and speed are required, others optional.
+    Track(const double course = INVALID_VALUE,
+        const double speed = INVALID_VALUE,
+        const double slope = INVALID_VALUE,
+        const double eCourse = INVALID_VALUE,
+        const double eSpeed = INVALID_VALUE,
+        const double eSlope = INVALID_VALUE,
+        const double version = INVALID_VALUE) :
+        course(course), speed(speed), slope(slope),
+        eCourse(eCourse), eSpeed(eSpeed), eSlope(eSlope),
+        version(version)
     {}
 
     /// @brief Equal comparison operator
-    bool operator == (const Track& track) const
+    bool operator==(const Track& track) const
     {
-        return  (course == track.course) &&
-            (speed == track.speed);
+        const double EPSILON = 1e-6;
+
+        auto equal = [](double a, double b, double epsilon) {
+                return std::isnan(a) && std::isnan(b) || std::abs(a - b) < epsilon;
+            };
+
+        return equal(course, track.course, EPSILON) &&
+            equal(speed, track.speed, EPSILON) &&
+            equal(slope, track.slope, EPSILON) &&
+            equal(eCourse, track.eCourse, EPSILON) &&
+            equal(eSpeed, track.eSpeed, EPSILON) &&
+            equal(eSlope, track.eSlope, EPSILON) &&
+            equal(version, track.version, EPSILON);
     }
 
-    /// @brief Equal comparison operator
-    bool operator != (const Track& track) const
+    /// @brief Not-equal comparison operator
+    bool operator!=(const Track& track) const
     {
         return !(*this == track);
     }
 
-    /// @brief Does class have valid data ? 
-    bool IsValid() const
+    /// @brief Checks if the class has valid data
+    bool IsValid(std::string* errorMsg = nullptr) const
     {
-        return !std::isnan(course) && !std::isnan(speed);
+        if (std::isnan(course)) {
+            if (errorMsg) *errorMsg = "Course is NaN";
+            return false;
+        }
+        if (course < COURSE_MIN || course > COURSE_MAX) {
+            if (errorMsg) *errorMsg = "Course out of range [0, 360]";
+            return false;
+        }
+        if (std::isnan(speed)) {
+            if (errorMsg) *errorMsg = "Speed is NaN";
+            return false;
+        }
+        if (speed < SPEED_MIN) {
+            if (errorMsg) *errorMsg = "Speed is negative";
+            return false;
+        }
+        if (!std::isnan(slope) && (slope < SLOPE_MIN || slope > SLOPE_MAX)) {
+            if (errorMsg) *errorMsg = "Slope out of range [-90, 90]";
+            return false;
+        }
+        if (!std::isnan(eCourse) && eCourse < 0) {
+            if (errorMsg) *errorMsg = "eCourse is negative";
+            return false;
+        }
+        if (!std::isnan(eSpeed) && eSpeed < 0) {
+            if (errorMsg) *errorMsg = "eSpeed is negative";
+            return false;
+        }
+        if (!std::isnan(eSlope) && eSlope < 0) {
+            if (errorMsg) *errorMsg = "eSlope is negative";
+            return false;
+        }
+        if (!std::isnan(version) && version <= 0) {
+            if (errorMsg) *errorMsg = "Version is non-positive";
+            return false;
+        }
+        return true;
     }
 
     /// @brief Print the class
     friend std::ostream& operator<<(std::ostream& os, const Track& track)
     {
         os << "Track: ";  if (!track.IsValid()) { os << " -NOT VALID- "; }
-        os << "\n"
-            << "\tCourse:\t" << track.course << "\n"
-            << "\tSpeed:\t" << track.speed << "\n"
-            << "\n";
-
+        os << "\n" << std::fixed << std::setprecision(6)
+            << "\tCourse:          " << track.course << "\n"
+            << "\tSpeed:           " << track.speed << "\n";
+        if (!std::isnan(track.slope))   os << "\tSlope:           " << track.slope << "\n";
+        if (!std::isnan(track.eCourse)) os << "\teCourse:         " << track.eCourse << "\n";
+        if (!std::isnan(track.eSpeed))  os << "\teSpeed:          " << track.eSpeed << "\n";
+        if (!std::isnan(track.eSlope))  os << "\teSlope:          " << track.eSlope << "\n";
+        if (!std::isnan(track.version)) os << "\tVersion:         " << track.version << "\n";
+        os << std::defaultfloat << "\n";
         return os;
     }
+
+    /// @brief Serialize to XML string
+    std::string ToXml() const
+    {
+        std::ostringstream oss;
+        oss << "<track";
+        if (!std::isnan(course)) oss << " course=\"" << std::fixed << std::setprecision(6) << course << "\"";
+        if (!std::isnan(speed)) oss << " speed=\"" << speed << "\"";
+        if (!std::isnan(slope)) oss << " slope=\"" << slope << "\"";
+        if (!std::isnan(eCourse)) oss << " eCourse=\"" << eCourse << "\"";
+        if (!std::isnan(eSpeed)) oss << " eSpeed=\"" << eSpeed << "\"";
+        if (!std::isnan(eSlope)) oss << " eSlope=\"" << eSlope << "\"";
+        if (!std::isnan(version)) oss << " version=\"" << version << "\"";
+        oss << "/>";
+        return oss.str();
+    }
+
+    /// @brief Deserialize from XML node
+    static Track FromXml(const pugi::xml_node& node)
+    {
+        Track track;
+        pugi::xml_attribute attr;
+        (attr = node.attribute("course")) ? track.course = attr.as_double() : track.course = INVALID_VALUE;
+        (attr = node.attribute("speed")) ? track.speed = attr.as_double() : track.speed = INVALID_VALUE;
+        (attr = node.attribute("slope")) ? track.slope = attr.as_double() : track.slope = INVALID_VALUE;
+        (attr = node.attribute("eCourse")) ? track.eCourse = attr.as_double() : track.eCourse = INVALID_VALUE;
+        (attr = node.attribute("eSpeed")) ? track.eSpeed = attr.as_double() : track.eSpeed = INVALID_VALUE;
+        (attr = node.attribute("eSlope")) ? track.eSlope = attr.as_double() : track.eSlope = INVALID_VALUE;
+        (attr = node.attribute("version")) ? track.version = attr.as_double() : track.version = INVALID_VALUE;
+        return track;
+    }
+
+private:
+    static constexpr double INVALID_VALUE = std::numeric_limits<double>::quiet_NaN();
+    static constexpr double COURSE_MIN = 0.0;    /// Minimum course in degrees
+    static constexpr double COURSE_MAX = 360.0;  /// Maximum course in degrees
+    static constexpr double SPEED_MIN = 0.0;     /// Minimum speed in meters per second
+    static constexpr double SLOPE_MIN = -90.0;   /// Minimum slope in degrees
+    static constexpr double SLOPE_MAX = 90.0;    /// Maximum slope in degrees
 };
 
 /// @brief A COT Message subschema class for Stroke Color data 
@@ -1158,6 +1268,7 @@ enum class CoT_UtilityResult : int
     InvalidXml,             // String is not valid XML
     InvalidInput,           // Input string is empty or malformed
     InvalidTimeSubSchema,
+    InsufficientData,       
     ProcessingError,         // Generic processing failure (e.g., internal logic error)
     NoModificationMade,
 };
