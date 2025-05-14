@@ -2826,22 +2826,67 @@ public:
     }
 };
 
-/// @brief Error codes for parsing operations
-enum class CoT_UtilityResult : int
+/// @brief Result structure for cot operations
+struct Result
 {
-    Success,                // No error
-    InvalidEvent,           // XML is Missing Event tag
-    InvalidPoint,           // XML is Missing Point tag
-    InvalidDetail,          // XML has Invalid Detail tag
-    InvalidDate,
-    InvalidTime,
-    InvalidHow,
-    InvalidType,
-    InvalidXml,             // String is not valid XML
-    InvalidInput,           // Input string is empty or malformed
-    InvalidTimeSubSchema,
-    InsufficientData,       
-    ProcessingError,         // Generic processing failure (e.g., internal logic error)
-    NoModificationMade,
-};
+    /// @brief Error code indicating the operation outcome
+    enum class Code 
+    {
+        Success,                // No error
+        InvalidEvent,           // XML is missing Event tag
+        InvalidPoint,           // XML is missing Point tag
+        InvalidDetail,          // XML has invalid Detail tag
+        InvalidDate,
+        InvalidTime,
+        InvalidHow,
+        InvalidType,
+        InvalidXml,             // String is not valid XML
+        InvalidInput,           // Input string is empty or malformed
+        InvalidTimeSubSchema,
+        InsufficientData,
+        ProcessingError,        // Generic processing failure
+        NoModificationMade
+    };
 
+    Code code;                  // Error code
+    std::string description;    // Detailed error message
+
+    /// @brief Check if the operation was successful
+    bool IsSuccess() const { return code == Code::Success; }
+
+    /// @brief Constructor for success case
+    Result() : code(Code::Success), description("") {}
+
+    /// @brief Constructor for error case
+    Result(Code c, std::string desc) : code(c), description(std::move(desc)) {}
+
+    /// @brief Convert to string for debugging or logging
+    std::string ToString() const
+    {
+        std::string result = "Result: ";
+        switch (code) 
+        {
+        case Code::Success: result += "Success"; break;
+        case Code::InvalidEvent: result += "InvalidEvent"; break;
+        case Code::InvalidPoint: result += "InvalidPoint"; break;
+        case Code::InvalidDetail: result += "InvalidDetail"; break;
+        case Code::InvalidDate: result += "InvalidDate"; break;
+        case Code::InvalidTime: result += "InvalidTime"; break;
+        case Code::InvalidHow: result += "InvalidHow"; break;
+        case Code::InvalidType: result += "InvalidType"; break;
+        case Code::InvalidXml: result += "InvalidXml"; break;
+        case Code::InvalidInput: result += "InvalidInput"; break;
+        case Code::InvalidTimeSubSchema: result += "InvalidTimeSubSchema"; break;
+        case Code::InsufficientData: result += "InsufficientData"; break;
+        case Code::ProcessingError: result += "ProcessingError"; break;
+        case Code::NoModificationMade: result += "NoModificationMade"; break;
+        }
+
+        if (!description.empty()) 
+        {
+            result += "; Description: " + description;
+        }
+
+        return result;
+    }
+};
