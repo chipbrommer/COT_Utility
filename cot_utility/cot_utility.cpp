@@ -41,9 +41,9 @@ std::string CoT_Utility::GenerateXMLCOTMessage(CoT_Schema& cot)
     // Event start
     msg << "<event version=\"2.0\" uid=\"" << cot.event.uid 
         << "\" type=\"" << cot.event.type 
-        << "\" time=\"" << cot.event.time.ToTimestamp() 
-        << "\" start=\"" << cot.event.time.ToTimestamp()
-        << "\" stale=\"" << cot.event.stale.ToTimestamp()
+        << "\" time=\"" << cot.event.time.ToCotTimestamp()
+        << "\" start=\"" << cot.event.time.ToCotTimestamp()
+        << "\" stale=\"" << cot.event.stale.ToCotTimestamp()
         << "\" how=\"" << cot.event.how 
         << "\">";
 

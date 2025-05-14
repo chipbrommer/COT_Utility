@@ -128,6 +128,9 @@ int main()
 
     // Example: Adding custom attributes 
     CoT_Schema cot6;
+    cot6.event.time = DateTime::FromSystemClock();
+    cot6.event.stale.Set(2025,5,14,1,20,45);
+    cot6.event.start.SetFromSystemClock();
     std::map<std::string, std::string> atts{ {"color", "blue"}, {"location","sky"}};
     cot6.detail.AddCustomDetail("link_attr", atts, "Hello World");
     std::cout << cot6;
