@@ -1268,6 +1268,7 @@ enum class CoT_UtilityResult : int
     InvalidXml,             // String is not valid XML
     InvalidInput,           // Input string is empty or malformed
     InvalidTimeSubSchema,
+    InsufficientData,       
     ProcessingError,         // Generic processing failure (e.g., internal logic error)
     NoModificationMade,
 };

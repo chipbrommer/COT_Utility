@@ -440,6 +440,61 @@ CoT_Schema CoT_Utility::ParseBufferToCOT(const char* buffer)
     return cot;
 }
 
+CoT_UtilityResult CoT_Utility::ParseTrackFromCoT(const char* buffer, Track& track)
+{
+    // Convert input buffer to string and remove garbage before <?xml
+    std::string xmlBuffer(buffer);
+    size_t position = xmlBuffer.find("<?xml");
+    if (position == std::string::npos)
+    {
+        return CoT_UtilityResult::InvalidXml;
+    }
+    xmlBuffer.erase(0, position);
+
+    // Verify XML structure
+    if (!VerifyXML(xmlBuffer))
+    {
+        return CoT_UtilityResult::InvalidXml;
+    }
+
+    // Parse XML document
+    pugi::xml_document doc;
+    pugi::xml_parse_result result = doc.load_string(xmlBuffer.c_str());
+    if (!result)
+    {
+        return CoT_UtilityResult::ProcessingError;
+    }
+
+    // Check for exactly one <event> node
+    int eventsSize = (int)doc.root().select_nodes("event").size();
+    if (eventsSize != 1)
+    {
+        return CoT_UtilityResult::InvalidEvent;
+    }
+
+    // Navigate to <event> and <detail>
+    pugi::xml_node event = doc.child("event");
+    pugi::xml_node detail = event.child("detail");
+    if (!detail)
+    {
+        return CoT_UtilityResult::InsufficientData; // No <detail> node
+    }
+
+    // Parse <track>
+    pugi::xml_node trackNode = detail.child("track");
+    if (!trackNode)
+    {
+        track = Track();
+        return CoT_UtilityResult::InsufficientData;
+    }
+
+    // Use Track::fromXml to parse the track node
+    track = Track::FromXml(trackNode);
+
+    // Success
+    return CoT_UtilityResult::Success;
+}
+
 std::string CoT_Utility::UtilityResultToString(CoT_UtilityResult error)
 {
     switch (error)
@@ -464,6 +519,8 @@ std::string CoT_Utility::UtilityResultToString(CoT_UtilityResult error)
         return "Invalid or empty input";
     case CoT_UtilityResult::InvalidTimeSubSchema:
         return "Invalid Time sub-schema";
+    case CoT_UtilityResult::InsufficientData:
+        return "Insufficient Data";
     case CoT_UtilityResult::ProcessingError:
         return "Processing error";
     case CoT_UtilityResult::NoModificationMade:
