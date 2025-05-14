@@ -2739,6 +2739,7 @@ enum class CoT_UtilityResult : int
     Success,                // No error
     InvalidEvent,           // XML is Missing Event tag
     InvalidPoint,           // XML is Missing Point tag
+    InvalidDetail,          // XML has Invalid Detail tag
     InvalidDate,
     InvalidTime,
     InvalidHow,

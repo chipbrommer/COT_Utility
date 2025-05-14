@@ -196,12 +196,37 @@ CoT_UtilityResult CoT_Utility::ParseCOT(std::string& buffer, CoT_Schema& cot)
         return CoT_UtilityResult::InvalidEvent;
     if (eventNode.select_nodes("point").size() != 1)
         return CoT_UtilityResult::InvalidPoint;
-    bool hasDetails = doc.root().select_nodes("detail").size() >= 1;
+    if (eventNode.select_nodes("detail").size() > 1)
+    {
+        // Only one <detail> tag allowed under <event>
+        return CoT_UtilityResult::InvalidXml;
+    }
 
-    // Parse event, point, detail
+    // Parse event, point, and detail (if present)
     cot.event = Event::FromXml(eventNode);
     cot.point = Point::Data::FromXml(eventNode.child("point"));
-    if (hasDetails) { cot.detail = Detail::FromXml(eventNode.child("detail")); }
+    if (pugi::xml_node detailNode = eventNode.child("detail"))
+    {
+        cot.detail = Detail::FromXml(detailNode);
+    }
+
+    // Validate parsed data
+    std::string error;
+    if (!cot.event.IsValid(&error)) 
+    {
+        std::cerr << "Parsed Event is invalid: " << error << std::endl;
+        return CoT_UtilityResult::InvalidEvent;
+    }
+    if (!cot.point.IsValid(&error)) 
+    {
+        std::cerr << "Parsed Point is invalid: " << error << std::endl;
+        return CoT_UtilityResult::InvalidPoint;
+    }
+    if (eventNode.child("detail") && !cot.detail.IsValid(&error)) 
+    {
+        std::cerr << "Parsed Detail is invalid: " << error << std::endl;
+        return CoT_UtilityResult::InvalidDetail;
+    }
 
     return CoT_UtilityResult::Success;
 }
