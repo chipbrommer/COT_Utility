@@ -11,6 +11,7 @@
 //          name                        reason included
 //          --------------------        ---------------------------------------
 #include <algorithm>
+#include <climits>                      // MAX and MIN
 #include <cmath>                        // isnan
 #include <fstream>                      // fstream
 #include <functional>                   // std::function
@@ -514,9 +515,12 @@ class DateTime : public Date, public Time
 {
 public:
     DateTime(unsigned year = 0, unsigned month = 0, unsigned day = 0,
-        unsigned hour = 0, unsigned minute = 0, double second = -1)
+             unsigned hour = 0, unsigned minute = 0, double second = -1)
         : Date(year, month, day), Time(hour, minute, second) {}
 
+    /// @brief Check if the DateTime object is valid
+    /// @param errorMsg Optional error message for invalid reason
+    /// @return true if valid, else false
     bool IsValid(std::string* errorMsg = nullptr) const 
     {
         std::string dateError, timeError;
@@ -535,19 +539,25 @@ public:
         return true;
     }
 
-    std::string ToTimestamp() const 
+    /// @brief Convert the DateTime object into a CoT Timestamp string
+    /// @return string containing the converted DateTime object
+    std::string ToCotTimestamp() const 
     {
         if (!IsValid()) return "";
         std::stringstream timestamp;
         timestamp << std::setfill('0') << std::setw(4) << year << "-"
-            << std::setfill('0') << std::setw(2) << month << "-"
-            << std::setfill('0') << std::setw(2) << day << "T"
-            << std::setfill('0') << std::setw(2) << hour << ":"
-            << std::setfill('0') << std::setw(2) << minute << ":"
-            << std::setfill('0') << std::setw(5) << std::fixed << std::setprecision(2) << second << "Z";
+                  << std::setfill('0') << std::setw(2) << month << "-"
+                  << std::setfill('0') << std::setw(2) << day << "T"
+                  << std::setfill('0') << std::setw(2) << hour << ":"
+                  << std::setfill('0') << std::setw(2) << minute << ":"
+                  << std::setfill('0') << std::setw(5) << std::fixed << std::setprecision(2) << second << "Z";
         return timestamp.str();
     }
 
+    /// @brief Parse a CoT Timestamp string into a DateTime object
+    /// @param str sring containing the value of for the timestamp (e.g. 2025-05-11T19:05:24.000Z)
+    /// @param errorMsg Optional error message if converting into DateTime object fails
+    /// @return DateTime object with parse time, or default if invalid
     static DateTime FromString(const std::string& str, std::string* errorMsg = nullptr) 
     {
         if (str.empty()) 
@@ -630,17 +640,100 @@ public:
         }
     }
 
+    /// @brief Creates a DateTime object from the current system clock (UTC)
+    /// @param errorMsg Optional error message if system time retrieval fails
+    /// @return DateTime object with current UTC time, or default if invalid
+    static DateTime FromSystemClock(std::string* errorMsg = nullptr)
+    {
+        // Get current time as epoch seconds
+        std::time_t now = std::time(nullptr);
+        if (now == static_cast<std::time_t>(-1))
+        {
+            if (errorMsg) *errorMsg = "Failed to retrieve system time";
+            return DateTime();
+        }
+
+        // Convert to UTC using gmtime (portable across Windows, Linux, macOS)
+        std::tm* utcTime = std::gmtime(&now);
+        if (!utcTime)
+        {
+            if (errorMsg) *errorMsg = "Failed to convert system time to UTC";
+            return DateTime();
+        }
+
+        // Populate DateTime fields
+        // tm_year is years since 1900, so add 1900
+        // tm_mon is 0-11, so add 1
+        unsigned year = utcTime->tm_year + 1900;
+        unsigned month = utcTime->tm_mon + 1;
+        unsigned day = utcTime->tm_mday;
+        unsigned hour = utcTime->tm_hour;
+        unsigned minute = utcTime->tm_min;
+        double second = utcTime->tm_sec; // No sub-second precision
+
+        DateTime dt(year, month, day, hour, minute, second);
+        if (!dt.IsValid(errorMsg))
+        {
+            return DateTime();
+        }
+        return dt;
+    }
+
+    /// @brief Sets DateTime fields with user-provided values
+    /// @param year Year (>= 1970), default 0 (no change)
+    /// @param month Month (1-12), default 0 (no change)
+    /// @param day Day (1-31, depending on month), default 0 (no change)
+    /// @param hour Hour (0-23), default UINT_MAX (no change)
+    /// @param minute Minute (0-59), default UINT_MAX (no change)
+    /// @param second Second (0-59.999...), default -1 (no change)
+    /// @param errorMsg Optional error message if validation fails
+    /// @return True if set successfully, false if invalid
+    bool Set(unsigned year = 0, unsigned month = 0, unsigned day = 0,
+             unsigned hour = UINT_MAX, unsigned minute = UINT_MAX, double second = -1,
+             std::string* errorMsg = nullptr)
+    {
+        // Store current values
+        DateTime temp = *this;
+
+        // Update only provided fields
+        if (year != 0) temp.year = year;
+        if (month != 0) temp.month = month;
+        if (day != 0) temp.day = day;
+        if (hour != UINT_MAX) temp.hour = hour;
+        if (minute != UINT_MAX) temp.minute = minute;
+        if (second != -1) temp.second = second;
+
+        // Validate
+        if (!temp.IsValid(errorMsg))
+        {
+            return false;
+        }
+
+        // Update fields if valid
+        *this = temp;
+        return true;
+    }
+
+    /// @brief Set the current DateTime object from the current system clock (UTC)
+    void SetFromSystemClock()
+    {
+        *this = FromSystemClock();
+    }
+
+    /// @brief Equality comparison operator
     bool operator==(const DateTime& other) const 
     {
         return static_cast<const Date&>(*this) == static_cast<const Date&>(other) &&
-            static_cast<const Time&>(*this) == static_cast<const Time&>(other);
+               static_cast<const Time&>(*this) == static_cast<const Time&>(other);
     }
 
+    /// @brief Inequality comparison operator
     bool operator!=(const DateTime& other) const 
     { 
         return !(*this == other); 
     }
 
+    /// @brief Friend class for convenient printing
     friend std::ostream& operator<<(std::ostream& os, const DateTime& dt) 
     {
         os << static_cast<const Date&>(dt) << "T" << static_cast<const Time&>(dt) << "Z";
@@ -786,9 +879,9 @@ public:
             << " version=\"" << std::fixed << std::setprecision(1) << version << "\""
             << " type=\"" << type << "\""
             << " uid=\"" << uid << "\""
-            << " time=\"" << time.ToTimestamp() << "\""
-            << " start=\"" << start.ToTimestamp() << "\""
-            << " stale=\"" << stale.ToTimestamp() << "\""
+            << " time=\"" << time.ToCotTimestamp() << "\""
+            << " start=\"" << start.ToCotTimestamp() << "\""
+            << " stale=\"" << stale.ToCotTimestamp() << "\""
             << " how=\"" << how << "\">";
         return oss.str();
     }
