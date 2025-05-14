@@ -178,7 +178,7 @@ CoT_UtilityResult CoT_Utility::AcknowledgeReceivedCOTMessage(std::string& receiv
     }
 }
 
-CoT_UtilityResult ParseCOT(std::string& buffer, CoT_Schema& cot) 
+CoT_UtilityResult CoT_Utility::ParseCOT(std::string& buffer, CoT_Schema& cot)
 {
     // Remove any trash before "<?xml"
     size_t position = buffer.find("<?xml");
@@ -348,8 +348,8 @@ CoT_UtilityResult CoT_Utility::ParseTypeAttribute(std::string& type, Point::Type
     }
     else
     {
-        ind = PointTypeCharToEnum(values[1]);
-        loc = LocationTypeCharToEnum(values[2]);
+        ind = Point::CharToType(values[1]);
+        loc = Location::CharToType(values[2]);
     }
 
     return CoT_UtilityResult::Success;
@@ -383,8 +383,8 @@ CoT_UtilityResult CoT_Utility::ParseHowAttribute(std::string& type, How::Entry::
     }
     else
     {
-        how = HowEntryTypeCharToEnum(values[0]);
-        data = HowDataTypeCharToEnum(values[1], how);
+        how = How::Entry::CharToType(values[0]);
+        data = How::Data::CharToType(values[1], how);
     }
 
     return CoT_UtilityResult::Success;
@@ -496,5 +496,3 @@ CoT_UtilityResult CoT_Utility::ParseTimeStamp(std::string& type, DateTime& dt)
 
     return CoT_UtilityResult::Success;
 }
-
-

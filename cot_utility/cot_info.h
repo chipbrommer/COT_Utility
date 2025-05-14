@@ -303,7 +303,7 @@ namespace How
         /// @brief Converts a string into a Type enumeration value
         /// @param entry string to be converted.
         /// @return Type enum conversion
-        Type CharToType(std::string& entry)
+        static const Type CharToType(std::string& entry)
         {
                  if (entry == "h")   return How::Entry::Type::h;
             else if (entry == "m")   return How::Entry::Type::m;
@@ -348,18 +348,18 @@ namespace How
         };
 
         static const std::unordered_map<std::string, Type> StringToType = {
-        //    {"Estimated", Type::e}, 
-        //    {"Calculated", Type::cal}, 
-        //    {"Transcribed", Type::t},
-        //    {"Cut and Paste", Type::paste}, 
-        //    {"Mensurated", Type::i}, 
-        //    {"Derived From GPS", Type::g},
-        //    {"Magnetic", Type::m}, 
-        //    {"Simulated", Type::s}, 
-        //    {"Fused", Type::f},
-        //    {"Configured", Type::con}, 
-        //    {"Predicted", Type::pred}, 
-        //    {"Relayed", Type::r}
+            {"Estimated", Type::e}, 
+            {"Calculated", Type::cal}, 
+            {"Transcribed", Type::t},
+            {"Cut and Paste", Type::paste}, 
+            {"Mensurated", Type::i}, 
+            {"Derived From GPS", Type::g},
+            {"Magnetic", Type::m}, 
+            {"Simulated", Type::s}, 
+            {"Fused", Type::f},
+            {"Configured", Type::con}, 
+            {"Predicted", Type::pred}, 
+            {"Relayed", Type::r}
         };
 
         /// @brief Converts a string into a Type enumeration value
@@ -807,7 +807,9 @@ public:
                 std::vector<std::string> typeParts;
                 std::stringstream typeStream(event.type);
                 std::string part;
-                while (std::getline(typeStream, part, '-')) {
+
+                while (std::getline(typeStream, part, '-')) 
+                {
                     typeParts.push_back(part);
                 }
                 if (typeParts.size() >= 3)
@@ -850,7 +852,7 @@ public:
                 if (howParts.size() >= 2)
                 {
                     event.howEntry = How::Entry::CharToType(howParts[0]);
-                    event.howData = How::Data::Type::CharToType(howParts[1], event.howEntry);
+                    event.howData = How::Data::CharToType(howParts[1], event.howEntry);
                 }
             }
         }
