@@ -41,9 +41,9 @@ std::string CoT_Utility::GenerateXMLCOTMessage(CoT_Schema& cot)
     // Event start
     msg << "<event version=\"2.0\" uid=\"" << cot.event.uid 
         << "\" type=\"" << cot.event.type 
-        << "\" time=\"" << cot.event.time.ToCOTTimestamp() 
-        << "\" start=\"" << cot.event.time.ToCOTTimestamp() 
-        << "\" stale=\"" << cot.event.stale.ToCOTTimestamp() 
+        << "\" time=\"" << cot.event.time.ToTimestamp() 
+        << "\" start=\"" << cot.event.time.ToTimestamp()
+        << "\" stale=\"" << cot.event.stale.ToTimestamp()
         << "\" how=\"" << cot.event.how 
         << "\">";
 
@@ -178,97 +178,31 @@ CoT_UtilityResult CoT_Utility::AcknowledgeReceivedCOTMessage(std::string& receiv
     }
 }
 
-CoT_UtilityResult CoT_Utility::ParseCOT(std::string& buffer, CoT_Schema& cot)
+CoT_UtilityResult ParseCOT(std::string& buffer, CoT_Schema& cot) 
 {
-    // Remove any trash that may come in before the "<?xml" tag.
+    // Remove any trash before "<?xml"
     size_t position = buffer.find("<?xml");
+    if (position == std::string::npos) return CoT_UtilityResult::InvalidXml;
     buffer.erase(0, position);
 
-    // Verify buffer is good XML data first. 
-    if (!VerifyXML(buffer))
-    {
-        return CoT_UtilityResult::InvalidXml;
-    }
-
-    // Create a parsed xml document.
+    // Parse XML
     pugi::xml_document doc;
     pugi::xml_parse_result result = doc.load_string(buffer.c_str());
+    if (!result) return CoT_UtilityResult::ProcessingError;
 
-    if (!result)
-    {
-        return CoT_UtilityResult::ProcessingError;
-    }
-
-    // Set up nodes for ease and easier reading later
-    pugi::xml_node root = doc.root();
-    pugi::xml_node events = doc.child("event");
-    pugi::xml_node points = doc.child("event").child("point");
-    pugi::xml_node details = doc.child("event").child("detail");
-    int eventsSize = (int)doc.root().select_nodes("event").size();
-    int pointsSize = (int)events.select_nodes("point").size();
-    int detailsSize = (int)events.select_nodes("detail").size();
-
-    // Catch bad data:
-    //      <event> and <point> are required data for COT message and there should
-    //      be exactly one of each schema. 
-    //      We don't check <detail> because it is optional data. 
-
-    if (eventsSize != 1)
-    {
+    // Validate structure
+    pugi::xml_node eventNode = doc.child("event");
+    if (!eventNode || doc.root().select_nodes("event").size() != 1)
         return CoT_UtilityResult::InvalidEvent;
-    }
-    else if (pointsSize != 1)
-    {
+    if (eventNode.select_nodes("point").size() != 1)
         return CoT_UtilityResult::InvalidPoint;
-    }
+    bool hasDetails = doc.root().select_nodes("detail").size() >= 1;
 
-    // Parse <event> tag and gather data. 
-    for (auto&& event : root.children("event"))
-    {
-        std::string time, start, stale;
-        // Read attribute value
-        pugi::xml_attribute attr;
-        (attr = event.attribute("version")) ? cot.event.version = attr.as_double() : cot.event.version = 0;
+    // Parse event, point, detail
+    cot.event = Event::FromXml(eventNode);
+    cot.point = Point::Data::FromXml(eventNode.child("point"));
+    if (hasDetails) { cot.detail = Detail::FromXml(eventNode.child("detail")); }
 
-        // Parse Type attribute into data points.
-        (attr = event.attribute("type")) ? cot.event.type = attr.as_string() : cot.event.type = "";
-        ParseTypeAttribute(cot.event.type, cot.event.indicator, cot.event.location);
-
-        // Parse UID
-        (attr = event.attribute("uid")) ? cot.event.uid = attr.as_string() : cot.event.uid = "";
-
-        // Parse times into data points in COT structure
-        (attr = event.attribute("time")) ? time = attr.as_string() : time = "";
-        ParseTimeAttribute(time, cot.event.time);
-        (attr = event.attribute("start")) ? start = attr.as_string() : start = "";
-        ParseTimeAttribute(start, cot.event.start);
-        (attr = event.attribute("stale")) ? stale = attr.as_string() : stale = "";
-        ParseTimeAttribute(stale, cot.event.stale);
-
-        // Parse How attribute into data points.
-        (attr = event.attribute("how")) ? cot.event.how = attr.as_string() : cot.event.how = "";
-        ParseHowAttribute(cot.event.how, cot.event.howEntry, cot.event.howData);
-
-        // Parse <event><point> tag and gather data. 
-        for (auto&& point : event.children("point"))
-        {
-            // Read attribute value
-            pugi::xml_attribute attr1;
-            (attr1 = point.attribute("lat")) ? cot.point.latitude = attr1.as_double() : cot.point.latitude = 0;
-            (attr1 = point.attribute("lon")) ? cot.point.longitude = attr1.as_double() : cot.point.longitude = 0;
-            (attr1 = point.attribute("hae")) ? cot.point.hae = attr1.as_double() : cot.point.hae = 0;
-            (attr1 = point.attribute("ce")) ? cot.point.circularError = attr1.as_double() : cot.point.circularError = 0;
-            (attr1 = point.attribute("le")) ? cot.point.linearError = attr1.as_double() : cot.point.linearError = 0;
-        }
-
-        // Parse <event><detail> 
-        for (auto&& detail : event.children("detail"))
-        {
-            cot.detail = Detail::FromXml(detail);
-        }
-    }
-
-    // Success
     return CoT_UtilityResult::Success;
 }
 
@@ -333,7 +267,7 @@ CoT_UtilityResult CoT_Utility::ParseTrackFromCoT(const char* buffer, Track& trac
         return CoT_UtilityResult::InsufficientData;
     }
 
-    // Use Track::fromXml to parse the track node
+    // Use Track::FromXml to parse the track node
     track = Track::FromXml(trackNode);
 
     // Success

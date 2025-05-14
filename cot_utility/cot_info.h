@@ -10,12 +10,17 @@
 //  Include files:
 //          name                        reason included
 //          --------------------        ---------------------------------------
+#include <algorithm>
 #include <cmath>                        // isnan
+#include <fstream>                      // fstream
+#include <functional>                   // std::function
 #include <iomanip>                      // setw
-#include <limits>                     
+#include <iostream>
+#include <limits>      
 #include <map>
 #include <pugixml.hpp>                  // pugi xml
 #include <sstream>                      // sstream
+#include <string>
 #include <unordered_map>                // maps
 #include <vector>                       // links vector
 //
@@ -34,8 +39,7 @@ namespace Root
         Error
     };
 
-    static const std::unordered_map<Type, std::string> TypeToString
-    {
+    static const std::unordered_map<Type, std::string> TypeToString = {
         {Type::a, "Atoms"},
         {Type::b, "Bits"},
         {Type::t, "Tasking"},
@@ -43,6 +47,15 @@ namespace Root
         {Type::c, "Capability"},
         {Type::res, "Reservation"},
         {Type::Error, "Error"}
+    };
+
+    static const std::unordered_map<std::string, Type> StringToType = {
+        {"Atoms", Type::a}, 
+        {"Bits", Type::b}, 
+        {"Tasking", Type::t},
+        {"Reply", Type::r}, 
+        {"Capability", Type::c}, 
+        {"Reservation", Type::res}
     };
 };
 
@@ -64,8 +77,7 @@ namespace Point
         Error
     };
 
-    static const std::unordered_map<Type, std::string> TypeToString
-    {
+    static const std::unordered_map<Type, std::string> TypeToString = {
         {Point::Type::p, "Pending"},
         {Point::Type::u, "Unknown"},
         {Point::Type::a, "Assumed Friend"},
@@ -80,6 +92,20 @@ namespace Point
         {Point::Type::Error, "Error"}
     };
 
+    static const std::unordered_map<std::string, Type> StringToType = {
+        {"Pending", Type::p}, 
+        {"Unknown", Type::u}, 
+        {"Assumed Friend", Type::a},
+        {"Friend", Type::f}, 
+        {"Neutral", Type::n}, 
+        {"Suspect", Type::s},
+        {"Hostile", Type::h}, 
+        {"Joker", Type::j}, 
+        {"Faker", Type::k},
+        {"None Specified", Type::o}, 
+        {"Other", Type::x}
+    };
+
     class Data 
     {
     public:
@@ -89,46 +115,82 @@ namespace Point
         double circularError;
         double linearError;
 
-        Data(double latitude = NAN, double longitude = NAN, double hae = NAN,
-            double circularError = NAN, double linearError = NAN)
+        Data(double latitude = std::numeric_limits<double>::quiet_NaN(),
+            double longitude = std::numeric_limits<double>::quiet_NaN(),
+            double hae = std::numeric_limits<double>::quiet_NaN(),
+            double circularError = std::numeric_limits<double>::quiet_NaN(),
+            double linearError = std::numeric_limits<double>::quiet_NaN())
             : latitude(latitude), longitude(longitude), hae(hae),
-            circularError(circularError), linearError(linearError) {}
+            circularError(circularError), linearError(linearError) {
+        }
 
-        bool IsValid() const 
+        bool IsValid(std::string* errorMsg = nullptr) const 
         {
-            return !std::isnan(latitude) && !std::isnan(longitude) &&
-                !std::isnan(hae) && !std::isnan(circularError) && !std::isnan(linearError);
+            if (std::isnan(latitude) || std::isnan(longitude) ||
+                std::isnan(hae) || std::isnan(circularError) || std::isnan(linearError)) 
+            {
+                if (errorMsg) *errorMsg = "Point is missing required fields";
+                return false;
+            }
+            return true;
         }
 
         bool operator==(const Data& other) const 
         {
-            return latitude == other.latitude &&
-                longitude == other.longitude &&
-                hae == other.hae &&
-                circularError == other.circularError &&
-                linearError == other.linearError;
+            constexpr double EPSILON = 1e-6;
+            auto equal = [](double a, double b) 
+                {
+                    return (std::isnan(a) && std::isnan(b)) || std::abs(a - b) < EPSILON;
+                };
+
+            return equal(latitude, other.latitude) && equal(longitude, other.longitude) &&
+                equal(hae, other.hae) && equal(circularError, other.circularError) &&
+                equal(linearError, other.linearError);
         }
 
         bool operator!=(const Data& other) const 
+        { 
+            return !(*this == other); 
+        }
+
+        std::string ToXml() const 
         {
-            return !(*this == other);
+            if (!IsValid()) return "<point/>";
+            std::ostringstream oss;
+            oss << "<point lat=\"" << std::fixed << std::setprecision(6) << latitude
+                << "\" lon=\"" << longitude << "\" hae=\"" << hae
+                << "\" ce=\"" << circularError << "\" le=\"" << linearError << "\"/>";
+            return oss.str();
+        }
+
+        static Data FromXml(const pugi::xml_node& node) 
+        {
+            Data point;
+            try {
+                if (auto attr = node.attribute("lat")) point.latitude = attr.as_double(std::numeric_limits<double>::quiet_NaN());
+                if (auto attr = node.attribute("lon")) point.longitude = attr.as_double(std::numeric_limits<double>::quiet_NaN());
+                if (auto attr = node.attribute("hae")) point.hae = attr.as_double(std::numeric_limits<double>::quiet_NaN());
+                if (auto attr = node.attribute("ce")) point.circularError = attr.as_double(std::numeric_limits<double>::quiet_NaN());
+                if (auto attr = node.attribute("le")) point.linearError = attr.as_double(std::numeric_limits<double>::quiet_NaN());
+            }
+            catch (const std::exception& e) {
+                std::cerr << "Error parsing point attributes: " << e.what() << std::endl;
+            }
+            return point;
         }
 
         friend std::ostream& operator<<(std::ostream& os, const Data& point) 
         {
             os << "Point: ";
-            if (!point.IsValid()) { os << " -NOT VALID- "; }
-            os << "\n"
-                << "\tLatitude:        " << point.latitude << "\n"
-                << "\tLongitude:       " << point.longitude << "\n"
-                << "\tHAE:             " << point.hae << "\n"
-                << "\tCircular Error:  " << point.circularError << "\n"
-                << "\tLinear Error:    " << point.linearError << "\n"
-                << "\n";
+            if (!point.IsValid()) os << " -NOT VALID- ";
+            os << "\n\tLatitude: " << (std::isnan(point.latitude) ? "NaN" : std::to_string(point.latitude))
+                << "\n\tLongitude: " << (std::isnan(point.longitude) ? "NaN" : std::to_string(point.longitude))
+                << "\n\tHAE: " << (std::isnan(point.hae) ? "NaN" : std::to_string(point.hae))
+                << "\n\tCE: " << (std::isnan(point.circularError) ? "NaN" : std::to_string(point.circularError))
+                << "\n\tLE: " << (std::isnan(point.linearError) ? "NaN" : std::to_string(point.linearError)) << "\n";
             return os;
         }
     };
-
 };
 
 namespace Location
@@ -154,6 +216,16 @@ namespace Location
         {Type::X, "Other"},
         {Type::Error, "Error"}
     };
+
+    static const std::unordered_map<std::string, Type> StringToType
+    {
+        {"Space", Type::P}, 
+        {"Air", Type::A}, 
+        {"Ground", Type::G},
+        {"Sea Surface", Type::S}, 
+        {"Sea Subsurface", Type::U}, 
+        {"Other", Type::X}
+    };
 };
 
 namespace How
@@ -173,6 +245,12 @@ namespace How
             {Type::h, "Human"},
             {Type::m, "Machine"},
             {Type::Error, "Error"}
+        };
+
+        static const std::unordered_map<std::string, Type> StringToType
+        {
+            {"Human", Type::h}, 
+            {"Machine", Type::m}
         };
     };
 
@@ -196,8 +274,7 @@ namespace How
             Error
         };
 
-        static const std::unordered_map<Type, std::string> TypeToString
-        {
+        static const std::unordered_map<Type, std::string> TypeToString = {
             {Type::e, "Estimated"},
             {Type::cal, "Calculated"},
             {Type::t, "Transcribed"},
@@ -211,6 +288,21 @@ namespace How
             {Type::pred, "Predicted"},
             {Type::r, "Relayed"},
             {Type::Error, "Error"}
+        };
+
+        static const std::unordered_map<std::string, Type> StringToType = {
+        //    {"Estimated", Type::e}, 
+        //    {"Calculated", Type::cal}, 
+        //    {"Transcribed", Type::t},
+        //    {"Cut and Paste", Type::paste}, 
+        //    {"Mensurated", Type::i}, 
+        //    {"Derived From GPS", Type::g},
+        //    {"Magnetic", Type::m}, 
+        //    {"Simulated", Type::s}, 
+        //    {"Fused", Type::f},
+        //    {"Configured", Type::con}, 
+        //    {"Predicted", Type::pred}, 
+        //    {"Relayed", Type::r}
         };
     };
 };
@@ -226,9 +318,25 @@ public:
     Date(unsigned year = 0, unsigned month = 0, unsigned day = 0)
         : year(year), month(month), day(day) {}
 
-    bool IsValid() const 
+    bool IsValid(std::string* errorMsg = nullptr) const 
     {
-        return year > 0 && month > 0 && day > 0;
+        if (year < 1970) 
+        {
+            if (errorMsg) *errorMsg = "Year must be >= 1970";
+            return false;
+        }
+        if (month < 1 || month > 12) 
+        {
+            if (errorMsg) *errorMsg = "Month must be between 1 and 12";
+            return false;
+        }
+        unsigned maxDay = DaysInMonth();
+        if (day < 1 || day > maxDay) 
+        {
+            if (errorMsg) *errorMsg = "Day must be between 1 and " + std::to_string(maxDay);
+            return false;
+        }
+        return true;
     }
 
     bool operator==(const Date& other) const 
@@ -236,10 +344,7 @@ public:
         return year == other.year && month == other.month && day == other.day;
     }
 
-    bool operator!=(const Date& other) const 
-    {
-        return !(*this == other);
-    }
+    bool operator!=(const Date& other) const { return !(*this == other); }
 
     friend std::ostream& operator<<(std::ostream& os, const Date& date) 
     {
@@ -247,6 +352,19 @@ public:
             << std::setfill('0') << std::setw(2) << date.month << "-"
             << std::setfill('0') << std::setw(2) << date.day;
         return os;
+    }
+
+private:
+    unsigned DaysInMonth() const 
+    {
+        static const unsigned days[12] = { 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
+        if (month == 2 && IsLeapYear()) return 29;
+        return days[month - 1];
+    }
+
+    bool IsLeapYear() const 
+    {
+        return (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0);
     }
 };
 
@@ -261,19 +379,36 @@ public:
     Time(unsigned hour = 0, unsigned minute = 0, double second = -1)
         : hour(hour), minute(minute), second(second) {}
 
-    bool IsValid() const 
+    bool IsValid(std::string* errorMsg = nullptr) const 
     {
-        return second >= 0 && second < 60.0;
+        if (hour >= 24) 
+        {
+            if (errorMsg) *errorMsg = "Hour must be < 24";
+            return false;
+        }
+        if (minute >= 60) 
+        {
+            if (errorMsg) *errorMsg = "Minute must be < 60";
+            return false;
+        }
+        if (second < 0 || second >= 60.0) 
+        {
+            if (errorMsg) *errorMsg = "Second must be between 0 and 59.999...";
+            return false;
+        }
+        return true;
     }
 
     bool operator==(const Time& other) const 
     {
-        return hour == other.hour && minute == other.minute && second == other.second;
+        constexpr double EPSILON = 1e-6;
+        return hour == other.hour && minute == other.minute &&
+            (std::isnan(second) && std::isnan(other.second) || std::abs(second - other.second) < EPSILON);
     }
 
     bool operator!=(const Time& other) const 
-    {
-        return !(*this == other);
+    { 
+        return !(*this == other); 
     }
 
     friend std::ostream& operator<<(std::ostream& os, const Time& time) 
@@ -293,13 +428,27 @@ public:
         unsigned hour = 0, unsigned minute = 0, double second = -1)
         : Date(year, month, day), Time(hour, minute, second) {}
 
-    bool IsValid() const 
+    bool IsValid(std::string* errorMsg = nullptr) const 
     {
-        return Date::IsValid() && Time::IsValid();
+        std::string dateError, timeError;
+        bool dateValid = Date::IsValid(&dateError);
+        bool timeValid = Time::IsValid(&timeError);
+        if (!dateValid || !timeValid) 
+        {
+            if (errorMsg) 
+            {
+                *errorMsg = "";
+                if (!dateValid) *errorMsg += "Date invalid: " + dateError + "; ";
+                if (!timeValid) *errorMsg += "Time invalid: " + timeError;
+            }
+            return false;
+        }
+        return true;
     }
 
-    std::string ToCOTTimestamp() const 
+    std::string ToTimestamp() const 
     {
+        if (!IsValid()) return "";
         std::stringstream timestamp;
         timestamp << std::setfill('0') << std::setw(4) << year << "-"
             << std::setfill('0') << std::setw(2) << month << "-"
@@ -310,6 +459,88 @@ public:
         return timestamp.str();
     }
 
+    static DateTime FromString(const std::string& str, std::string* errorMsg = nullptr) 
+    {
+        if (str.empty()) 
+        {
+            if (errorMsg) *errorMsg = "Empty timestamp string";
+            return DateTime();
+        }
+
+        // Split on 'T' to separate date and time
+        std::vector<std::string> parts;
+        std::stringstream stream(str);
+        std::string part;
+        while (std::getline(stream, part, 'T')) 
+        {
+            parts.push_back(part);
+        }
+
+        if (parts.size() != 2) 
+        {
+            if (errorMsg) *errorMsg = "Invalid timestamp format: missing 'T' separator";
+            return DateTime();
+        }
+
+        // Parse date (YYYY-MM-DD)
+        std::vector<std::string> dateParts;
+        std::stringstream dateStream(parts[0]);
+        while (std::getline(dateStream, part, '-')) 
+        {
+            dateParts.push_back(part);
+        }
+
+        if (dateParts.size() != 3) 
+        {
+            if (errorMsg) *errorMsg = "Invalid date format: expected YYYY-MM-DD";
+            return DateTime();
+        }
+
+        // Parse time (hh:mm:ss.sssZ)
+        std::string timeStr = parts[1];
+        if (timeStr.empty() || timeStr.back() != 'Z') 
+        {
+            if (errorMsg) *errorMsg = "Invalid time format: missing 'Z' suffix";
+            return DateTime();
+        }
+
+        timeStr.pop_back(); // Remove 'Z'
+        std::vector<std::string> timeParts;
+        std::stringstream timeStream(timeStr);
+        while (std::getline(timeStream, part, ':')) 
+        {
+            timeParts.push_back(part);
+        }
+
+        if (timeParts.size() != 3) 
+        {
+            if (errorMsg) *errorMsg = "Invalid time format: expected hh:mm:ss.sss";
+            return DateTime();
+        }
+
+        try 
+        {
+            unsigned year = std::stoul(dateParts[0]);
+            unsigned month = std::stoul(dateParts[1]);
+            unsigned day = std::stoul(dateParts[2]);
+            unsigned hour = std::stoul(timeParts[0]);
+            unsigned minute = std::stoul(timeParts[1]);
+            double second = std::stod(timeParts[2]);
+
+            DateTime dt(year, month, day, hour, minute, second);
+            if (!dt.IsValid(errorMsg)) 
+            {
+                return DateTime();
+            }
+            return dt;
+        }
+        catch (const std::exception& e) 
+        {
+            if (errorMsg) *errorMsg = "Parsing error: " + std::string(e.what());
+            return DateTime();
+        }
+    }
+
     bool operator==(const DateTime& other) const 
     {
         return static_cast<const Date&>(*this) == static_cast<const Date&>(other) &&
@@ -317,378 +548,761 @@ public:
     }
 
     bool operator!=(const DateTime& other) const 
-    {
-        return !(*this == other);
+    { 
+        return !(*this == other); 
     }
 
     friend std::ostream& operator<<(std::ostream& os, const DateTime& dt) 
     {
-        os << std::setfill('0') << std::setw(4) << dt.year << "-"
-            << std::setfill('0') << std::setw(2) << dt.month << "-"
-            << std::setfill('0') << std::setw(2) << dt.day << " "
-            << std::setfill('0') << std::setw(2) << dt.hour << ":"
-            << std::setfill('0') << std::setw(2) << dt.minute << ":"
-            << std::setfill('0') << std::setw(5) << std::fixed << std::setprecision(2) << dt.second;
+        os << static_cast<const Date&>(dt) << "T" << static_cast<const Time&>(dt) << "Z";
         return os;
     }
 };
 
 /// @brief A COT Message subschema class for Event data 
-class Event
+class Event 
 {
 public:
-    double              version;           /// Decimal Schema version of this event instance
-    std::string         type;              /// String Hierarchically organized hint about his event
-    Point::Type         indicator;         /// Type enum of the indicator type from the parse 'type' string
-    Location::Type      location;          /// Type enum of the indicator type from the parse 'location' string
-    std::string         uid;               /// Globally unique name for this information on this event
-    DateTime            time;              /// Time stamp: when the event was generated
-    DateTime            start;             /// Starting time when an event should be considered valid
-    DateTime            stale;             /// Ending time when an event  should no longer be considered valid
-    std::string         how;               /// Gives a hint about how the coordinates were generated
-    How::Entry::Type    howEntry;          /// Grab how the entry point was created from how string.
-    How::Data::Type     howData;           /// Grab the data for the entry type from how string. 
+    double version;
+    std::string type;
+    Root::Type rootType;
+    Point::Type indicator;
+    Location::Type location;
+    std::string uid;
+    DateTime time;
+    DateTime start;
+    DateTime stale;
+    std::string how;
+    How::Entry::Type howEntry;
+    How::Data::Type howData;
 
-    /// @brief Constructor - Initializes Everything
-    Event(const double          version = 0,
-        const std::string       type = "",
-        const Point::Type       indicator = Point::Type::Error,
-        const Location::Type    location = Location::Type::Error,
-        const std::string       uid = "",
-        const DateTime          time = DateTime(),
-        const DateTime          start = DateTime(),
-        const DateTime          stale = DateTime(),
-        const std::string       how = "",
-        const How::Entry::Type    howEntry = How::Entry::Type::Error,
-        const How::Data::Type     howData = How::Data::Type::Error) :
-        version(version), type(type), indicator(indicator), location(location),
+    Event(double version = INVALID_VERSION,
+        const std::string& type = INVALID_STRING,
+        Root::Type rootType = Root::Type::Error,
+        Point::Type indicator = Point::Type::Error,
+        Location::Type location = Location::Type::Error,
+        const std::string& uid = INVALID_STRING,
+        const DateTime& time = DateTime(),
+        const DateTime& start = DateTime(),
+        const DateTime& stale = DateTime(),
+        const std::string& how = INVALID_STRING,
+        How::Entry::Type howEntry = How::Entry::Type::Error,
+        How::Data::Type howData = How::Data::Type::Error)
+        : version(version), type(type), rootType(rootType), indicator(indicator), location(location),
         uid(uid), time(time), start(start), stale(stale), how(how),
-        howEntry(howEntry), howData(howData)
-    {}
+        howEntry(howEntry), howData(howData) {}
 
-    /// @brief Equal comparison operator
-    bool operator == (const Event& event) const
+    bool operator==(const Event& other) const 
     {
-        return  (version == event.version) &&
-                (type == event.type) &&
-                (indicator == event.indicator) &&
-                (location == event.location) &&
-                (uid == event.uid) &&
-                (time == event.time) &&
-                (start == event.start) &&
-                (stale == event.stale) &&
-                (how == event.how) &&
-                (howEntry == event.howEntry) &&
-                (howData == event.howData);
+        constexpr double EPSILON = 1e-6;
+        bool versionEqual = (std::isnan(version) && std::isnan(other.version)) ||
+            std::abs(version - other.version) < EPSILON;
+        return versionEqual &&
+            type == other.type &&
+            rootType == other.rootType &&
+            indicator == other.indicator &&
+            location == other.location &&
+            uid == other.uid &&
+            time == other.time &&
+            start == other.start &&
+            stale == other.stale &&
+            how == other.how &&
+            howEntry == other.howEntry &&
+            howData == other.howData;
     }
 
-    /// @brief Equal comparison operator
-    bool operator != (const Event& event) const
-    {
-        return !(*this == event);
+    bool operator!=(const Event& other) const 
+    { 
+        return !(*this == other); 
     }
 
-    /// @brief Does class have valid data ? 
-    bool IsValid() const
+    bool IsValid(std::string* errorMsg = nullptr) const 
     {
-        return  (version > 0) && (!type.empty()) && (!uid.empty()) && (time.IsValid()) &&
-            (start.IsValid()) && (stale.IsValid()) && (!how.empty());
+        bool valid = true;
+        std::string errors;
+
+        if (std::isnan(version) || version <= 0) 
+        {
+            valid = false;
+            errors += "Invalid version; ";
+        }
+        if (type.empty()) 
+        {
+            valid = false;
+            errors += "Empty type; ";
+        }
+        if (rootType == Root::Type::Error) 
+        {
+            valid = false;
+            errors += "Invalid rootType; ";
+        }
+        if (indicator == Point::Type::Error) 
+        {
+            valid = false;
+            errors += "Invalid indicator; ";
+        }
+        if (location == Location::Type::Error) 
+        {
+            valid = false;
+            errors += "Invalid location; ";
+        }
+        if (uid.empty()) 
+        {
+            valid = false;
+            errors += "Empty uid; ";
+        }
+        if (!time.IsValid()) 
+        {
+            valid = false;
+            errors += "Invalid time; ";
+        }
+        if (!start.IsValid()) 
+        {
+            valid = false;
+            errors += "Invalid start; ";
+        }
+        if (!stale.IsValid()) 
+        {
+            valid = false;
+            errors += "Invalid stale; ";
+        }
+        if (how.empty()) 
+        {
+            valid = false;
+            errors += "Empty how; ";
+        }
+        if (howEntry == How::Entry::Type::Error) 
+        {
+            valid = false;
+            errors += "Invalid howEntry; ";
+        }
+        if (howData == How::Data::Type::Error) 
+        {
+            valid = false;
+            errors += "Invalid howData; ";
+        }
+
+        if (!valid && errorMsg) 
+        {
+            *errorMsg = errors.empty() ? "Event is invalid" : errors;
+        }
+        return valid;
     }
 
-    /// @brief Print the class
-    friend std::ostream& operator<<(std::ostream& os, const Event& event)
+    std::string ToXml() const 
     {
-        os << "Event: ";  if (!event.IsValid()) { os << " -NOT VALID- "; }
+        if (!IsValid()) return "";
+        std::ostringstream oss;
+        oss << "<event"
+            << " version=\"" << std::fixed << std::setprecision(1) << version << "\""
+            << " type=\"" << type << "\""
+            << " uid=\"" << uid << "\""
+            << " time=\"" << time.ToTimestamp() << "\""
+            << " start=\"" << start.ToTimestamp() << "\""
+            << " stale=\"" << stale.ToTimestamp() << "\""
+            << " how=\"" << how << "\">";
+        return oss.str();
+    }
+
+    static Event FromXml(const pugi::xml_node& node)
+    {
+        Event event;
+        try
+        {
+            if (auto attr = node.attribute("version"))
+                event.version = attr.as_double(INVALID_VERSION);
+            if (auto attr = node.attribute("type"))
+            {
+                event.type = attr.as_string();
+                // Parse type: e.g., "a-f-G"
+                std::vector<std::string> typeParts;
+                std::stringstream typeStream(event.type);
+                std::string part;
+                while (std::getline(typeStream, part, '-')) {
+                    typeParts.push_back(part);
+                }
+                if (typeParts.size() >= 3)
+                {
+                    auto rootIt = Root::StringToType.find(Root::TypeToString.at(
+                        Root::TypeToString.find(typeParts[0]) != Root::TypeToString.end() ?
+                        static_cast<Root::Type>(std::stoi(typeParts[0])) : Root::Type::Error));
+                    event.rootType = rootIt != Root::StringToType.end() ? rootIt->second : Root::Type::Error;
+                    auto indIt = Point::StringToType.find(Point::TypeToString.at(
+                        Point::TypeToString.find(typeParts[1]) != Point::TypeToString.end() ?
+                        static_cast<Point::Type>(std::stoi(typeParts[1])) : Point::Type::Error));
+                    event.indicator = indIt != Point::StringToType.end() ? indIt->second : Point::Type::Error;
+                    auto locIt = Location::StringToType.find(Location::TypeToString.at(
+                        Location::TypeToString.find(typeParts[2]) != Root::TypeToString.end() ?
+                        static_cast<Location::Type>(std::stoi(typeParts[2])) : Location::Type::Error));
+                    event.location = locIt != Location::StringToType.end() ? locIt->second : Location::Type::Error;
+                }
+            }
+            if (auto attr = node.attribute("uid")) event.uid = attr.as_string();
+            if (auto attr = node.attribute("time"))
+            {
+                std::string error;
+                event.time = DateTime::FromString(attr.as_string(), &error);
+                if (!event.time.IsValid()) std::cerr << "Error parsing time: " << error << std::endl;
+            }
+            if (auto attr = node.attribute("start"))
+            {
+                std::string error;
+                event.start = DateTime::FromString(attr.as_string(), &error);
+                if (!event.start.IsValid()) std::cerr << "Error parsing start: " << error << std::endl;
+            }
+            if (auto attr = node.attribute("stale"))
+            {
+                std::string error;
+                event.stale = DateTime::FromString(attr.as_string(), &error);
+                if (!event.stale.IsValid()) std::cerr << "Error parsing stale: " << error << std::endl;
+            }
+            if (auto attr = node.attribute("how"))
+            {
+                event.how = attr.as_string();
+                // Parse how: e.g., "m-g"
+                std::vector<std::string> howParts;
+                std::stringstream howStream(event.how);
+                std::string part;
+                while (std::getline(howStream, part, '-'))
+                {
+                    howParts.push_back(part);
+                }
+                if (howParts.size() >= 2)
+                {
+                    auto entryIt = How::Entry::StringToType.find(How::Entry::TypeToString.at(
+                        How::Entry::TypeToString.find(howParts[0]) != How::Entry::TypeToString.end() ?
+                        static_cast<How::Entry::Type>(std::stoi(howParts[0])) : How::Entry::Type::Error));
+                    event.howEntry = entryIt != How::Entry::StringToType.end() ? entryIt->second : How::Entry::Type::Error;
+                    auto dataIt = How::Data::StringToType.find(How::Data::TypeToString.at(
+                        How::Data::TypeToString.find(howParts[1]) != How::Data::TypeToString.end() ?
+                        static_cast<How::Data::Type>(std::stoi(howParts[1])) : How::Data::Type::Error));
+                    event.howData = dataIt != How::Data::StringToType.end() ? dataIt->second : How::Data::Type::Error;
+                }
+            }
+        }
+        catch (const std::exception& e)
+        {
+            std::cerr << "Error parsing Event attributes: " << e.what() << std::endl;
+        }
+        return event;
+    }
+
+    std::string ToString() const 
+    {
+        std::ostringstream oss;
+        oss << *this;
+        return oss.str();
+    }
+
+    friend std::ostream& operator<<(std::ostream& os, const Event& event) 
+    {
+        os << "Event: ";
+        if (!event.IsValid()) os << " -NOT VALID- ";
         os << "\n"
-            << "\tVersion:\t" << event.version << "\n"
-            << "\tType:\t" << event.type << "\n"
-            << "\tIndicator:\t" << static_cast<int>(event.indicator) << " - " << Point::TypeToString.at(event.indicator) << "\n"
-            << "\tLocation:\t" << static_cast<int>(event.location) << " - " << Location::TypeToString.at(event.location) << "\n"
-            << "\tUID:\t" << event.uid << "\n"
-            << "\tTime:\t" << event.time << "\n"
-            << "\tStart:\t" << event.start << "\n"
-            << "\tStale:\t" << event.stale << "\n"
-            << "\tHow:\t" << event.how << "\n"
-            << "\tHow Entry:\t" << static_cast<int>(event.howEntry) << " - " << How::Entry::TypeToString.at(event.howEntry) << "\n"
-            << "\tHow Data:\t" << static_cast<int>(event.howData) << " - " << How::Data::TypeToString.at(event.howData) << "\n"
-            << "\n";
-
+            << "\tVersion: " << (std::isnan(event.version) ? "NaN" : std::to_string(event.version)) << "\n"
+            << "\tType: " << (event.type.empty() ? "None" : event.type) << "\n"
+            << "\tRoot Type: " << static_cast<int>(event.rootType) << " - "
+            << Root::TypeToString.at(event.rootType) << "\n"
+            << "\tIndicator: " << static_cast<int>(event.indicator) << " - "
+            << Point::TypeToString.at(event.indicator) << "\n"
+            << "\tLocation: " << static_cast<int>(event.location) << " - "
+            << Location::TypeToString.at(event.location) << "\n"
+            << "\tUID: " << (event.uid.empty() ? "None" : event.uid) << "\n"
+            << "\tTime: " << event.time << "\n"
+            << "\tStart: " << event.start << "\n"
+            << "\tStale: " << event.stale << "\n"
+            << "\tHow: " << (event.how.empty() ? "None" : event.how) << "\n"
+            << "\tHow Entry: " << static_cast<int>(event.howEntry) << " - "
+            << How::Entry::TypeToString.at(event.howEntry) << "\n"
+            << "\tHow Data: " << static_cast<int>(event.howData) << " - "
+            << How::Data::TypeToString.at(event.howData) << "\n";
         return os;
     }
+
+private:
+    static constexpr double INVALID_VERSION = std::numeric_limits<double>::quiet_NaN();
+    static constexpr const char* INVALID_STRING = "";
 };
 
-/// @brief A COT Message subschema class for Takv data 
+/// @brief A COT Message subschema class for Takv data
 class Takv
 {
 public:
-    std::string version;            /// version
-    std::string device;             /// Device type
-    std::string os;                 /// Operating system
-    std::string platform;           /// TAK platform (ATAK-CIV, WINTAK, ATAK-MIL, etc)
+    std::string version;  /// Version
+    std::string device;   /// Device type
+    std::string os;       /// Operating system
+    std::string platform; /// TAK platform (ATAK-CIV, WINTAK, ATAK-MIL, etc)
 
     /// @brief Constructor - Initializes Everything
-    Takv(const std::string version = "",
-        const std::string device = "",
-        const std::string os = "",
-        const std::string platform = "") :
-        version(version), device(device), os(os), platform(platform)
-    {}
+    Takv(const std::string& version = INVALID_VALUE,
+        const std::string& device = INVALID_VALUE,
+        const std::string& os = INVALID_VALUE,
+        const std::string& platform = INVALID_VALUE) :
+        version(version), device(device), os(os), platform(platform) {}
 
-    /// @brief Equal comparison operator
-    bool operator == (const Takv& takv) const
+    /// @brief Equality comparison operator
+    bool operator==(const Takv& other) const 
     {
-        return  (version == takv.version) &&
-            (device == takv.device) &&
-            (os == takv.os) &&
-            (platform == takv.platform);
+        return version == other.version &&
+            device == other.device &&
+            os == other.os &&
+            platform == other.platform;
     }
 
-    /// @brief Equal comparison operator
-    bool operator != (const Takv& takv) const
+    /// @brief Inequality comparison operator
+    bool operator!=(const Takv& other) const 
     {
-        return !(*this == takv);
+        return !(*this == other);
     }
 
-    /// @brief Does class have valid data ? 
-    bool IsValid() const
+    /// @brief Checks if the class has valid data
+    bool IsValid(std::string* errorMsg = nullptr) const 
     {
-        return !version.empty() || !device.empty() || !os.empty() || !platform.empty();
+        bool valid = !version.empty() || !device.empty() || !os.empty() || !platform.empty();
+        if (!valid && errorMsg) 
+        {
+            *errorMsg = "Takv has no non-empty fields";
+        }
+        return valid;
+    }
+
+    /// @brief Serialize to XML string
+    std::string ToXml() const 
+    {
+        if (!IsValid()) 
+        {
+            return "<takv/>"; // Empty tag for invalid Takv
+        }
+        std::ostringstream oss;
+        oss << "<takv";
+        if (!version.empty()) oss << " version=\"" << version << "\"";
+        if (!device.empty()) oss << " device=\"" << device << "\"";
+        if (!os.empty()) oss << " os=\"" << os << "\"";
+        if (!platform.empty()) oss << " platform=\"" << platform << "\"";
+        oss << "/>";
+        return oss.str();
+    }
+
+    /// @brief Deserialize from XML node
+    static Takv FromXml(const pugi::xml_node& node) 
+    {
+        Takv takv;
+        pugi::xml_attribute attr;
+        if (attr = node.attribute("version")) takv.version = attr.as_string();
+        if (attr = node.attribute("device")) takv.device = attr.as_string();
+        if (attr = node.attribute("os")) takv.os = attr.as_string();
+        if (attr = node.attribute("platform")) takv.platform = attr.as_string();
+        return takv;
     }
 
     /// @brief Print the class
-    friend std::ostream& operator<<(std::ostream& os, const Takv& takv)
+    friend std::ostream& operator<<(std::ostream& os, const Takv& takv) 
     {
-        os << "TAKV: ";  if (!takv.IsValid()) { os << " -NOT VALID- "; }
+        os << "Takv: ";
+        if (!takv.IsValid()) { os << " -NOT VALID- "; }
         os << "\n"
-            << "\tVersion:\t" << takv.version << "\n"
-            << "\tDevice:\t" << takv.device << "\n"
-            << "\tOS:\t" << takv.os << "\n"
-            << "\tPlatform:\t" << takv.platform << "\n"
-            << "\n";
-
+            << "\tVersion: " << (takv.version.empty() ? "None" : takv.version) << "\n"
+            << "\tDevice: " << (takv.device.empty() ? "None" : takv.device) << "\n"
+            << "\tOS: " << (takv.os.empty() ? "None" : takv.os) << "\n"
+            << "\tPlatform: " << (takv.platform.empty() ? "None" : takv.platform) << "\n";
         return os;
     }
+
+private:
+    static constexpr const char* INVALID_VALUE = ""; /// Sentinel value for invalid string
 };
 
-/// @brief A COT Message subschema class for Contact data 
+/// @brief A COT Message subschema class for Contact data
 class Contact
 {
 public:
-    std::string endpoint;           /// Endpoint of the unit. usually a tcp address. 
-    std::string callsign;           /// Callsign (name) of the item.
-    std::string xmppUsername;       /// XMP Username
+    std::string endpoint;     /// Endpoint of the unit, usually a TCP address
+    std::string callsign;     /// Callsign (name) of the item
+    std::string xmppUsername; /// XMPP Username
 
     /// @brief Constructor - Initializes Everything
-    Contact(const std::string endpoint = "",
-        const std::string callsign = "",
-        const std::string xmppUsername = "") :
-        endpoint(endpoint), callsign(callsign), xmppUsername(xmppUsername)
-    {}
+    Contact(const std::string& endpoint = INVALID_VALUE,
+        const std::string& callsign = INVALID_VALUE,
+        const std::string& xmppUsername = INVALID_VALUE) :
+        endpoint(endpoint), callsign(callsign), xmppUsername(xmppUsername) {}
 
-    /// @brief Equal comparison operator
-    bool operator == (const Contact& contact) const
+    /// @brief Equality comparison operator
+    bool operator==(const Contact& other) const 
     {
-        return  (endpoint == contact.endpoint) &&
-            (callsign == contact.callsign) &&
-            (xmppUsername == contact.xmppUsername);
+        return endpoint == other.endpoint &&
+            callsign == other.callsign &&
+            xmppUsername == other.xmppUsername;
     }
 
-    /// @brief Equal comparison operator
-    bool operator != (const Contact& contact) const
+    /// @brief Inequality comparison operator
+    bool operator!=(const Contact& other) const 
     {
-        return !(*this == contact);
+        return !(*this == other);
     }
 
-    /// @brief Does class have valid data ? 
-    bool IsValid() const
+    /// @brief Checks if the class has valid data
+    bool IsValid(std::string* errorMsg = nullptr) const 
     {
-        return !endpoint.empty() || !callsign.empty() || !xmppUsername.empty();
+        bool valid = !endpoint.empty() || !callsign.empty() || !xmppUsername.empty();
+        if (!valid && errorMsg) 
+        {
+            *errorMsg = "Contact has no non-empty fields";
+        }
+        return valid;
+    }
+
+    /// @brief Serialize to XML string
+    std::string ToXml() const 
+    {
+        if (!IsValid()) 
+        {
+            return "<contact/>"; // Empty tag for invalid Contact
+        }
+        std::ostringstream oss;
+        oss << "<contact";
+        if (!endpoint.empty()) oss << " endpoint=\"" << endpoint << "\"";
+        if (!callsign.empty()) oss << " callsign=\"" << callsign << "\"";
+        if (!xmppUsername.empty()) oss << " xmppUsername=\"" << xmppUsername << "\"";
+        oss << "/>";
+        return oss.str();
+    }
+
+    /// @brief Deserialize from XML node
+    static Contact FromXml(const pugi::xml_node& node) 
+    {
+        Contact contact;
+        pugi::xml_attribute attr;
+        if (attr = node.attribute("endpoint")) contact.endpoint = attr.as_string();
+        if (attr = node.attribute("callsign")) contact.callsign = attr.as_string();
+        if (attr = node.attribute("xmppUsername")) contact.xmppUsername = attr.as_string();
+        return contact;
     }
 
     /// @brief Print the class
-    friend std::ostream& operator<<(std::ostream& os, const Contact& contact)
+    friend std::ostream& operator<<(std::ostream& os, const Contact& contact) 
     {
-        os << "Contact: ";  if (!contact.IsValid()) { os << " -NOT VALID- "; }
+        os << "Contact: ";
+        if (!contact.IsValid()) { os << " -NOT VALID- "; }
         os << "\n"
-            << "\tEndpoint:\t" << contact.endpoint << "\n"
-            << "\tCallsign:\t" << contact.callsign << "\n"
-            << "\tXMP Username:\t" << contact.xmppUsername << "\n"
-            << "\n";
-
+            << "\tEndpoint: " << (contact.endpoint.empty() ? "None" : contact.endpoint) << "\n"
+            << "\tCallsign: " << (contact.callsign.empty() ? "None" : contact.callsign) << "\n"
+            << "\tXMPP Username: " << (contact.xmppUsername.empty() ? "None" : contact.xmppUsername) << "\n";
         return os;
     }
+
+private:
+    static constexpr const char* INVALID_VALUE = ""; /// Sentinel value for invalid string
 };
 
-/// @brief A COT Message subschema class for Uid data 
+/// @brief A COT Message subschema class for Uid data
 class Uid
 {
 public:
-    std::string droid;               /// User
+    std::string droid; /// User
 
     /// @brief Constructor - Initializes Everything
-    Uid(const std::string droid = "") :
-        droid(droid)
-    {}
+    Uid(const std::string& droid = INVALID_VALUE) : droid(droid) {}
 
-    /// @brief Equal comparison operator
-    bool operator == (const Uid& uid) const
+    /// @brief Equality comparison operator
+    bool operator==(const Uid& other) const 
     {
-        return  (droid == uid.droid);
+        return droid == other.droid;
     }
 
-    /// @brief Equal comparison operator
-    bool operator != (const Uid& uid) const
+    /// @brief Inequality comparison operator
+    bool operator!=(const Uid& other) const 
     {
-        return !(*this == uid);
+        return !(*this == other);
     }
 
-    /// @brief Does class have valid data ? 
-    bool IsValid() const
+    /// @brief Checks if the class has valid data
+    bool IsValid(std::string* errorMsg = nullptr) const 
     {
-        return !droid.empty();
+        bool valid = !droid.empty();
+        if (!valid && errorMsg) 
+        {
+            *errorMsg = "Uid droid is empty";
+        }
+        return valid;
+    }
+
+    /// @brief Serialize to XML string
+    std::string ToXml() const 
+    {
+        if (!IsValid()) 
+        {
+            return "<uid/>"; // Empty tag for invalid Uid
+        }
+        std::ostringstream oss;
+        oss << "<uid Droid=\"" << droid << "\"/>";
+        return oss.str();
+    }
+
+    /// @brief Deserialize from XML node
+    static Uid FromXml(const pugi::xml_node& node) 
+    {
+        Uid uid;
+        pugi::xml_attribute attr;
+        if (attr = node.attribute("Droid")) uid.droid = attr.as_string();
+        return uid;
     }
 
     /// @brief Print the class
-    friend std::ostream& operator<<(std::ostream& os, const Uid& uid)
+    friend std::ostream& operator<<(std::ostream& os, const Uid& uid) 
     {
-        os << "UID: ";  if (!uid.IsValid()) { os << " -NOT VALID- "; }
-        os << "\n"
-            << "\tDroid:\t" << uid.droid << "\n"
-            << "\n";
-
+        os << "Uid: ";
+        if (!uid.IsValid()) { os << " -NOT VALID- "; }
+        os << "\n\tDroid: " << (uid.droid.empty() ? "None" : uid.droid) << "\n";
         return os;
     }
+
+private:
+    static constexpr const char* INVALID_VALUE = ""; /// Sentinel value for invalid string
 };
 
-/// @brief A COT Message subschema class for PrecisionLocation data 
+/// @brief A COT Message subschema class for PrecisionLocation data
 class PrecisionLocation
 {
 public:
-    std::string altsrc;                 /// Role of the group member sending
-    std::string geopointsrc;            /// Group name
+    std::string altsrc;      /// Altitude source
+    std::string geopointsrc; /// Geopoint source
 
     /// @brief Constructor - Initializes Everything
-    PrecisionLocation(const std::string altsrc = "",
-        const std::string geopointsrc = "") :
-        altsrc(altsrc), geopointsrc(geopointsrc)
-    {}
+    PrecisionLocation(const std::string& altsrc = INVALID_VALUE,
+        const std::string& geopointsrc = INVALID_VALUE) :
+        altsrc(altsrc), geopointsrc(geopointsrc) {}
 
-    /// @brief Equal comparison operator
-    bool operator == (const PrecisionLocation& preloc) const
+    /// @brief Equality comparison operator
+    bool operator==(const PrecisionLocation& other) const 
     {
-        return  (altsrc == preloc.altsrc) &&
-            (geopointsrc == preloc.geopointsrc);
+        return altsrc == other.altsrc &&
+            geopointsrc == other.geopointsrc;
     }
 
-    /// @brief Equal comparison operator
-    bool operator != (const PrecisionLocation& preloc) const
+    /// @brief Inequality comparison operator
+    bool operator!=(const PrecisionLocation& other) const 
     {
-        return !(*this == preloc);
+        return !(*this == other);
     }
 
-    /// @brief Does class have valid data ? 
-    bool IsValid() const
+    /// @brief Checks if the class has valid data
+    bool IsValid(std::string* errorMsg = nullptr) const 
     {
-        return !altsrc.empty() || !geopointsrc.empty();
+        bool valid = !altsrc.empty() || !geopointsrc.empty();
+        if (!valid && errorMsg) 
+        {
+            *errorMsg = "PrecisionLocation has no non-empty fields";
+        }
+        return valid;
+    }
+
+    /// @brief Serialize to XML string
+    std::string ToXml() const 
+    {
+        if (!IsValid()) 
+        {
+            return "<precisionlocation/>"; // Empty tag for invalid PrecisionLocation
+        }
+        std::ostringstream oss;
+        oss << "<precisionlocation";
+        if (!altsrc.empty()) oss << " altsrc=\"" << altsrc << "\"";
+        if (!geopointsrc.empty()) oss << " geopointsrc=\"" << geopointsrc << "\"";
+        oss << "/>";
+        return oss.str();
+    }
+
+    /// @brief Deserialize from XML node
+    static PrecisionLocation FromXml(const pugi::xml_node& node) 
+    {
+        PrecisionLocation preloc;
+        pugi::xml_attribute attr;
+        if (attr = node.attribute("altsrc")) preloc.altsrc = attr.as_string();
+        if (attr = node.attribute("geopointsrc")) preloc.geopointsrc = attr.as_string();
+        return preloc;
     }
 
     /// @brief Print the class
-    friend std::ostream& operator<<(std::ostream& os, const PrecisionLocation& preloc)
+    friend std::ostream& operator<<(std::ostream& os, const PrecisionLocation& preloc) 
     {
-        os << "Precision Location: ";  if (!preloc.IsValid()) { os << " -NOT VALID- "; }
+        os << "PrecisionLocation: ";
+        if (!preloc.IsValid()) { os << " -NOT VALID- "; }
         os << "\n"
-            << "\tAlt Source:\t" << preloc.altsrc << "\n"
-            << "\tGeopoint Source:\t" << preloc.geopointsrc << "\n"
-            << "\n";
-
+            << "\tAlt Source: " << (preloc.altsrc.empty() ? "None" : preloc.altsrc) << "\n"
+            << "\tGeopoint Source: " << (preloc.geopointsrc.empty() ? "None" : preloc.geopointsrc) << "\n";
         return os;
     }
+
+private:
+    static constexpr const char* INVALID_VALUE = ""; /// Sentinel value for invalid string
 };
 
-/// @brief A COT Message subschema class for Group data 
+/// @brief A COT Message subschema class for Group data
 class Group
 {
 public:
-    std::string role;               /// Role of the group member sending
-    std::string name;               /// Group name
+    std::string role; /// Role of the group member sending
+    std::string name; /// Group name
 
     /// @brief Constructor - Initializes Everything
-    Group(const std::string role = "",
-        const std::string name = "") :
-        role(role), name(name)
-    {}
+    Group(const std::string& role = INVALID_VALUE,
+        const std::string& name = INVALID_VALUE) :
+        role(role), name(name) {}
 
-    /// @brief Equal comparison operator
-    bool operator == (const Group& group) const
+    /// @brief Equality comparison operator
+    bool operator==(const Group& other) const 
     {
-        return  (role == group.role) &&
-            (name == group.name);
+        return role == other.role &&
+            name == other.name;
     }
 
-    /// @brief Equal comparison operator
-    bool operator != (const Group& group) const
+    /// @brief Inequality comparison operator
+    bool operator!=(const Group& other) const 
     {
-        return !(*this == group);
+        return !(*this == other);
     }
 
-    /// @brief Does class have valid data ? 
-    bool IsValid() const
+    /// @brief Checks if the class has valid data
+    bool IsValid(std::string* errorMsg = nullptr) const 
     {
-        return !role.empty() || !name.empty();
+        bool valid = !role.empty() || !name.empty();
+        if (!valid && errorMsg) 
+        {
+            *errorMsg = "Group has no non-empty fields";
+        }
+        return valid;
+    }
+
+    /// @brief Serialize to XML string
+    std::string ToXml() const 
+    {
+        if (!IsValid()) 
+        {
+            return "<__group/>"; // Empty tag for invalid Group
+        }
+        std::ostringstream oss;
+        oss << "<__group";
+        if (!role.empty()) oss << " role=\"" << role << "\"";
+        if (!name.empty()) oss << " name=\"" << name << "\"";
+        oss << "/>";
+        return oss.str();
+    }
+
+    /// @brief Deserialize from XML node
+    static Group FromXml(const pugi::xml_node& node) 
+    {
+        Group group;
+        pugi::xml_attribute attr;
+        if (attr = node.attribute("role")) group.role = attr.as_string();
+        if (attr = node.attribute("name")) group.name = attr.as_string();
+        return group;
     }
 
     /// @brief Print the class
-    friend std::ostream& operator<<(std::ostream& os, const Group& group)
+    friend std::ostream& operator<<(std::ostream& os, const Group& group) 
     {
-        os << "Group: ";  if (!group.IsValid()) { os << " -NOT VALID- "; }
+        os << "Group: ";
+        if (!group.IsValid()) { os << " -NOT VALID- "; }
         os << "\n"
-            << "\tRole:\t" << group.role << "\n"
-            << "\tName:\t" << group.name << "\n"
-            << "\n";
-
+            << "\tRole: " << (group.role.empty() ? "None" : group.role) << "\n"
+            << "\tName: " << (group.name.empty() ? "None" : group.name) << "\n";
         return os;
     }
+
+private:
+    static constexpr const char* INVALID_VALUE = ""; /// Sentinel value for invalid string
 };
 
-/// @brief A COT Message subschema class for Status data 
+/// @brief A COT Message subschema class for Status data
 class Status
 {
 public:
-    double battery;           /// Battery percentage
+    double battery; /// Battery percentage
 
     /// @brief Constructor - Initializes Everything
-    Status(const double battery = NAN) :
-        battery(battery)
-    {}
+    Status(double battery = INVALID_VALUE) : battery(battery) {}
 
-    /// @brief Equal comparison operator
-    bool operator == (const Status& status) const
+    /// @brief Equality comparison operator
+    bool operator==(const Status& other) const 
     {
-        return  (battery == status.battery);
+        constexpr double EPSILON = 1e-6;
+        return (std::isnan(battery) && std::isnan(other.battery)) ||
+            std::abs(battery - other.battery) < EPSILON;
     }
 
-    /// @brief Equal comparison operator
-    bool operator != (const Status& status) const
+    /// @brief Inequality comparison operator
+    bool operator!=(const Status& other) const 
     {
-        return !(*this == status);
+        return !(*this == other);
     }
 
-    /// @brief Does class have valid data ? 
-    bool IsValid() const
+    /// @brief Checks if the class has valid data
+    bool IsValid(std::string* errorMsg = nullptr) const 
     {
-        return !std::isnan(battery);
+        if (std::isnan(battery)) 
+        {
+            if (errorMsg) *errorMsg = "Status battery is unset (NaN)";
+            return false;
+        }
+
+        if (battery < 0 || battery > 100) 
+        {
+            if (errorMsg) *errorMsg = "Status battery out of range (0-100)";
+            return false;
+        }
+
+        return true;
+    }
+
+    /// @brief Serialize to XML string
+    std::string ToXml() const 
+    {
+        if (!IsValid()) 
+        {
+            return "<status/>"; // Empty tag for invalid Status
+        }
+        std::ostringstream oss;
+        oss << "<status battery=\"" << std::fixed << std::setprecision(2) << battery << "\"/>";
+        return oss.str();
+    }
+
+    /// @brief Deserialize from XML node
+    static Status FromXml(const pugi::xml_node& node) 
+    {
+        Status status;
+        pugi::xml_attribute attr;
+        if (attr = node.attribute("battery")) 
+        {
+            try {
+                status.battery = attr.as_double(INVALID_VALUE);
+            }
+            catch (const std::exception& e) 
+            {
+                status.battery = INVALID_VALUE;
+            }
+        }
+        return status;
     }
 
     /// @brief Print the class
     friend std::ostream& operator<<(std::ostream& os, const Status& status)
     {
-        os << "Status: ";  if (!status.IsValid()) { os << " -NOT VALID- "; }
-        os << "\n"
-            << "\tBattery:\n" << status.battery << "\n"
-            << "\n";
-
+        os << "Status: ";
+        if (!status.IsValid()) { os << " -NOT VALID- "; }
+        os << "\n\tBattery: ";
+        if (std::isnan(status.battery)) 
+        {
+            os << "NaN";
+        }
+        else 
+        {
+            os << std::fixed << std::setprecision(2) << status.battery;
+        }
+        os << "\n";
         return os;
     }
+
+private:
+    static constexpr double INVALID_VALUE = std::numeric_limits<double>::quiet_NaN(); /// Sentinel value for invalid double
 };
 
 /// @brief A COT Message subschema class for Track data
@@ -1109,10 +1723,14 @@ public:
     }
 
     /// @brief Checks if the class has valid data
-    bool IsValid(std::string* errorMsg = nullptr) const 
+    bool IsValid(std::string* errorMsg = nullptr) const
     {
-        // Empty path is not valid
-        return !iconSetPath.empty();
+        if(iconSetPath.empty())
+        {
+            if (errorMsg) *errorMsg = "iconsetpath is empty";
+            return false;
+        }
+        return true;
     }
 
     /// @brief Serialize to XML string
@@ -1175,8 +1793,12 @@ public:
     /// @brief Checks if the class has valid data
     bool IsValid(std::string* errorMsg = nullptr) const 
     {
-        // Empty path is not valid
-        return !value.empty();
+        if (value.empty())
+        {
+            if (errorMsg) *errorMsg = "value is empty";
+            return false;
+        }
+        return true;
     }
 
     /// @brief Serialize to XML string
@@ -1408,7 +2030,7 @@ public:
     }
 
     /// @brief Validate the custom detail
-    bool isValid() const 
+    bool IsValid() const 
     {
         return !name.empty(); // Basic validation: non-empty tag name
     }
@@ -1450,7 +2072,7 @@ public:
     friend std::ostream& operator<<(std::ostream& os, const CustomDetail& detail) 
     {
         os << "\tCustomDetail: " << detail.name;
-        if (!detail.isValid()) { os << " -NOT VALID-"; }
+        if (!detail.IsValid()) { os << " -NOT VALID-"; }
         os << "\n";
         for (const auto& [key, value] : detail.attributes) 
         {
@@ -1465,24 +2087,24 @@ public:
 };
 
 /// @brief A CoT Message subschema class for Detail data
-class Detail
+class Detail 
 {
 public:
-    Takv takv;                              /// TAKV Sub-Schema
-    Contact contact;                        /// Contact Sub-Schema
-    Uid uid;                                /// UID Sub-Schema
-    Model model;                            /// Model Sub-Schema
-    PrecisionLocation precisionLocation;    /// PrecisionLocation Sub-Schema
-    Group group;                            /// Group Sub-Schema
-    Status status;                          /// Status Sub-Schema
-    Track track;                            /// Track Sub-Schema
-    StrokeColor strokeColor;                /// StrokeColor Sub-Schema
-    FillColor fillColor;                    /// FillColor Sub-Schema
-    Color color;                            /// Color Sub-Schema
-    UserIcon userIcon;                      /// UserIcon Sub-Schema
-    std::string remarks;                    /// Remarks information
-    std::vector<Link> links;                /// Links Sub-Schema
-    std::vector<CustomDetail> customDetails; /// Custom detail elements
+    Takv takv;                                  /// TAKV Sub-Schema
+    Contact contact;                            /// Contact Sub-Schema
+    Uid uid;                                    /// UID Sub-Schema
+    Model model;                                /// Model Sub-Schema
+    PrecisionLocation precisionLocation;        /// PrecisionLocation Sub-Schema
+    Group group;                                /// Group Sub-Schema
+    Status status;                              /// Status Sub-Schema
+    Track track;                                /// Track Sub-Schema
+    StrokeColor strokeColor;                    /// StrokeColor Sub-Schema
+    FillColor fillColor;                        /// FillColor Sub-Schema
+    Color color;                                /// Color Sub-Schema
+    UserIcon userIcon;                          /// UserIcon Sub-Schema
+    std::string remarks;                        /// Remarks information
+    std::vector<Link> links;                    /// Links Sub-Schema
+    std::vector<CustomDetail> customDetails;    /// Custom detail elements
 
     /// @brief Maps known Detail sub-schemas to their XML tag names
     static const std::map<std::string, std::string> XmlTagNames;
@@ -1518,7 +2140,8 @@ public:
         remarks(remarks),
         links(links),
         customDetails(customDetails)
-    {}
+    {
+    }
 
     /// @brief Equality comparison operator
     bool operator==(const Detail& other) const {
@@ -1540,94 +2163,40 @@ public:
     }
 
     /// @brief Inequality comparison operator
-    bool operator!=(const Detail& other) const {
+    bool operator!=(const Detail& other) const 
+    {
         return !(*this == other);
     }
 
     /// @brief Checks if the class has valid data
-    bool IsValid(std::string* errorMsg = nullptr) const {
-        // Only track is required; others are optional
-        if (!track.IsValid(errorMsg)) {
-            if (errorMsg && errorMsg->empty()) {
-                *errorMsg = "Track is invalid";
-            }
-            return false;
-        }
-        // Optional sub-schemas: validate if they have data
-        if (takv.IsValid() && !takv.IsValid(errorMsg)) {
-            if (errorMsg && errorMsg->empty()) {
-                *errorMsg = "Takv is invalid";
-            }
-            return false;
-        }
-        if (contact.IsValid() && !contact.IsValid(errorMsg)) {
-            if (errorMsg && errorMsg->empty()) {
-                *errorMsg = "Contact is invalid";
-            }
-            return false;
-        }
-        if (uid.IsValid() && !uid.IsValid(errorMsg)) {
-            if (errorMsg && errorMsg->empty()) {
-                *errorMsg = "Uid is invalid";
-            }
-            return false;
-        }
-        if (model.IsValid() && !model.IsValid(errorMsg)) {
-            if (errorMsg && errorMsg->empty()) {
-                *errorMsg = "Model is invalid";
-            }
-            return false;
-        }
-        if (precisionLocation.IsValid() && !precisionLocation.IsValid(errorMsg)) {
-            if (errorMsg && errorMsg->empty()) {
-                *errorMsg = "PrecisionLocation is invalid";
-            }
-            return false;
-        }
-        if (group.IsValid() && !group.IsValid(errorMsg)) {
-            if (errorMsg && errorMsg->empty()) {
-                *errorMsg = "Group is invalid";
-            }
-            return false;
-        }
-        if (status.IsValid() && !status.IsValid(errorMsg)) {
-            if (errorMsg && errorMsg->empty()) {
-                *errorMsg = "Status is invalid";
-            }
-            return false;
-        }
-        // Custom details: validate if present
-        for (const auto& custom : customDetails) {
-            if (!custom.isValid()) {
-                if (errorMsg) {
-                    *errorMsg = "Custom detail '" + custom.name + "' is invalid";
-                }
-                return false;
-            }
-        }
+    bool IsValid(std::string* errorMsg = nullptr) const 
+    {
+        // Currently permissive; all sub-schemas are optional
+        // Future: Add validation for required sub-schemas or custom details
         return true;
     }
 
     /// @brief Serialize to XML string
-    std::string ToXml() const {
+    std::string ToXml() const
+    {
         std::ostringstream oss;
         oss << "<detail>";
-        if (takv.IsValid()) oss << takv.ToXml(); 
-        if (contact.IsValid()) oss << contact.ToXml(); 
-        if (uid.IsValid()) oss << uid.ToXml(); 
-        if (model.IsValid()) oss << model.ToXml(); 
-        if (precisionLocation.IsValid()) oss << precisionLocation.ToXml(); 
-        if (group.IsValid()) oss << group.ToXml(); 
-        if (status.IsValid()) oss << status.ToXml(); 
+        if (takv.IsValid()) oss << takv.ToXml();
+        if (contact.IsValid()) oss << contact.ToXml();
+        if (uid.IsValid()) oss << uid.ToXml();
+        if (model.IsValid()) oss << model.ToXml();
+        if (precisionLocation.IsValid()) oss << precisionLocation.ToXml();
+        if (group.IsValid()) oss << group.ToXml();
+        if (status.IsValid()) oss << status.ToXml();
         if (track.IsValid()) oss << track.ToXml();
-        if (strokeColor.IsValid()) oss << strokeColor.ToXml(); 
-        if (fillColor.IsValid()) oss << fillColor.ToXml(); 
-        if (color.IsValid()) oss << color.ToXml(); 
-        if (userIcon.IsValid()) oss << userIcon.ToXml(); 
+        if (strokeColor.IsValid()) oss << strokeColor.ToXml();
+        if (fillColor.IsValid()) oss << fillColor.ToXml();
+        if (color.IsValid()) oss << color.ToXml();
+        if (userIcon.IsValid()) oss << userIcon.ToXml();
         if (!remarks.empty()) oss << "<remarks>" << remarks << "</remarks>";
         for (const auto& link : links) 
         {
-            oss << link.ToXml(); 
+            oss << link.ToXml();
         }
         for (const auto& custom : customDetails) 
         {
@@ -1638,92 +2207,48 @@ public:
     }
 
     /// @brief Deserialize from XML node
-    static Detail FromXml(const pugi::xml_node& node) {
+    static Detail FromXml(const pugi::xml_node& node)
+    {
         Detail detail;
-        pugi::xml_attribute attr;
 
-        // Parse known sub-schemas
+        // Dispatch table for sub-schema parsing
+        static const std::map<std::string, std::function<void(pugi::xml_node, Detail&)>> parsers = {
+            {"takv", [](pugi::xml_node n, Detail& d) { d.takv = Takv::FromXml(n); }},
+            {"contact", [](pugi::xml_node n, Detail& d) { d.contact = Contact::FromXml(n); }},
+            {"uid", [](pugi::xml_node n, Detail& d) { d.uid = Uid::FromXml(n); }},
+            {"model", [](pugi::xml_node n, Detail& d) { d.model = Model::FromXml(n); }},
+            {"precisionlocation", [](pugi::xml_node n, Detail& d) { d.precisionLocation = PrecisionLocation::FromXml(n); }},
+            {"__group", [](pugi::xml_node n, Detail& d) { d.group = Group::FromXml(n); }},
+            {"status", [](pugi::xml_node n, Detail& d) { d.status = Status::FromXml(n); }},
+            {"track", [](pugi::xml_node n, Detail& d) { d.track = Track::FromXml(n); }},
+            {"strokeColor", [](pugi::xml_node n, Detail& d) { d.strokeColor = StrokeColor::FromXml(n); }},
+            {"fillColor", [](pugi::xml_node n, Detail& d) { d.fillColor = FillColor::FromXml(n); }},
+            {"color", [](pugi::xml_node n, Detail& d) { d.color = Color::FromXml(n); }},
+            {"usericon", [](pugi::xml_node n, Detail& d) { d.userIcon = UserIcon::FromXml(n); }},
+            {"remarks", [](pugi::xml_node n, Detail& d) { d.remarks = n.child_value(); }},
+            {"link", [](pugi::xml_node n, Detail& d) { d.links.push_back(Link::FromXml(n)); }}
+        };
+
+        // Parse child nodes
         for (pugi::xml_node child : node.children()) 
         {
             std::string name = child.name();
-            if (name == "takv") 
+            try 
             {
-                // Placeholder: use constructor until Takv::fromXml exists
-                if (attr = child.attribute("version")) detail.takv.version = attr.as_string();
-                if (attr = child.attribute("platform")) detail.takv.platform = attr.as_string();
-                if (attr = child.attribute("os")) detail.takv.os = attr.as_string();
-                if (attr = child.attribute("device")) detail.takv.device = attr.as_string();
+                auto it = parsers.find(name);
+                if (it != parsers.end()) 
+                {
+                    it->second(child, detail); // Call the parser function
+                }
+                else if (!name.empty()) 
+                {
+                    // Unknown nodes are custom details
+                    detail.customDetails.push_back(CustomDetail::FromXml(child));
+                }
             }
-            else if (name == "contact") 
+            catch (const std::exception& e) 
             {
-                if (attr = child.attribute("endpoint")) detail.contact.endpoint = attr.as_string();
-                if (attr = child.attribute("callsign")) detail.contact.callsign = attr.as_string();
-                if (attr = child.attribute("xmppUsername")) detail.contact.xmppUsername = attr.as_string();
-            }
-            else if (name == "uid") 
-            {
-                if (attr = child.attribute("Droid")) detail.uid.droid = attr.as_string();
-            }
-            else if (name == "model") 
-            {
-                if (attr = child.attribute("value")) detail.model.value = attr.as_string();
-            }
-            else if (name == "precisionlocation") 
-            {
-                if (attr = child.attribute("altsrc")) detail.precisionLocation.altsrc = attr.as_string();
-                if (attr = child.attribute("geopointsrc")) detail.precisionLocation.geopointsrc = attr.as_string();
-            }
-            else if (name == "__group") 
-            {
-                if (attr = child.attribute("role")) detail.group.role = attr.as_string();
-                if (attr = child.attribute("name")) detail.group.name = attr.as_string();
-            }
-            else if (name == "status") 
-            {
-                if (attr = child.attribute("battery")) detail.status.battery = attr.as_double();
-            }
-            else if (name == "track") 
-            {
-                detail.track = Track::FromXml(child);
-            }
-            else if (name == "strokeColor") 
-            {
-                if (attr = child.attribute("value")) detail.strokeColor.value = attr.as_int();
-            }
-            else if (name == "fillColor") 
-            {
-                if (attr = child.attribute("value")) detail.fillColor.value = attr.as_int();
-            }
-            else if (name == "color") 
-            {
-                if (attr = child.attribute("argb")) detail.color.argb = attr.as_int();
-            }
-            else if (name == "usericon") 
-            {
-                if (attr = child.attribute("iconsetpath")) detail.userIcon.iconSetPath = attr.as_string();
-            }
-            else if (name == "remarks") 
-            {
-                detail.remarks = child.child_value();
-            }
-            else if (name == "link") 
-            {
-                Link link;
-                if (attr = child.attribute("uid")) link.uid = attr.as_string();
-                if (attr = child.attribute("remarks")) link.remarks = attr.as_string();
-                if (attr = child.attribute("relation")) link.relation = attr.as_string();
-                if (attr = child.attribute("callsign")) link.callsign = attr.as_string();
-                if (attr = child.attribute("type")) link.type = attr.as_string();
-                if (attr = child.attribute("point")) link.point = attr.as_string();
-                auto [latitude, longitude] = link.GetLatLonFromPoint();
-                link.latitude = latitude;
-                link.longitude = longitude;
-                detail.links.push_back(link);
-            }
-            else 
-            {
-                // Store unknown nodes as custom details
-                detail.customDetails.push_back(CustomDetail::fromXml(child));
+                std::cerr << "Error parsing <" << name << ">: " << e.what() << std::endl;
             }
         }
 
@@ -1734,27 +2259,40 @@ public:
     /// @param name XML tag name (required, non-empty)
     /// @param attributes XML attributes as key-value pairs (optional)
     /// @param content Inner text or CDATA (optional)
-    /// @return true if added successfully, false if invalid (e.g., empty name)
+    /// @return true if added successfully, false if invalid (e.g., empty name) or already exists
     bool AddCustomDetail(const std::string& name,
         const std::map<std::string, std::string>& attributes = {},
-        const std::string& content = "") 
+        const std::string& content = "")
     {
         if (name.empty()) 
         {
             return false; // Invalid tag name
         }
+
+        // Check if a custom detail with this name already exists
+        auto it = std::find_if(customDetails.begin(), customDetails.end(),
+            [&name](const CustomDetail& detail) { return detail.name == name; });
+
+        if (it != customDetails.end()) 
+        {
+            return false; // Duplicate name
+        }
         customDetails.emplace_back(name, attributes, content);
         return true;
     }
 
-    /// @brief Remove a custom detail by name, with optional attributes and content matching
+    /// @brief Modify an existing custom detail
     /// @param name XML tag name to match (required, non-empty)
-    /// @param attributes Optional attributes to match exactly (empty means match any)
-    /// @param content Optional content to match exactly (empty means match any)
-    /// @return true if a matching custom detail was removed, false if not found or invalid
-    bool removeCustomDetail(const std::string& name,
-        const std::map<std::string, std::string>& attributes = {},
-        const std::string& content = "") 
+    /// @param matchAttributes Optional attributes to match exactly (empty means match any)
+    /// @param matchContent Optional content to match exactly (empty means match any)
+    /// @param newAttributes New attributes to set (replaces existing attributes)
+    /// @param newContent New content to set (replaces existing content)
+    /// @return true if a matching custom detail was modified, false if not found or invalid
+    bool ModifyCustomDetail(const std::string& name,
+        const std::map<std::string, std::string>& matchAttributes,
+        const std::string& matchContent,
+        const std::map<std::string, std::string>& newAttributes,
+        const std::string& newContent)
     {
         if (name.empty()) 
         {
@@ -1762,7 +2300,60 @@ public:
         }
 
         auto it = std::find_if(customDetails.begin(), customDetails.end(),
-            [&](const CustomDetail& detail) {
+            [&name, &matchAttributes, &matchContent](const CustomDetail& detail) {
+                bool nameMatch = detail.name == name;
+                bool attrMatch = matchAttributes.empty() || detail.attributes == matchAttributes;
+                bool contentMatch = matchContent.empty() || detail.content == matchContent;
+                return nameMatch && attrMatch && contentMatch;
+            });
+
+        if (it != customDetails.end()) 
+        {
+            it->attributes = newAttributes;
+            it->content = newContent;
+            return true;
+        }
+        return false; // No match found
+    }
+
+    /// @brief Add or modify a custom detail
+    /// @param name XML tag name (required, non-empty)
+    /// @param attributes XML attributes as key-value pairs
+    /// @param content Inner text or CDATA
+    /// @param matchAttributes Optional attributes to match for modification (empty means match any)
+    /// @param matchContent Optional content to match for modification (empty means match any)
+    /// @return true if added or modified successfully, false if invalid
+    bool AddOrModifyCustomDetail(const std::string& name,
+        const std::map<std::string, std::string>& attributes,
+        const std::string& content,
+        const std::map<std::string, std::string>& matchAttributes = {},
+        const std::string& matchContent = "")
+    {
+        // Try to modify first
+        if (ModifyCustomDetail(name, matchAttributes, matchContent, attributes, content)) 
+        {
+            return true; // Modified existing detail
+        }
+        // If modification fails, try to add
+        return AddCustomDetail(name, attributes, content);
+    }
+
+    /// @brief Remove a custom detail by name, with optional attributes and content matching
+    /// @param name XML tag name to match (required, non-empty)
+    /// @param attributes Optional attributes to match exactly (empty means match any)
+    /// @param content Optional content to match exactly (empty means match any)
+    /// @return true if a matching custom detail was removed, false if not found or invalid
+    bool RemoveCustomDetail(const std::string& name,
+        const std::map<std::string, std::string>& attributes = {},
+        const std::string& content = "")
+    {
+        if (name.empty()) 
+        {
+            return false; // Invalid tag name
+        }
+
+        auto it = std::find_if(customDetails.begin(), customDetails.end(),
+            [&name, &attributes, &content](const CustomDetail& detail) {
                 bool nameMatch = detail.name == name;
                 bool attrMatch = attributes.empty() || detail.attributes == attributes;
                 bool contentMatch = content.empty() || detail.content == content;
@@ -1774,12 +2365,11 @@ public:
             customDetails.erase(it);
             return true;
         }
-
         return false; // No match found
     }
 
     /// @brief Print the class
-    friend std::ostream& operator<<(std::ostream& os, const Detail& detail) 
+    friend std::ostream& operator<<(std::ostream& os, const Detail& detail)
     {
         os << "Detail: ";
         if (!detail.IsValid()) { os << " -NOT VALID- "; }
@@ -1804,8 +2394,8 @@ public:
         }
         else 
         {
-            for (const auto& link : detail.links) {
-
+            for (const auto& link : detail.links) 
+            {
                 os << "\t" << link;
             }
         }
@@ -1829,51 +2419,240 @@ private:
     static constexpr double INVALID_VALUE = std::numeric_limits<double>::quiet_NaN();
 };
 
-/// @brief A Root COT Message schema class for entire message data. 
-class CoT_Schema
+/// @brief A Root CoT Message schema class for entire message data
+class CoT_Schema 
 {
 public:
     Event event;                    /// Holds Event Sub-schema
     Point::Data point;              /// Holds Point Sub-schema
     Detail detail;                  /// Holds Detail Sub-schema
 
-    /// @brief Constructor - Initializes Everything
+    /// @brief Constructor - Initializes everything
     CoT_Schema(const Event& event = Event(),
         const Point::Data& point = Point::Data(),
         const Detail& detail = Detail()) :
-        event(event), point(point), detail(detail)
-    {}
+        event(event), point(point), detail(detail) {}
 
-    /// @brief Equal comparison operator
-    bool operator == (const CoT_Schema& cot) const
+    /// @brief Equality comparison operator
+    bool operator==(const CoT_Schema& other) const 
     {
-        return  (event == cot.event) &&
-            (point == cot.point) &&
-            (detail == cot.detail);
+        return event == other.event &&
+            point == other.point &&
+            detail == other.detail;
     }
 
-    /// @brief Equal comparison operator
-    bool operator != (const CoT_Schema& cot) const
+    /// @brief Inequality comparison operator
+    bool operator!=(const CoT_Schema& other) const 
     {
-        return !(*this == cot);
+        return !(*this == other);
     }
 
-    /// @brief Does class have valid data ? 
-    bool IsValid() const
+    /// @brief Checks if the class has valid data
+    bool IsValid(std::string* errorMsg = nullptr) const 
     {
-        return  (event.IsValid()) || (point.IsValid()) || (detail.IsValid());
+        bool valid = true;
+        std::string errors;
+
+        // Event and Point are required in CoT
+        if (!event.IsValid(&errors)) 
+        {
+            valid = false;
+            if (errorMsg && !errors.empty()) *errorMsg += "Event invalid: " + errors + "; ";
+        }
+        if (!point.IsValid(&errors)) 
+        {
+            valid = false;
+            if (errorMsg && !errors.empty()) *errorMsg += "Point invalid: " + errors + "; ";
+        }
+        // Detail is optional but must be valid if present
+        if (detail.IsValid(&errors) && !detail.IsValid(&errors)) 
+        {
+            valid = false;
+            if (errorMsg && !errors.empty()) *errorMsg += "Detail invalid: " + errors + "; ";
+        }
+
+        if (!valid && errorMsg && errorMsg->empty()) 
+        {
+            *errorMsg = "CoT_Schema missing required components or contains invalid data";
+        }
+        return valid;
+    }
+
+    /// @brief Serialize to XML string
+    std::string ToXml() const 
+    {
+        std::ostringstream oss;
+        oss << "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n";
+        if (!event.IsValid()) 
+        {
+            return oss.str(); // Return empty XML if event is invalid
+        }
+        oss << event.ToXml();
+        if (point.IsValid()) oss << point.ToXml();
+        if (detail.IsValid()) oss << detail.ToXml();
+        oss << "</event>";
+        return oss.str();
+    }
+
+    /// @brief Get formatted XML string (with basic indentation)
+    std::string ToXmlString() const 
+    {
+        std::string xml = ToXml();
+        std::ostringstream oss;
+        int indentLevel = 0;
+        const std::string indentStr = "  ";
+
+        for (size_t i = 0; i < xml.length(); ++i) {
+            if (xml[i] == '<' && xml[i + 1] != '/') {
+                // Opening tag
+                oss << std::string(indentLevel * indentStr.length(), ' ') << xml[i];
+                indentLevel++;
+            }
+            else if (xml[i] == '<' && xml[i + 1] == '/') {
+                // Closing tag
+                indentLevel--;
+                oss << std::string(indentLevel * indentStr.length(), ' ') << xml[i];
+            }
+            else if (xml[i] == '>' && i > 0 && xml[i - 1] == '/') {
+                // Self-closing tag
+                oss << xml[i];
+                indentLevel--;
+            }
+            else {
+                oss << xml[i];
+            }
+            if (xml[i] == '>' && i + 1 < xml.length() && xml[i + 1] != '<') {
+                // Add newline after tag if followed by content
+                oss << "\n";
+            }
+        }
+        return oss.str();
+    }
+
+    /// @brief Save XML to a file
+    bool ToXmlFile(const std::string& filename) const 
+    {
+        std::ofstream ofs(filename);
+        if (!ofs.is_open()) 
+        {
+            std::cerr << "Failed to open file: " << filename << std::endl;
+            return false;
+        }
+        ofs << ToXmlString();
+        ofs.close();
+        return true;
+    }
+
+    /// @brief Deserialize from XML node
+    static CoT_Schema FromXml(const pugi::xml_node& node) 
+    {
+        CoT_Schema cot;
+        if (std::string(node.name()) != "event") {
+            std::cerr << "Root node must be <event>, found: " << node.name() << std::endl;
+            return cot;
+        }
+
+        // Dispatch table for sub-schema parsing
+        static const std::map<std::string, std::function<void(pugi::xml_node, CoT_Schema&)>> parsers = {
+            {"point", [](pugi::xml_node n, CoT_Schema& c) { c.point = Point::Data::FromXml(n); }},
+            {"detail", [](pugi::xml_node n, CoT_Schema& c) { c.detail = Detail::FromXml(n); }}
+        };
+
+        // Parse event attributes
+        try 
+        {
+            cot.event = Event::FromXml(node);
+        }
+        catch (const std::exception& e) 
+        {
+            std::cerr << "Error parsing event attributes: " << e.what() << std::endl;
+        }
+
+        // Parse child nodes
+        for (pugi::xml_node child : node.children()) {
+            std::string name = child.name();
+            try {
+                auto it = parsers.find(name);
+                if (it != parsers.end()) {
+                    it->second(child, cot); // Call the parser function
+                }
+            }
+            catch (const std::exception& e) {
+                std::cerr << "Error parsing <" << name << ">: " << e.what() << std::endl;
+            }
+        }
+
+        return cot;
+    }
+
+    /// @brief Deserialize from XML string
+    static CoT_Schema FromXmlString(const std::string& xmlStr) 
+    {
+        pugi::xml_document doc;
+        pugi::xml_parse_result result = doc.load_string(xmlStr.c_str());
+        if (!result) 
+        {
+            std::cerr << "Failed to parse XML string: " << result.description() << std::endl;
+            return CoT_Schema();
+        }
+        return FromXml(doc.child("event"));
+    }
+
+    /// @brief Getter for Event sub-schema
+    const Event& GetEvent() const { return event; }
+
+    /// @brief Getter for Point sub-schema
+    const Point::Data& GetPoint() const { return point; }
+
+    /// @brief Getter for Detail sub-schema
+    const Detail& GetDetail() const { return detail; }
+
+    /// @brief Setter for Event sub-schema with validation
+    bool SetEvent(const Event& newEvent) 
+    {
+        if (!newEvent.IsValid()) 
+        {
+            std::cerr << "Cannot set invalid Event" << std::endl;
+            return false;
+        }
+        event = newEvent;
+        return true;
+    }
+
+    /// @brief Setter for Point sub-schema with validation
+    bool SetPoint(const Point::Data& newPoint) 
+    {
+        if (!newPoint.IsValid()) 
+        {
+            std::cerr << "Cannot set invalid Point" << std::endl;
+            return false;
+        }
+        point = newPoint;
+        return true;
+    }
+
+    /// @brief Setter for Detail sub-schema with validation
+    bool SetDetail(const Detail& newDetail) 
+    {
+        if (newDetail.IsValid() && !newDetail.IsValid()) 
+        {
+            std::cerr << "Cannot set invalid Detail" << std::endl;
+            return false;
+        }
+        detail = newDetail;
+        return true;
     }
 
     /// @brief Print the class
-    friend std::ostream& operator<<(std::ostream& os, const CoT_Schema& cot)
+    friend std::ostream& operator<<(std::ostream& os, const CoT_Schema& cot) 
     {
-        os << "COT Data: ";  if (!cot.IsValid()) { os << " -NOT VALID- "; }
+        os << "CoT_Schema: ";
+        if (!cot.IsValid()) os << " -NOT VALID- ";
         os << "\n"
             << cot.event
             << cot.point
             << cot.detail
             << "\n";
-
         return os;
     }
 };
