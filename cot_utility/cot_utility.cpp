@@ -354,8 +354,7 @@ CoT_UtilityResult CoT_Utility::ParseCOT(std::string& buffer, CoT_Schema& cot)
             pugi::xml_node track = detail.child("track");
             if (track)
             {
-                (attr1 = track.attribute("course")) ? cot.detail.track.course = attr1.as_double() : cot.detail.track.course = 0;
-                (attr1 = track.attribute("speed")) ? cot.detail.track.speed = attr1.as_double() : cot.detail.track.speed = 0;
+                cot.detail.track = Track::FromXml(track);
             }
             else
             {
