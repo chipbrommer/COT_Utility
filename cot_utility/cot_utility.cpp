@@ -17,21 +17,20 @@
 //
 ///////////////////////////////////////////////////////////////////////////////
 
-bool CoT_Utility::VerifyXML(std::string& buffer)
+Result CoT_Utility::VerifyXML(std::string& buffer)
 {
     pugi::xml_document doc;
     pugi::xml_parse_result result = doc.load_string(buffer.c_str());
 
     if (!result)
     {
-        std::cout << "ERROR: " << result.description() << "\n";
-        return false;
+        Result(Result::Code::InvalidXml, result.description());
     }
 
-    return true;
+    return Result(Result::Code::Success, "Valid XML");
 }
 
-std::string CoT_Utility::GenerateXMLCOTMessage(CoT_Schema& cot) 
+Result CoT_Utility::GenerateXMLCOTMessage(CoT_Schema& cot, std::string& xml)
 {
     std::stringstream msg;
 
@@ -72,14 +71,16 @@ std::string CoT_Utility::GenerateXMLCOTMessage(CoT_Schema& cot)
     {
         std::stringstream newMsg;
         doc.save(newMsg);
-        return newMsg.str();
+        xml = newMsg.str();
+        return Result(Result::Code::Success);
     }
 
     // else just send unformatted string
-    return msg.str();
+    xml = "";
+    return Result(Result::Code::ProcessingError);
 }
 
-CoT_UtilityResult CoT_Utility::UpdateReceivedCOTMessage(std::string& receivedMessage, CoT_Schema& cot, std::string& modifiedMessage, bool acknowledgment)
+Result CoT_Utility::UpdateReceivedCOTMessage(std::string& receivedMessage, CoT_Schema& cot, std::string& modifiedMessage, bool acknowledgment)
 {
     // Create XML document to load in the receivedMessage
     pugi::xml_document doc;
@@ -121,20 +122,17 @@ CoT_UtilityResult CoT_Utility::UpdateReceivedCOTMessage(std::string& receivedMes
             std::stringstream modifiedXmlStream;
             doc.save(modifiedXmlStream);
             modifiedMessage = modifiedXmlStream.str();
-            return CoT_UtilityResult::Success;
+            return Result(Result::Code::Success);
         }
 
         // No modification made
-        return CoT_UtilityResult::NoModificationMade;
+        return Result(Result::Code::NoModificationMade);
     }
-    else 
-    {
-        m_lastPugiResult = result.description();
-        return CoT_UtilityResult::ProcessingError;
-    }
+
+    return Result(Result::Code::ProcessingError, result.description());
 }
 
-CoT_UtilityResult CoT_Utility::AcknowledgeReceivedCOTMessage(std::string& receivedMessage, std::string& responseMessage)
+Result CoT_Utility::AcknowledgeReceivedCOTMessage(std::string& receivedMessage, std::string& responseMessage)
 {
     // Create XML document to load in the receivedMessage
     pugi::xml_document doc;
@@ -165,42 +163,36 @@ CoT_UtilityResult CoT_Utility::AcknowledgeReceivedCOTMessage(std::string& receiv
             std::stringstream modifiedXmlStream;
             doc.save(modifiedXmlStream);
             responseMessage = modifiedXmlStream.str();
-            return CoT_UtilityResult::Success;
+            return Result(Result::Code::Success);
         }
 
         // No modification made
-        return CoT_UtilityResult::NoModificationMade;
+        return Result(Result::Code::NoModificationMade);
     }
-    else
-    {
-        m_lastPugiResult = result.description();
-        return CoT_UtilityResult::ProcessingError;
-    }
+
+    return Result(Result::Code::ProcessingError, result.description());
 }
 
-CoT_UtilityResult CoT_Utility::ParseCOT(std::string& buffer, CoT_Schema& cot)
+Result CoT_Utility::ParseCOT(std::string& buffer, CoT_Schema& cot)
 {
     // Remove any trash before "<?xml"
     size_t position = buffer.find("<?xml");
-    if (position == std::string::npos) return CoT_UtilityResult::InvalidXml;
+    if (position == std::string::npos) { return Result(Result::Code::InvalidXml); }
     buffer.erase(0, position);
 
     // Parse XML
     pugi::xml_document doc;
     pugi::xml_parse_result result = doc.load_string(buffer.c_str());
-    if (!result) return CoT_UtilityResult::ProcessingError;
+    if (!result) { return Result(Result::Code::ProcessingError); }
 
     // Validate structure
     pugi::xml_node eventNode = doc.child("event");
     if (!eventNode || doc.root().select_nodes("event").size() != 1)
-        return CoT_UtilityResult::InvalidEvent;
+        { return Result(Result::Code::InvalidEvent); }
     if (eventNode.select_nodes("point").size() != 1)
-        return CoT_UtilityResult::InvalidPoint;
+        { return Result(Result::Code::InvalidPoint); }
     if (eventNode.select_nodes("detail").size() > 1)
-    {
-        // Only one <detail> tag allowed under <event>
-        return CoT_UtilityResult::InvalidXml;
-    }
+    { return Result(Result::Code::InvalidXml); }
 
     // Parse event, point, and detail (if present)
     cot.event = Event::FromXml(eventNode);
@@ -214,24 +206,21 @@ CoT_UtilityResult CoT_Utility::ParseCOT(std::string& buffer, CoT_Schema& cot)
     std::string error;
     if (!cot.event.IsValid(&error)) 
     {
-        std::cerr << "Parsed Event is invalid: " << error << std::endl;
-        return CoT_UtilityResult::InvalidEvent;
+        return Result(Result::Code::InvalidEvent, std::string("Parsed Event is invalid: " + error));
     }
     if (!cot.point.IsValid(&error)) 
     {
-        std::cerr << "Parsed Point is invalid: " << error << std::endl;
-        return CoT_UtilityResult::InvalidPoint;
+        return Result(Result::Code::InvalidPoint, std::string("Parsed Point is invalid: " + error));
     }
     if (eventNode.child("detail") && !cot.detail.IsValid(&error)) 
     {
-        std::cerr << "Parsed Detail is invalid: " << error << std::endl;
-        return CoT_UtilityResult::InvalidDetail;
+        return Result(Result::Code::InvalidDetail, std::string("Parsed Detail is invalid: " + error));
     }
 
-    return CoT_UtilityResult::Success;
+    return Result(Result::Code::Success);
 }
 
-CoT_UtilityResult CoT_Utility::ParseCOT(const char* buffer, CoT_Schema& cot)
+Result CoT_Utility::ParseCOT(const char* buffer, CoT_Schema& cot)
 {
     std::string str = buffer;
     return ParseCOT(str, cot);
@@ -244,21 +233,21 @@ CoT_Schema CoT_Utility::ParseBufferToCOT(const char* buffer)
     return cot;
 }
 
-CoT_UtilityResult CoT_Utility::ParseTrackFromCoT(const char* buffer, Track& track)
+Result CoT_Utility::ParseTrackFromCoT(const char* buffer, Track& track)
 {
     // Convert input buffer to string and remove garbage before <?xml
     std::string xmlBuffer(buffer);
     size_t position = xmlBuffer.find("<?xml");
     if (position == std::string::npos)
     {
-        return CoT_UtilityResult::InvalidXml;
+        return Result(Result::Code::InvalidXml);
     }
     xmlBuffer.erase(0, position);
 
     // Verify XML structure
-    if (!VerifyXML(xmlBuffer))
+    if (!VerifyXML(xmlBuffer).IsSuccess())
     {
-        return CoT_UtilityResult::InvalidXml;
+        return Result(Result::Code::InvalidXml);
     }
 
     // Parse XML document
@@ -266,14 +255,14 @@ CoT_UtilityResult CoT_Utility::ParseTrackFromCoT(const char* buffer, Track& trac
     pugi::xml_parse_result result = doc.load_string(xmlBuffer.c_str());
     if (!result)
     {
-        return CoT_UtilityResult::ProcessingError;
+        return Result(Result::Code::ProcessingError);
     }
 
     // Check for exactly one <event> node
     int eventsSize = (int)doc.root().select_nodes("event").size();
     if (eventsSize != 1)
     {
-        return CoT_UtilityResult::InvalidEvent;
+        return Result(Result::Code::InvalidEvent);
     }
 
     // Navigate to <event> and <detail>
@@ -281,7 +270,7 @@ CoT_UtilityResult CoT_Utility::ParseTrackFromCoT(const char* buffer, Track& trac
     pugi::xml_node detail = event.child("detail");
     if (!detail)
     {
-        return CoT_UtilityResult::InsufficientData; // No <detail> node
+        return Result(Result::Code::InsufficientData);
     }
 
     // Parse <track>
@@ -289,49 +278,14 @@ CoT_UtilityResult CoT_Utility::ParseTrackFromCoT(const char* buffer, Track& trac
     if (!trackNode)
     {
         track = Track();
-        return CoT_UtilityResult::InsufficientData;
+        return Result(Result::Code::InsufficientData);
     }
 
     // Use Track::FromXml to parse the track node
     track = Track::FromXml(trackNode);
 
     // Success
-    return CoT_UtilityResult::Success;
-}
-
-std::string CoT_Utility::UtilityResultToString(CoT_UtilityResult error)
-{
-    switch (error)
-    {
-    case CoT_UtilityResult::Success:
-        return "Success";
-    case CoT_UtilityResult::InvalidEvent:
-        return "XML has invalid Event tag";
-    case CoT_UtilityResult::InvalidPoint:
-        return "XML has invalid Point tag";
-    case CoT_UtilityResult::InvalidDate:
-        return "XML has invalid Date tag; Date string must have minimum 3 type identifiers (Year, Month, Day)";
-    case CoT_UtilityResult::InvalidTime:
-        return "XML has invalid Time tag; Time must have minimum 3 type identifiers (Hour, Minute, Secs)";
-    case CoT_UtilityResult::InvalidHow:
-        return "XML has invalid How tag";
-    case CoT_UtilityResult::InvalidType:
-        return "XML has invalid Type tag";
-    case CoT_UtilityResult::InvalidXml:
-        return "Invalid XML input";
-    case CoT_UtilityResult::InvalidInput:
-        return "Invalid or empty input";
-    case CoT_UtilityResult::InvalidTimeSubSchema:
-        return "Invalid Time sub-schema";
-    case CoT_UtilityResult::InsufficientData:
-        return "Insufficient Data";
-    case CoT_UtilityResult::ProcessingError:
-        return "Processing error";
-    case CoT_UtilityResult::NoModificationMade:
-        return "No modification made";
-    default:
-        return "Unknown error";
-    }
+    return Result(Result::Code::Success);
 }
 
 std::string CoT_Utility::GetVersion() const
@@ -339,12 +293,7 @@ std::string CoT_Utility::GetVersion() const
     return "COT Utility v" + std::to_string(MAJOR) + "." + std::to_string(MINOR) + "." + std::to_string(BUILD);
 }
 
-std::string CoT_Utility::GetLastXmlError() const
-{
-    return m_lastPugiResult;
-}
-
-CoT_UtilityResult CoT_Utility::ParseTypeAttribute(std::string& type, Point::Type& ind, Location::Type& loc)
+Result CoT_Utility::ParseTypeAttribute(std::string& type, Point::Type& ind, Location::Type& loc)
 {
     // Read the data from the file as String Vector
     std::vector<std::string> values;
@@ -369,7 +318,7 @@ CoT_UtilityResult CoT_Utility::ParseTypeAttribute(std::string& type, Point::Type
     //      Must also start with an "a" as its the onlt identifier we currently support. 
     if ((values.size() < 2) || (values[0] != "a"))
     {
-        return CoT_UtilityResult::InvalidType;
+        return Result(Result::Code::InvalidType);
     }
     else
     {
@@ -377,10 +326,10 @@ CoT_UtilityResult CoT_Utility::ParseTypeAttribute(std::string& type, Point::Type
         loc = Location::CharToType(values[2]);
     }
 
-    return CoT_UtilityResult::Success;
+    return Result(Result::Code::Success);
 }
 
-CoT_UtilityResult CoT_Utility::ParseHowAttribute(std::string& type, How::Entry::Type& how, How::Data::Type& data)
+Result CoT_Utility::ParseHowAttribute(std::string& type, How::Entry::Type& how, How::Data::Type& data)
 {
     // Read the data from the file as String Vector
     std::vector<std::string> values;
@@ -404,7 +353,7 @@ CoT_UtilityResult CoT_Utility::ParseHowAttribute(std::string& type, How::Entry::
     // Type string must have minimum 2 type identifiers to give us the data we need. 
     if (values.size() < 1)
     {
-        return CoT_UtilityResult::InvalidHow;
+        return Result(Result::Code::InvalidHow);
     }
     else
     {
@@ -412,10 +361,10 @@ CoT_UtilityResult CoT_Utility::ParseHowAttribute(std::string& type, How::Entry::
         data = How::Data::CharToType(values[1], how);
     }
 
-    return CoT_UtilityResult::Success;
+    return Result(Result::Code::Success);
 }
 
-CoT_UtilityResult CoT_Utility::ParseTimeAttribute(std::string& type, DateTime& dt)
+Result CoT_Utility::ParseTimeAttribute(std::string& type, DateTime& dt)
 {
     // Read the data from the file as String Vector
     std::vector<std::string> values;
@@ -439,25 +388,25 @@ CoT_UtilityResult CoT_Utility::ParseTimeAttribute(std::string& type, DateTime& d
     // Time string must have minimum 2 type identifiers (Date and Time) to give us the data we need. 
     if (values.size() < 2)
     {
-        return CoT_UtilityResult::InvalidTimeSubSchema;
+        return Result(Result::Code::InvalidTimeSubSchema);
     }
 
-    CoT_UtilityResult res = ParseDateStamp(values[0], dt);
-    if (res != CoT_UtilityResult::Success)
+    Result res = ParseDateStamp(values[0], dt);
+    if (!res.IsSuccess())
     {
         return res;
     }
 
     res = ParseTimeStamp(values[1], dt);
-    if (res != CoT_UtilityResult::Success)
+    if (!res.IsSuccess())
     {
         return res;
     }
 
-    return CoT_UtilityResult::Success;
+    return Result(Result::Code::Success);
 }
 
-CoT_UtilityResult CoT_Utility::ParseDateStamp(std::string& type, DateTime& dt)
+Result CoT_Utility::ParseDateStamp(std::string& type, DateTime& dt)
 {
     // Read the data from the file as String Vector
     std::vector<std::string> values;
@@ -476,7 +425,7 @@ CoT_UtilityResult CoT_Utility::ParseDateStamp(std::string& type, DateTime& dt)
     // Date string must have minimum 3 type identifiers (Year, Month, Day) to give us the data we need. 
     if (values.size() < 3)
     {
-        return CoT_UtilityResult::InvalidDate;
+        return Result(Result::Code::InvalidDate);
     }
     else
     {
@@ -485,10 +434,10 @@ CoT_UtilityResult CoT_Utility::ParseDateStamp(std::string& type, DateTime& dt)
         dt.day = std::stoi(values[2]);
     }
 
-    return CoT_UtilityResult::Success;
+    return Result(Result::Code::Success);
 }
 
-CoT_UtilityResult CoT_Utility::ParseTimeStamp(std::string& type, DateTime& dt)
+Result CoT_Utility::ParseTimeStamp(std::string& type, DateTime& dt)
 {
     // Read the data from the file as String Vector
     std::vector<std::string> values;
@@ -510,7 +459,7 @@ CoT_UtilityResult CoT_Utility::ParseTimeStamp(std::string& type, DateTime& dt)
     // Time string must have minimum 3 type identifiers (Hour, Minute, Secs) to give us the data we need. 
     if (values.size() < 3)
     {
-        return CoT_UtilityResult::InvalidTime;
+        return Result(Result::Code::InvalidTime);
     }
     else
     {
@@ -519,5 +468,5 @@ CoT_UtilityResult CoT_Utility::ParseTimeStamp(std::string& type, DateTime& dt)
         dt.second = std::stoi(values[2]);
     }
 
-    return CoT_UtilityResult::Success;
+    return Result(Result::Code::Success);
 }
