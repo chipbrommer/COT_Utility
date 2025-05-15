@@ -2829,6 +2829,7 @@ public:
 /// @brief Result structure for cot operations
 struct Result
 {
+public:
     /// @brief Error code indicating the operation outcome
     enum class Code 
     {
@@ -2848,23 +2849,27 @@ struct Result
         NoModificationMade
     };
 
-    Code code;                  // Error code
-    std::string description;    // Detailed error message
-
     /// @brief Check if the operation was successful
-    bool IsSuccess() const { return code == Code::Success; }
+    bool IsSuccess() const { return m_code == Code::Success; }
 
     /// @brief Constructor for success case
-    Result() : code(Code::Success), description("") {}
+    Result() : m_code(Code::Success), m_description("") {}
 
     /// @brief Constructor for error case
-    Result(Code c, std::string desc) : code(c), description(std::move(desc)) {}
+    Result(Code c, std::string desc) : m_code(c), m_description(std::move(desc)) {}
+
+    /// @brief Constructor to automatically set the descirption string based on enum value
+    /// @param c Code enum
+    Result(Code c) : m_code(c)
+    {
+        m_description = ToString(m_code);
+    }
 
     /// @brief Convert to string for debugging or logging
     std::string ToString() const
     {
         std::string result = "Result: ";
-        switch (code) 
+        switch (m_code) 
         {
         case Code::Success: result += "Success"; break;
         case Code::InvalidEvent: result += "InvalidEvent"; break;
@@ -2882,11 +2887,53 @@ struct Result
         case Code::NoModificationMade: result += "NoModificationMade"; break;
         }
 
-        if (!description.empty()) 
+        if (!m_description.empty())
         {
-            result += "; Description: " + description;
+            result += "; Description: " + m_description;
         }
 
         return result;
     }
+
+    static std::string ToString(Code error)
+    {
+        switch (error)
+        {
+        case Code::Success:
+            return "Success";
+        case Code::InvalidEvent:
+            return "XML has invalid Event tag";
+        case Code::InvalidPoint:
+            return "XML has invalid Point tag";
+        case Code::InvalidDate:
+            return "XML has invalid Date tag; Date string must have minimum 3 type identifiers (Year, Month, Day)";
+        case Code::InvalidTime:
+            return "XML has invalid Time tag; Time must have minimum 3 type identifiers (Hour, Minute, Secs)";
+        case Code::InvalidHow:
+            return "XML has invalid How tag";
+        case Code::InvalidType:
+            return "XML has invalid Type tag";
+        case Code::InvalidXml:
+            return "Invalid XML input";
+        case Code::InvalidInput:
+            return "Invalid or empty input";
+        case Code::InvalidTimeSubSchema:
+            return "Invalid Time sub-schema";
+        case Code::InsufficientData:
+            return "Insufficient Data";
+        case Code::ProcessingError:
+            return "Processing error";
+        case Code::NoModificationMade:
+            return "No modification made";
+        default:
+            return "Unknown error";
+        }
+    }
+
+    std::string description() { return this->m_description; }
+
+    Code code() const { return this->m_code; }
+private:
+    Code m_code;                  // Error code
+    std::string m_description;    // Detailed error message
 };

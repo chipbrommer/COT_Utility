@@ -25,8 +25,8 @@ int main()
 
     // EXAMPLE: How to parse from a string into a COT structure with return value. 
     CoT_Schema cot;
-    CoT_UtilityResult res = c.ParseCOT(test, cot);
-    if (res == CoT_UtilityResult::Success)
+    Result res = c.ParseCOT(test, cot);
+    if (res.IsSuccess())
     {
         std::cout << cot;
     }
@@ -35,7 +35,7 @@ int main()
     std::cout << "\n\n";
     CoT_Schema cot2;
     res = c.ParseCOT(test2, cot2);
-    if (res == CoT_UtilityResult::Success)
+    if (res.IsSuccess())
     {
         std::cout << cot2;
     }
@@ -49,16 +49,19 @@ int main()
     }
 
     // EXAMPLE: How to create an output message from a COT Schema using cot3 from prior example
-    std::string out = c.GenerateXMLCOTMessage(cot3);
-    std::cout << out;
-
+    std::string out;
+    res = c.GenerateXMLCOTMessage(cot3, out);
+    if (res.IsSuccess())
+    {
+        std::cout << out;
+    }
 
     // EXAMPLE: How to append an 'ack' status to a received message. 
     std::cout << "\n\n";
     std::string mod;
     res = c.AcknowledgeReceivedCOTMessage(test, mod);
 
-    if (res == CoT_UtilityResult::Success)
+    if (res.IsSuccess())
     {
         std::cout << mod;
     }
@@ -69,7 +72,7 @@ int main()
     cot3.point.latitude = 180.01234; // here we are updating the latitude of cot3 example
     res = c.UpdateReceivedCOTMessage(test, cot3, mod2);
 
-    if (res == CoT_UtilityResult::Success)
+    if (res.IsSuccess())
     {
         std::cout << mod2;
     }
@@ -83,13 +86,13 @@ int main()
     std::cout << "\n\n";
     CoT_Schema cot4;
     res = c.ParseCOT(badTest, cot4);
-    if (res == CoT_UtilityResult::Success)
+    if (res.IsSuccess())
     {
         std::cout << cot4;
     }
     else
     {
-        std::cerr << c.UtilityResultToString(res) << "\n";
+        std::cerr << res.description() << "\n";
     }
 
     // EXAMPLE: Links.
@@ -117,13 +120,13 @@ int main()
     std::cout << "\n\n";
     CoT_Schema cot5;
     res = c.ParseCOT(linkTest, cot5);
-    if (res == CoT_UtilityResult::Success)
+    if (res.IsSuccess())
     {
         std::cout << cot5;
     }
     else
     {
-        std::cerr << c.UtilityResultToString(res) << "\n";
+        std::cerr << res.description() << "\n";
     }
 
     // Example: Adding custom attributes 

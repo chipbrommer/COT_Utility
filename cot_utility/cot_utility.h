@@ -35,8 +35,9 @@ public:
 
     /// @brief Create an XML COT message from a schema
     /// @param cot - [in] - COT Schema to be created into a message
-    /// @return Result containing the XML message or error description
-    Result GenerateXMLCOTMessage(CoT_Schema& cot);
+    /// @param xml - [out] - XML string output converted from input cot schema
+    /// @return Result containing information about success or errors
+    Result GenerateXMLCOTMessage(CoT_Schema& cot, std::string& xml);
 
     /// @brief Update fields within a received message to preserve its original content
     /// @param receivedMessage - [in] - the original received message
@@ -67,8 +68,8 @@ public:
 
     /// @brief Parse a COT Message
     /// @param buffer - [in] - char buffer containing the XML data to be parsed
-    /// @return Result containing the parsed CoT_Schema or error description
-    Result ParseBufferToCOT(const char* buffer);
+    /// @return CoT_Schema containing the parsed CoT_Schema or error description
+    CoT_Schema ParseBufferToCOT(const char* buffer);
 
     /// @brief Parse the Track element from a Cursor on Target message
     /// @param buffer - [in] - char buffer containing the XML data to be parsed
