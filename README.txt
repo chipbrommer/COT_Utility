@@ -1,3 +1,9 @@
+COMING SOON - CoT Utility v0.5.0.
+Currently in work: 
+    Free function style for a more modern and flexible usecase with a single file include. 
+
+___________________________________________________________________________
+
 CoT Utility v0.4.2.
 Update: 
     Significantly updated the abilities of each subschema to parse into and out of XML format directly. 
