@@ -116,5 +116,5 @@ private:
 
     const int MAJOR = 0;
     const int MINOR = 4;
-    const int BUILD = 1;
+    const int BUILD = 2;
 };
