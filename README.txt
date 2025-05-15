@@ -1,8 +1,9 @@
-CoT Utility v0.4.1.
+CoT Utility v0.4.2.
 Update: 
     Significantly updated the abilities of each subschema to parse into and out of XML format directly. 
     Added ability to add custom fields in the Detail subschema with attributes and content.
     Added ability to set timestamps from system clock
+    Further expend the return result from function to include error code and description
 
 ___________________________________________________________________________
 
