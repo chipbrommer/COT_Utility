@@ -32,6 +32,7 @@ namespace cot
         /// @brief Error code indicating the operation outcome
         enum class error_code : int {
             Success,                // No error
+            InvalidCotSchema,
             InvalidEvent,           // XML is missing Event tag
             InvalidPoint,           // XML is missing Point tag
             InvalidDetail,          // XML has invalid Detail tag
@@ -117,42 +118,141 @@ namespace cot
         error_handler = std::move(handler);
     }
 
+#pragma region message_classes
+
+    class event {
+    public:
+        /// @brief Constructor - Initializes everything
+        event() : {}
+
+        /// @brief Checks if the class has valid data
+        bool is_valid(std::string* errorMsg = nullptr) const
+        {
+            bool valid = true;
+            std::string errors;
+
+            // Event and Point are required in CoT
+            if (!event.is_valid(&errors))
+            {
+                valid = false;
+                if (errorMsg && !errors.empty()) *errorMsg += "Event invalid: " + errors + "; ";
+            }
+
+            return valid;
+        }
+    private:
+    };
+
+    /// @brief A root XML CoT Message schema class for entire xml message data
+    class message {
+    public:
+        Event event;                    /// Holds Event Sub-schema
+        std::string xml_version;        /// Holds version from XML tag
+        std::string xml_encoding;       /// Holds hold encoding from XML tag
+        std::string xml_standalone;     /// Holds holds standalone bool from XML tag
+
+        /// @brief Constructor - Initializes everything
+        message(const Event& event = Event()) :
+            event(event) {
+        }
+
+        /// @brief Equality comparison operator
+        bool operator==(const message& other) const
+        {
+            return event == other.event &&
+                xml_version == other.xml_version &&
+                xml_encoding == other.xml_encoding &&
+                xml_standalone == other.xml_standalone;
+        }
+
+        /// @brief Inequality comparison operator
+        bool operator!=(const message& other) const
+        {
+            return !(*this == other);
+        }
+
+        /// @brief Checks if the class has valid data
+        bool is_valid(std::string* errorMsg = nullptr) const
+        {
+            bool valid = true;
+            std::string errors;
+
+            // Event and Point are required in CoT
+            if (!event.is_valid(&errors))
+            {
+                valid = false;
+                if (errorMsg && !errors.empty()) *errorMsg += "Event invalid: " + errors + "; ";
+            }
+
+            return valid;
+        }
+ 
+    };
+
+#pragma endregion
+
+#pragma region utility
+    /// @brief Get the current version information
+    /// @return String containing version (e.g., "1.0.0")
+    [[nodiscard]] std::string get_version()
+    {
+        std::ostringstream oss;
+        oss << "cot::utility v" << COT_UTILITY_MAJOR << '.' << COT_UTILITY_MINOR << '.' << COT_UTILITY_BUILD;
+        return oss.str();
+    }
+
     /// @brief Verify a string buffer is valid XML
     /// @param buffer Input buffer to verify
-    /// @return bool indicating success or failure
-    bool verify_xml(std::string_view buffer) {
+    /// @return result indicating success or failure with description
+    result verify_xml(std::string buffer) {
         if (buffer.empty()) {
-            if (error_handler) {
-                error_handler(result{ result::error_code::InvalidInput, "Empty input buffer" });
-            }
-            return false;
+            return result{ result::error_code::InvalidInput, "Empty input buffer" }
         }
+
         pugi::xml_document doc;
         pugi::xml_parse_result parse_result = doc.load_buffer(buffer.data(), buffer.size());
         if (!parse_result) {
-            if (error_handler) {
-                error_handler(result{ result::error_code::InvalidXml, parse_result.description() });
-            }
-            return false;
+            return result{ result::error_code::InvalidXml, parse_result.description() };
         }
-        if (error_handler) {
-            error_handler(result{ result::error_code::Success, "Successfully verified XML" });
+
+        return result{ result::error_code::Success, "Successfully verified XML" };
+    }
+
+    /// @brief prep an xml buffer to be parsed, will clear content before the starting xml tag
+    /// @param xml string view containtaining the xml
+    /// @return result indicating success or failure with description
+    result prep_message(std::string& xml)
+    {
+        if (xml.empty()) {
+            return result{ result::error_code::InvalidInput, "Empty input buffer" }
         }
-        return true;
+
+        size_t position = xml.find("<?xml");
+        if (position == std::string::npos)
+        {
+            return result(result::error_code::InvalidXml);
+        }
+        xml.erase(0, position);
+
+        // Verify XML structure
+        result rslt = verify_xml(xml);
+        if (rslt.is_failed())
+        {
+            return rslt;
+        }
+        return result::error_code::Success);
     }
 
     /// @brief Create an XML CoT message from a schema
     /// @param cot Schema to convert to XML
-    /// @return Optional string containing the XML message, or nullopt on error
-    [[nodiscard]] std::optional<std::string> generate_xml_cot(const schema& cot) {
+    /// @param xml std::string contianing xml text, xml is empty if error occurs
+    /// @return result indicating success or failure with description
+    [[nodiscard]] result generate_xml_cot(const schema& cot, std::string& xml) {
         // Validate schema
         std::string error;
         auto validation_result = cot.is_valid(&error);
-        if (!validation_result.is_success()) {
-            if (error_handler) {
-                error_handler(validation_result);
-            }
-            return std::nullopt;
+        if (!validation_result) {
+            return result{ result::error_code::InvalidCotSchema, "Invalid cot schema: " + error };
         }
 
         // Create XML document
@@ -164,75 +264,67 @@ namespace cot
         decl.append_attribute("encoding") = "utf-8";
         decl.append_attribute("standalone") = "yes";
 
-        // Create root event node
-        pugi::xml_node event_node = doc.append_child("event");
-
         // Generate XML for event, point, and detail
-        auto event_result = cot.event.to_xml(event_node);
-        if (!event_result.is_success()) {
-            if (error_handler) {
-                error_handler(event_result);
-            }
-            return std::nullopt;
-        }
-
-        auto point_result = cot.point.to_xml(event_node);
-        if (!point_result.is_success()) {
-            if (error_handler) {
-                error_handler(point_result);
-            }
-            return std::nullopt;
-        }
-
-        auto detail_result = cot.detail.to_xml(event_node);
-        if (!detail_result.is_success()) {
-            if (error_handler) {
-                error_handler(detail_result);
-            }
-            return std::nullopt;
-        }
-
-        // Write XML to string
-        std::stringstream xml_stream;
-        doc.save(xml_stream);
-        std::string xml = xml_stream.str();
+        std::string temp = cot.to_xml();
 
         // Verify generated XML
         pugi::xml_document verify_doc;
-        pugi::xml_parse_result parse_result = verify_doc.load_buffer(xml.data(), xml.size());
+        pugi::xml_parse_result parse_result = verify_doc.load_string(temp.data(), temp.size());
         if (!parse_result) {
-            auto error_result = result{ result::error_code::InvalidXml,
-                                       std::string(parse_result.description()) + " at offset " +
-                                       std::to_string(parse_result.offset) };
-            if (error_handler) {
-                error_handler(error_result);
-            }
-            return std::nullopt;
+            return result{ result::error_code::InvalidXml,
+                                        std::string(parse_result.description()) + " at offset " +
+                                        std::to_string(parse_result.offset) };
         }
 
-        if (error_handler) {
-            error_handler(result{ result::error_code::Success, "Successfully generated XML CoT message" });
-        }
-        return xml;
+        xml = temp;
+        return result{ result::error_code::Success, "Successfully generated XML CoT message" };
     }
-
-    /// @brief Update fields within a received CoT message
-    /// @param received Original received message
-    /// @param cot Schema with fields to update
-    /// @param modified Output modified message
-    /// @param acknowledgment Flag to indicate acknowledgment
-    /// @return Result indicating success or failure with description
-    [[nodiscard]] result update_received_cot_message(std::string_view received,
-        const Schema& cot,
-        std::string& modified,
-        bool acknowledgment = false);
 
     /// @brief Add an acknowledgment to a received CoT message
     /// @param received Received message
     /// @param response Output acknowledgment message
     /// @return Result indicating success or failure with description
     [[nodiscard]] result acknowledge_received_cot_message(std::string_view received,
-        std::string& response);
+        std::string& response)
+    {
+        // Create XML document to load in the receivedMessage
+        pugi::xml_document doc;
+        pugi::xml_parse_result res = doc.load_string(receivedMessage.c_str());
+
+        if (res)
+        {
+            // Modified flag
+            bool modified = false;
+
+            // Find the 'status' node
+            pugi::xml_node statusNode = doc.select_node("//status").node();
+
+            if (statusNode)
+            {
+                // Check if acknowledgment attribute doesn't exist
+                if (!statusNode.attribute("acknowledgment"))
+                {
+                    // Add acknowledgment attribute with value "ack"
+                    statusNode.append_attribute("acknowledgment").set_value("ack");
+                    modified = true;
+                }
+            }
+
+            // If modified, save the modified XML string
+            if (modified)
+            {
+                std::stringstream modifiedXmlStream;
+                doc.save(modifiedXmlStream);
+                responseMessage = modifiedXmlStream.str();
+                return result(result::error_code::Success);
+            }
+
+            // No modification made
+            return result(result::error_code::NoModificationMade);
+        }
+
+        return result(result::error_code::ProcessingError, result.description());
+    }
 
     /// @brief Parse a CoT message from a string buffer
     /// @param buffer Input buffer containing XML data
@@ -240,10 +332,14 @@ namespace cot
     /// @return Result indicating success or failure with description
     [[nodiscard]] result parse_cot(std::string_view buffer, Schema& cot)
     {
-        // Remove any trash before "<?xml"
-        size_t position = buffer.find("<?xml");
-        if (position == std::string::npos) { return Result(Result::Code::InvalidXml); }
-        buffer.erase(0, position);
+        // Convert input buffer to string and remove garbage before <?xml
+        std::string xmlBuffer(buffer);
+        result rslt = prep_message(xmlBuffer);
+
+        if (rslt.is_failed())
+        {
+            return rslt;
+        }
 
         // Parse XML
         pugi::xml_document doc;
@@ -295,25 +391,140 @@ namespace cot
     /// @param buffer Input buffer containing XML data
     /// @param cot Output schema to store parsed data
     /// @return Result indicating success or failure with description
-    [[nodiscard]] result parse_cot(const char* buffer, Schema& cot);
-
-    /// @brief Parse a CoT message into a schema
-    /// @param buffer Input buffer containing XML data
-    /// @return Result containing parsed schema or error description
-    [[nodiscard]] result parse_buffer_to_cot(std::string_view buffer);
-
-    /// @brief Parse the Track element from a CoT message
-    /// @param buffer Input buffer containing XML data
-    /// @param track Output track instance
-    /// @return Result indicating success or failure with description
-    [[nodiscard]] result parse_track_from_cot(std::string_view buffer, Track& track);
-
-    /// @brief Get the current version information
-    /// @return String containing version (e.g., "1.0.0")
-    [[nodiscard]] std::string get_version()
+    [[nodiscard]] result parse_cot(const char* buffer, Schema& cot)
     {
-        std::ostringstream oss;
-        oss << "cot::utility v" << COT_UTILITY_MAJOR << '.' << COT_UTILITY_MINOR << '.' << COT_UTILITY_BUILD;
-        return oss.str();
+        return parse_cot(std::string_view(buffer), cot);
     }
+
+    /// @brief Parse the Event element from a CoT message
+    /// @param buffer Input buffer containing XML data
+    /// @param event Output event instance
+    /// @return result indicating success or failure with description
+    [[nodiscard]] result parse_event_from_cot(std::string_view buffer, Event& event)
+    {
+        // Prep message for parsing
+        std::string xmlBuffer(buffer);
+        result rslt = prep_message(xmlBuffer);
+
+        if (rslt.is_failed())
+        {
+            return rslt;
+        }
+
+        // Parse XML document
+        pugi::xml_document doc;
+        pugi::xml_parse_result xmlResult = doc.load_string(xmlBuffer.c_str());
+        if (!xmlResult)
+        {
+            return result(result::error_code::ProcessingError);
+        }
+
+        // Check for exactly one <event> node
+        int eventsSize = (int)doc.root().select_nodes("event").size();
+        if (eventsSize != 1)
+        {
+            return result(result::error_code::InvalidEvent);
+        }
+
+        // Navigate to <event> and <detail>
+        pugi::xml_node eventNode = doc.child("event");
+
+        // Use Track::FromXml to parse the track node
+        event = Event::FromXml(eventNode);
+
+        // Success
+        return result(result::error_code::Success);
+    }
+
+    /// @brief Parse the Point element from a CoT message
+    /// @param buffer Input buffer containing XML data
+    /// @param point Output point instance
+    /// @return result indicating success or failure with description
+    [[nodiscard]] result parse_point_from_cot(std::string_view buffer, Point& point)
+    {
+        // Prep message for parsing
+        std::string xmlBuffer(buffer);
+        result rslt = prep_message(xmlBuffer);
+
+        if (rslt.is_failed())
+        {
+            return rslt;
+        }
+
+        // Parse XML document
+        pugi::xml_document doc;
+        pugi::xml_parse_result xmlResult = doc.load_string(xmlBuffer.c_str());
+        if (!xmlResult)
+        {
+            return result(result::error_code::ProcessingError);
+        }
+
+        // Check for exactly one <event> node
+        int eventsSize = (int)doc.root().select_nodes("event").size();
+        if (eventsSize != 1)
+        {
+            return result(result::error_code::InvalidEvent);
+        }
+
+        // Navigate to <event> and <detail>
+        pugi::xml_node eventNode = doc.child("event");
+        pugi::xml_node pointNode = eventNode.child("point");
+        if (!pointNode)
+        {
+            return result(result::error_code::InsufficientData);
+        }
+
+        // Use Point::FromXml to parse the track node
+        point = Point::FromXml(pointNode);
+
+        // Success
+        return result(result::error_code::Success);
+    }
+
+    /// @brief Parse the Detail element from a CoT message
+    /// @param buffer Input buffer containing XML data
+    /// @param detail parsed detail instance
+    /// @return result indicating success or failure with description
+    [[nodiscard]] result parse_detail_from_cot(std::string_view buffer, Detail& detail)
+    {
+        // Prep message for parsing
+        std::string xmlBuffer(buffer);
+        result rslt = prep_message(xmlBuffer);
+
+        if (rslt.is_failed())
+        {
+            return rslt;
+        }
+
+        // Parse XML document
+        pugi::xml_document doc;
+        pugi::xml_parse_result xmlResult = doc.load_string(xmlBuffer.c_str());
+        if (!xmlResult)
+        {
+            return result(result::error_code::ProcessingError);
+        }
+
+        // Check for exactly one <event> node
+        int eventsSize = (int)doc.root().select_nodes("event").size();
+        if (eventsSize != 1)
+        {
+            return result(result::error_code::InvalidEvent);
+        }
+
+        // Navigate to <event> and <detail>
+        pugi::xml_node eventNode = doc.child("event");
+        pugi::xml_node detailNode = eventNode.child("detail");
+        if (!detailNode)
+        {
+            return result(result::error_code::InsufficientData);
+        }
+
+        // Use Detail::FromXml to parse the track node
+        detail = Detail::FromXml(detailNode);
+
+        // Success
+        return result(result::error_code::Success);
+    }
+
+#pragma endregion
 }

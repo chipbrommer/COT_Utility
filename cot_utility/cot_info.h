@@ -871,7 +871,7 @@ public:
         return valid;
     }
 
-    std::string ToXml() const 
+    std::string ToXml(bool add_ending_tag = false) const 
     {
         if (!IsValid()) return "";
         std::ostringstream oss;
@@ -882,7 +882,11 @@ public:
             << " time=\"" << time.ToCotTimestamp() << "\""
             << " start=\"" << start.ToCotTimestamp() << "\""
             << " stale=\"" << stale.ToCotTimestamp() << "\""
-            << " how=\"" << how << "\">";
+            << " how=\"" << how << ">";
+        if (add_ending_tag)
+        {
+            oss << "</event>";
+        }
         return oss.str();
     }
 
@@ -2651,7 +2655,6 @@ public:
     std::string ToXml() const 
     {
         std::ostringstream oss;
-        oss << "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n";
         if (!event.IsValid()) 
         {
             return oss.str(); // Return empty XML if event is invalid
