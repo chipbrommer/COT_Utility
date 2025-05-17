@@ -32,7 +32,8 @@ namespace cot
         /// @brief Error code indicating the operation outcome
         enum class error_code : int {
             Success,                // No error
-            InvalidCotSchema,
+            StructureDataInvalid,
+            InvalidData,        
             InvalidEvent,           // XML is missing Event tag
             InvalidPoint,           // XML is missing Point tag
             InvalidDetail,          // XML has invalid Detail tag
@@ -45,7 +46,8 @@ namespace cot
             InvalidTimeSubSchema,
             InsufficientData,
             ProcessingError,        // Generic processing failure
-            NoModificationMade
+            NoModificationMade,
+            GeneralError,
         };
 
         /// @brief Check if the operation was successful
@@ -72,12 +74,13 @@ namespace cot
 
         std::string description() { return this->m_description; }
     private:
-        static std::string to_string(error_code error)
-        {
+        static std::string to_string(error_code error) {
             switch (error)
             {
             case error_code::Success:
                 return "Success";
+            case error_code::StructureDataInvalid:
+                return "Structure has invalid data";
             case error_code::InvalidEvent:
                 return "XML has invalid Event tag";
             case error_code::InvalidPoint:
@@ -102,6 +105,8 @@ namespace cot
                 return "Processing error";
             case error_code::NoModificationMade:
                 return "No modification made";
+            case error_code::GeneralError:
+                return "General Error";
             default:
                 return "Unknown error";
             }
@@ -120,9 +125,67 @@ namespace cot
 
 #pragma region message_classes
 
-    /// @brief A COT Message subschema class for Date data 
-    class date
-    {
+    /// @brief A COT Message subschema class for uid data
+    class uid {
+    public:
+        std::string droid; /// User
+
+        /// @brief Constructor - Initializes Everything
+        uid(const std::string& droid = INVALID_VALUE) : droid(droid) {}
+
+        /// @brief Equality comparison operator
+        bool operator==(const uid& other) const {
+            return droid == other.droid;
+        }
+
+        /// @brief Inequality comparison operator
+        bool operator!=(const uid& other) const {
+            return !(*this == other);
+        }
+
+        /// @brief Checks if the class has valid data
+        /// @param rslt Optional result structure for invalid reason
+        /// @return true if valid, else false
+        bool is_valid(result* rslt = nullptr) const {
+            bool valid = !droid.empty();
+            if (!valid && rslt) {
+                *rslt = result(result::error_code::StructureDataInvalid, "Status battery is unset (NaN)");
+            }
+            return valid;
+        }
+
+        /// @brief Serialize to XML string
+        std::string to_xml() const {
+            if (!is_valid()) {
+                return "<uid/>"; // Empty tag for invalid Uid
+            }
+            std::ostringstream oss;
+            oss << "<uid Droid=\"" << droid << "\"/>";
+            return oss.str();
+        }
+
+        /// @brief Deserialize from XML node
+        static uid from_xml(const pugi::xml_node& node) {
+            uid u;
+            pugi::xml_attribute attr;
+            if (attr = node.attribute("Droid")) u.droid = attr.as_string();
+            return u;
+        }
+
+        /// @brief Print the class
+        friend std::ostream& operator<<(std::ostream& os, const uid& u) {
+            os << "uid: ";
+            if (!u.is_valid()) { os << " -NOT VALID- "; }
+            os << "\n\tdroid: " << (u.droid.empty() ? "None" : u.droid) << "\n";
+            return os;
+        }
+
+    private:
+        static constexpr const char* INVALID_VALUE = ""; /// Sentinel value for invalid string
+    };
+
+    /// @brief A COT Message subschema class for date data 
+    class date {
     public:
         unsigned year;  /// year
         unsigned month; /// month
@@ -199,18 +262,21 @@ namespace cot
         }
     };
 
-    /// @brief A COT Message subschema class for Time data 
-    class time
-    {
+    /// @brief A COT Message subschema class for time data 
+    class time {
     public:
-        unsigned hour;
-        unsigned minute;
-        double second;
+        unsigned hour;      /// hours
+        unsigned minute;    /// minutes
+        double second;      /// seconds
 
+        /// @brief Constructor - Initializes Everything
         time(unsigned hour = 0, unsigned minute = 0, double second = -1)
             : hour(hour), minute(minute), second(second) {
         }
 
+        /// @brief Check if the instance is valid
+        /// @param errorMsg pointer to string to place any possible error message
+        /// @return true if valid, else false
         bool is_valid(std::string* errorMsg = nullptr) const {
             if (hour >= 24)
             {
@@ -230,16 +296,20 @@ namespace cot
             return true;
         }
 
+        /// @brief Equality comparison operator
         bool operator==(const time& other) const {
             constexpr double EPSILON = 1e-6;
             return hour == other.hour && minute == other.minute &&
                 (std::isnan(second) && std::isnan(other.second) || std::abs(second - other.second) < EPSILON);
         }
 
+        /// @brief Inequality comparison operator
         bool operator!=(const time& other) const {
             return !(*this == other);
         }
 
+        /// @brief Get the date in string format HH:MM:SS.sss
+        /// @return string containing the date
         std::string to_string() const {
             std::string str;
             os << std::setfill('0') << std::setw(2) << hour << ":"
@@ -248,47 +318,55 @@ namespace cot
             return str;
         }
 
+        /// @brief output the date in string format YYYY-MM-DD
+        /// @param os output stream
+        /// @param date date instance to be output
+        /// @return stream
         friend std::ostream& operator<<(std::ostream& os, const time& time) {
             os << time.to_string();
             return os;
         }
     };
 
-    /// @brief A COT Message subschema class for datetime data 
-    class datetime : public date, public time
-    {
+    /// @brief A COT Message subschema class for date and time data 
+    class datetime : public date, public time {
     public:
+        /// @brief Constructor - Initializes everything
         datetime(unsigned year = 0, unsigned month = 0, unsigned day = 0,
             unsigned hour = 0, unsigned minute = 0, double second = -1)
             : date(year, month, day), time(hour, minute, second) {
         }
 
-        /// @brief Check if the DateTime object is valid
-        /// @param errorMsg Optional error message for invalid reason
+        /// @brief Check if the datetime object is valid
+        /// @param rslt Optional result structure for invalid reason
         /// @return true if valid, else false
-        bool is_valid(std::string* errorMsg = nullptr) const
+        bool is_valid(result* rslt = nullptr) const
         {
             std::string dateError, timeError;
             bool dateValid = date::is_valid(&dateError);
             bool timeValid = time::is_valid(&timeError);
             if (!dateValid || !timeValid)
             {
-                if (errorMsg)
+                if (rslt)
                 {
-                    *errorMsg = "";
-                    if (!dateValid) *errorMsg += "Date invalid: " + dateError + "; ";
-                    if (!timeValid) *errorMsg += "Time invalid: " + timeError;
+                    std::string errorMsg = "";
+                    result::error_code code = result::error_code::Success;
+                    if (!dateValid){ code = result::error_code::InvalidDate; errorMsg += "date invalid: " + dateError + "; "; }
+                    if (!timeValid){ code = result::error_code::InvalidTime; errorMsg += "time invalid: " + timeError;        }
+                    *rslt = result(result::error_code::InvalidDate, errorMsg);
                 }
                 return false;
             }
+
+            if (rslt) { *rslt = result(result::error_code::Success); }
             return true;
         }
 
-        /// @brief Convert the DateTime object into a CoT Timestamp string
-        /// @return string containing the converted DateTime object
-        std::string ToCotTimestamp() const
+        /// @brief Convert the datetime object into a CoT Timestamp string
+        /// @return string containing the converted datetime object
+        std::string to_cot_timestamp() const
         {
-            if (!IsValid()) return "";
+            if (!is_valid()) return "";
             std::stringstream timestamp;
             timestamp << std::setfill('0') << std::setw(4) << year << "-"
                 << std::setfill('0') << std::setw(2) << month << "-"
@@ -299,16 +377,16 @@ namespace cot
             return timestamp.str();
         }
 
-        /// @brief Parse a CoT Timestamp string into a DateTime object
+        /// @brief Parse a CoT Timestamp string into a datetime object
         /// @param str sring containing the value of for the timestamp (e.g. 2025-05-11T19:05:24.000Z)
-        /// @param errorMsg Optional error message if converting into DateTime object fails
-        /// @return DateTime object with parse time, or default if invalid
-        static datetime FromString(const std::string& str, std::string* errorMsg = nullptr)
+        /// @param rslt Optional result structure for invalid reason if converting into datetime object fails
+        /// @return datetime object with parse time, or default if invalid
+        static datetime from_cot_timestamp(const std::string& str, result* rslt = nullptr)
         {
             if (str.empty())
             {
-                if (errorMsg) *errorMsg = "Empty timestamp string";
-                return DateTime();
+                if (rslt) { *rslt = result(result::error_code::InsufficientData, "Empty timestamp string"); }
+                return datetime();
             }
 
             // Split on 'T' to separate date and time
@@ -322,8 +400,8 @@ namespace cot
 
             if (parts.size() != 2)
             {
-                if (errorMsg) *errorMsg = "Invalid timestamp format: missing 'T' separator";
-                return DateTime();
+                if (rslt) { *rslt = result(result::error_code::InvalidTime, "Invalid timestamp format: missing 'T' separator"); } 
+                return datetime();
             }
 
             // Parse date (YYYY-MM-DD)
@@ -336,16 +414,16 @@ namespace cot
 
             if (dateParts.size() != 3)
             {
-                if (errorMsg) *errorMsg = "Invalid date format: expected YYYY-MM-DD";
-                return DateTime();
+                if (rslt) { *rslt = result(result::error_code::InvalidDate, "Invalid date format: expected YYYY-MM-DD"); }
+                return datetime();
             }
 
             // Parse time (hh:mm:ss.sssZ)
             std::string timeStr = parts[1];
             if (timeStr.empty() || timeStr.back() != 'Z')
             {
-                if (errorMsg) *errorMsg = "Invalid time format: missing 'Z' suffix";
-                return DateTime();
+                if (rslt) { *rslt = result(result::error_code::InvalidTime, "Invalid time format: missing 'Z' suffix"); }
+                return datetime();
             }
 
             timeStr.pop_back(); // Remove 'Z'
@@ -358,8 +436,8 @@ namespace cot
 
             if (timeParts.size() != 3)
             {
-                if (errorMsg) *errorMsg = "Invalid time format: expected hh:mm:ss.sss";
-                return DateTime();
+                if (rslt) { *rslt = result(result::error_code::InvalidTime, "Invalid time format: expected hh:mm:ss.sss"); }
+                return datetime();
             }
 
             try
@@ -371,42 +449,42 @@ namespace cot
                 unsigned minute = std::stoul(timeParts[1]);
                 double second = std::stod(timeParts[2]);
 
-                DateTime dt(year, month, day, hour, minute, second);
-                if (!dt.IsValid(errorMsg))
+                datetime dt(year, month, day, hour, minute, second);
+                if (!dt.is_valid(rslt))
                 {
-                    return DateTime();
+                    return datetime();
                 }
                 return dt;
             }
             catch (const std::exception& e)
             {
-                if (errorMsg) *errorMsg = "Parsing error: " + std::string(e.what());
-                return DateTime();
+                if (rslt) { *rslt = result(result::error_code::ProcessingError, "Parsing error: " + std::string(e.what())); }
+                return datetime();
             }
         }
 
-        /// @brief Creates a DateTime object from the current system clock (UTC)
-        /// @param errorMsg Optional error message if system time retrieval fails
-        /// @return DateTime object with current UTC time, or default if invalid
-        static datetime FromSystemClock(std::string* errorMsg = nullptr)
+        /// @brief Creates a datetime object from the current system clock (UTC)
+        /// @param rslt Optional result structure for invalid reason if system time retrieval fails
+        /// @return datetime object with current UTC time, or default if invalid
+        static datetime from_system_clock(result* rslt = nullptr)
         {
             // Get current time as epoch seconds
             std::time_t now = std::time(nullptr);
             if (now == static_cast<std::time_t>(-1))
             {
-                if (errorMsg) *errorMsg = "Failed to retrieve system time";
-                return DateTime();
+                if (rslt) { *rslt = result(result::error_code::GeneralError, "Failed to retrieve system time"); }
+                return datetime();
             }
 
             // Convert to UTC using gmtime (portable across Windows, Linux, macOS)
             std::tm* utcTime = std::gmtime(&now);
             if (!utcTime)
             {
-                if (errorMsg) *errorMsg = "Failed to convert system time to UTC";
-                return DateTime();
+                if (rslt) { *rslt = result(result::error_code::GeneralError, "Failed to convert system time to UTC"); }
+                return datetime();
             }
 
-            // Populate DateTime fields
+            // Populate datetime fields
             // tm_year is years since 1900, so add 1900
             // tm_mon is 0-11, so add 1
             unsigned year = utcTime->tm_year + 1900;
@@ -416,29 +494,29 @@ namespace cot
             unsigned minute = utcTime->tm_min;
             double second = utcTime->tm_sec; // No sub-second precision
 
-            DateTime dt(year, month, day, hour, minute, second);
-            if (!dt.IsValid(errorMsg))
+            datetime dt(year, month, day, hour, minute, second);
+            if (!dt.is_valid(rslt))
             {
-                return DateTime();
+                return datetime();
             }
             return dt;
         }
 
-        /// @brief Sets DateTime fields with user-provided values
+        /// @brief Sets datetime fields with user-provided values
         /// @param year Year (>= 1970), default 0 (no change)
         /// @param month Month (1-12), default 0 (no change)
         /// @param day Day (1-31, depending on month), default 0 (no change)
         /// @param hour Hour (0-23), default UINT_MAX (no change)
         /// @param minute Minute (0-59), default UINT_MAX (no change)
         /// @param second Second (0-59.999...), default -1 (no change)
-        /// @param errorMsg Optional error message if validation fails
+        /// @param rslt Optional result structure for invalid reason if validation fails
         /// @return True if set successfully, false if invalid
-        bool Set(unsigned year = 0, unsigned month = 0, unsigned day = 0,
+        bool set(unsigned year = 0, unsigned month = 0, unsigned day = 0,
             unsigned hour = UINT_MAX, unsigned minute = UINT_MAX, double second = -1,
-            std::string* errorMsg = nullptr)
+            result* rslt = nullptr)
         {
             // Store current values
-            DateTime temp = *this;
+            datetime temp = *this;
 
             // Update only provided fields
             if (year != 0) temp.year = year;
@@ -449,7 +527,7 @@ namespace cot
             if (second != -1) temp.second = second;
 
             // Validate
-            if (!temp.IsValid(errorMsg))
+            if (!temp.is_valid(rslt))
             {
                 return false;
             }
@@ -459,33 +537,745 @@ namespace cot
             return true;
         }
 
-        /// @brief Set the current DateTime object from the current system clock (UTC)
-        void SetFromSystemClock()
+        /// @brief Set the current datetime object from the current system clock (UTC)
+        /// @return result structure with pass or invalid reason if set fails
+        result set_from_system_clock()
         {
-            *this = FromSystemClock();
+            result tmp{};
+            *this = from_system_clock(tmp);
+            return tmp;
         }
 
         /// @brief Equality comparison operator
-        bool operator==(const DateTime& other) const
+        bool operator==(const datetime& other) const
         {
             return static_cast<const Date&>(*this) == static_cast<const Date&>(other) &&
                 static_cast<const Time&>(*this) == static_cast<const Time&>(other);
         }
 
         /// @brief Inequality comparison operator
-        bool operator!=(const DateTime& other) const
+        bool operator!=(const datetime& other) const
         {
             return !(*this == other);
         }
 
         /// @brief Friend class for convenient printing
-        friend std::ostream& operator<<(std::ostream& os, const DateTime& dt)
+        friend std::ostream& operator<<(std::ostream& os, const datetime& dt)
         {
-            os << static_cast<const Date&>(dt) << "T" << static_cast<const Time&>(dt) << "Z";
+            os << dt.to_cot_timestamp();
             return os;
         }
     };
 
+    /// @brief A COT Message subschema class for precisionlocation data
+    class precisionlocation {
+    public:
+        std::string altsrc;      /// Altitude source
+        std::string geopointsrc; /// Geopoint source
+
+        /// @brief Constructor - Initializes Everything
+        precisionlocation(const std::string& altsrc = INVALID_VALUE,
+            const std::string& geopointsrc = INVALID_VALUE) :
+            altsrc(altsrc), geopointsrc(geopointsrc) {
+        }
+
+        /// @brief Equality comparison operator
+        bool operator==(const precisionlocation& other) const {
+            return altsrc == other.altsrc &&
+                geopointsrc == other.geopointsrc;
+        }
+
+        /// @brief Inequality comparison operator
+        bool operator!=(const precisionlocation& other) const {
+            return !(*this == other);
+        }
+
+        /// @brief Checks if the class has valid data
+        /// @param rslt Optional result structure for invalid reason
+        /// @return true if valid, else false
+        bool is_valid(result *rslt = nullptr) const {
+            bool valid = !altsrc.empty() || !geopointsrc.empty();
+            if (!valid && rslt) {
+                *rslt = result(result::error_code::StructureDataInvalid, "precision_location has no non-empty fields");
+            }
+            return valid;
+        }
+
+        /// @brief Serialize to XML string
+        std::string to_xml() const {
+            if (!is_valid()) {
+                return "<precisionlocation/>"; // Empty tag for invalid PrecisionLocation
+            }
+            std::ostringstream oss;
+            oss << "<precisionlocation";
+            if (!altsrc.empty()) oss << " altsrc=\"" << altsrc << "\"";
+            if (!geopointsrc.empty()) oss << " geopointsrc=\"" << geopointsrc << "\"";
+            oss << "/>";
+            return oss.str();
+        }
+
+        /// @brief Deserialize from XML node
+        static precisionlocation from_xml(const pugi::xml_node& node) {
+            precisionlocation preloc;
+            pugi::xml_attribute attr;
+            if (attr = node.attribute("altsrc")) preloc.altsrc = attr.as_string();
+            if (attr = node.attribute("geopointsrc")) preloc.geopointsrc = attr.as_string();
+            return preloc;
+        }
+
+        /// @brief Print the class
+        friend std::ostream& operator<<(std::ostream& os, const precisionlocation& preloc) {
+            os << "precisionlocation: ";
+            if (!preloc.is_valid()) { os << " -NOT VALID- "; }
+            os << "\n"
+                << "\talt Source: " << (preloc.altsrc.empty() ? "None" : preloc.altsrc) << "\n"
+                << "\tgeopoint Source: " << (preloc.geopointsrc.empty() ? "None" : preloc.geopointsrc) << "\n";
+            return os;
+        }
+
+    private:
+        static constexpr const char* INVALID_VALUE = ""; /// Sentinel value for invalid string
+    };
+
+    /// @brief A COT Message subschema class for takv data
+    class takv {
+    public:
+        std::string version;  /// Version
+        std::string device;   /// Device type
+        std::string os;       /// Operating system
+        std::string platform; /// TAK platform (ATAK-CIV, WINTAK, ATAK-MIL, etc)
+
+        /// @brief Constructor - Initializes Everything
+        takv(const std::string& version = INVALID_VALUE,
+            const std::string& device = INVALID_VALUE,
+            const std::string& os = INVALID_VALUE,
+            const std::string& platform = INVALID_VALUE) :
+            version(version), device(device), os(os), platform(platform) {
+        }
+
+        /// @brief Equality comparison operator
+        bool operator==(const takv& other) const {
+            return version == other.version &&
+                device == other.device &&
+                os == other.os &&
+                platform == other.platform;
+        }
+
+        /// @brief Inequality comparison operator
+        bool operator!=(const takv& other) const {
+            return !(*this == other);
+        }
+
+        /// @brief Checks if the class has valid data
+        /// @param rslt Optional result structure for invalid reason
+        /// @return true if valid, else false
+        bool is_valid(result* rslt = nullptr) const {
+            bool valid = !version.empty() || !device.empty() || !os.empty() || !platform.empty();
+            if (!valid && rslt) {
+                *rslt = result(result::error_code::StructureDataInvalid, "takv has no non-empty fields");
+            }
+            return valid;
+        }
+
+        /// @brief Serialize to XML string
+        std::string to_xml() const {
+            if (!is_valid()) {
+                return "<takv/>"; // Empty tag for invalid Takv
+            }
+            std::ostringstream oss;
+            oss << "<takv";
+            if (!version.empty()) oss << " version=\"" << version << "\"";
+            if (!device.empty()) oss << " device=\"" << device << "\"";
+            if (!os.empty()) oss << " os=\"" << os << "\"";
+            if (!platform.empty()) oss << " platform=\"" << platform << "\"";
+            oss << "/>";
+            return oss.str();
+        }
+
+        /// @brief Deserialize from XML node
+        static takv from_xml(const pugi::xml_node& node) {
+            takv t;
+            pugi::xml_attribute attr;
+            if (attr = node.attribute("version")) t.version = attr.as_string();
+            if (attr = node.attribute("device")) t.device = attr.as_string();
+            if (attr = node.attribute("os")) t.os = attr.as_string();
+            if (attr = node.attribute("platform")) t.platform = attr.as_string();
+            return t;
+        }
+
+        /// @brief Print the class
+        friend std::ostream& operator<<(std::ostream& os, const takv& t) {
+            os << "takv: ";
+            if (!t.is_valid()) { os << " -NOT VALID- "; }
+            os << "\n"
+                << "\tversion: " << (t.version.empty() ? "None" : t.version) << "\n"
+                << "\tdevice: " << (t.device.empty() ? "None" : t.device) << "\n"
+                << "\tos: " << (t.os.empty() ? "None" : t.os) << "\n"
+                << "\tplatform: " << (t.platform.empty() ? "None" : t.platform) << "\n";
+            return os;
+        }
+
+    private:
+        static constexpr const char* INVALID_VALUE = ""; /// Sentinel value for invalid string
+    };
+
+    /// @brief A COT Message subschema class for contact data
+    class contact
+    {
+    public:
+        std::string endpoint;     /// Endpoint of the unit, usually a TCP address
+        std::string callsign;     /// Callsign (name) of the item
+        std::string xmppUsername; /// XMPP Username
+
+        /// @brief Constructor - Initializes Everything
+        contact(const std::string& endpoint = INVALID_VALUE,
+            const std::string& callsign = INVALID_VALUE,
+            const std::string& xmppUsername = INVALID_VALUE) :
+            endpoint(endpoint), callsign(callsign), xmppUsername(xmppUsername) {
+        }
+
+        /// @brief Equality comparison operator
+        bool operator==(const contact& other) const {
+            return endpoint == other.endpoint &&
+                callsign == other.callsign &&
+                xmppUsername == other.xmppUsername;
+        }
+
+        /// @brief Inequality comparison operator
+        bool operator!=(const contact& other) const {
+            return !(*this == other);
+        }
+
+        /// @brief Checks if the class has valid data
+        /// @param rslt Optional result structure for invalid reason
+        /// @return true if valid, else false
+        bool is_valid(result* rslt = nullptr) const {
+            bool valid = !endpoint.empty() || !callsign.empty() || !xmppUsername.empty();
+            if (!valid && rslt) {
+                *rslt = result(result::error_code::StructureDataInvalid, "contact has no non-empty fields");
+            }
+            return valid;
+        }
+
+        /// @brief Serialize to XML string
+        std::string to_xml() const {
+            if (!is_valid()) {
+                return "<contact/>"; // Empty tag for invalid Contact
+            }
+            std::ostringstream oss;
+            oss << "<contact";
+            if (!endpoint.empty()) oss << " endpoint=\"" << endpoint << "\"";
+            if (!callsign.empty()) oss << " callsign=\"" << callsign << "\"";
+            if (!xmppUsername.empty()) oss << " xmppUsername=\"" << xmppUsername << "\"";
+            oss << "/>";
+            return oss.str();
+        }
+
+        /// @brief Deserialize from XML node
+        static contact from_xml(const pugi::xml_node& node) {
+            contact c;
+            pugi::xml_attribute attr;
+            if (attr = node.attribute("endpoint")) c.endpoint = attr.as_string();
+            if (attr = node.attribute("callsign")) c.callsign = attr.as_string();
+            if (attr = node.attribute("xmppUsername")) c.xmppUsername = attr.as_string();
+            return c;
+        }
+
+        /// @brief Print the class
+        friend std::ostream& operator<<(std::ostream& os, const contact& c) {
+            os << "contact: ";
+            if (!c.is_valid()) { os << " -NOT VALID- "; }
+            os << "\n"
+                << "\tendpoint: " << (c.endpoint.empty() ? "None" : c.endpoint) << "\n"
+                << "\tcallsign: " << (c.callsign.empty() ? "None" : c.callsign) << "\n"
+                << "\txmpp username: " << (c.xmppUsername.empty() ? "None" : c.xmppUsername) << "\n";
+            return os;
+        }
+
+    private:
+        static constexpr const char* INVALID_VALUE = ""; /// Sentinel value for invalid string
+    };
+
+    /// @brief A COT Message subschema class for group data
+    class group
+    {
+    public:
+        std::string role; /// Role of the group member sending
+        std::string name; /// Group name
+
+        /// @brief Constructor - Initializes Everything
+        group(const std::string& role = INVALID_VALUE,
+            const std::string& name = INVALID_VALUE) :
+            role(role), name(name) {
+        }
+
+        /// @brief Equality comparison operator
+        bool operator==(const group& other) const {
+            return role == other.role &&
+                name == other.name;
+        }
+
+        /// @brief Inequality comparison operator
+        bool operator!=(const group& other) const {
+            return !(*this == other);
+        }
+
+        /// @brief Checks if the class has valid data
+        /// @param rslt Optional result structure for invalid reason
+        /// @return true if valid, else false
+        bool is_valid(result* rslt = nullptr) const {
+            bool valid = !role.empty() || !name.empty();
+            if (!valid && rslt) {
+                *rslt = result(result::error_code::StructureDataInvalid, "group has no non-empty fields");
+            }
+            return valid;
+        }
+
+        /// @brief Serialize to XML string
+        std::string to_xml() const {
+            if (!is_valid()) {
+                return "<__group/>"; // Empty tag for invalid Group
+            }
+            std::ostringstream oss;
+            oss << "<__group";
+            if (!role.empty()) oss << " role=\"" << role << "\"";
+            if (!name.empty()) oss << " name=\"" << name << "\"";
+            oss << "/>";
+            return oss.str();
+        }
+
+        /// @brief Deserialize from XML node
+        static group from_xml(const pugi::xml_node& node) {
+            group g;
+            pugi::xml_attribute attr;
+            if (attr = node.attribute("role")) g.role = attr.as_string();
+            if (attr = node.attribute("name")) g.name = attr.as_string();
+            return g;
+        }
+
+        /// @brief Print the class
+        friend std::ostream& operator<<(std::ostream& os, const group& g) {
+            os << "group: ";
+            if (!g.is_valid()) { os << " -NOT VALID- "; }
+            os << "\n"
+                << "\trole: " << (g.role.empty() ? "None" : g.role) << "\n"
+                << "\tname: " << (g.name.empty() ? "None" : g.name) << "\n";
+            return os;
+        }
+
+    private:
+        static constexpr const char* INVALID_VALUE = ""; /// Sentinel value for invalid string
+    };
+
+    /// @brief A COT Message subschema class for status data
+    class status {
+    public:
+        double battery; /// Battery percentage
+
+        /// @brief Constructor - Initializes Everything
+        status(double battery = INVALID_VALUE) : battery(battery) {}
+
+        /// @brief Equality comparison operator
+        bool operator==(const status& other) const {
+            constexpr double EPSILON = 1e-6;
+            return (std::isnan(battery) && std::isnan(other.battery)) ||
+                std::abs(battery - other.battery) < EPSILON;
+        }
+
+        /// @brief Inequality comparison operator
+        bool operator!=(const status& other) const {
+            return !(*this == other);
+        }
+
+        /// @brief Checks if the class has valid data
+        /// @param rslt Optional result structure for invalid reason
+        /// @return true if valid, else false
+        bool is_valid(result* rslt = nullptr) const {
+            if (std::isnan(battery)) {
+                if (rslt) { *rslt = result(result::error_code::StructureDataInvalid, "Status battery is unset (NaN)"); }
+                return false;
+            }
+
+            if (battery < 0 || battery > 100) {
+                if (rslt) { *rslt = result(result::error_code::StructureDataInvalid, "Status battery out of range (0-100)"); }
+                return false;
+            }
+
+            return true;
+        }
+
+        /// @brief Serialize to XML string
+        std::string to_xml() const {
+            if (!is_valid()) {
+                return "<status/>"; // Empty tag for invalid Status
+            }
+            std::ostringstream oss;
+            oss << "<status battery=\"" << std::fixed << std::setprecision(2) << battery << "\"/>";
+            return oss.str();
+        }
+
+        /// @brief Deserialize from XML node
+        static status from_xml(const pugi::xml_node& node) {
+            status s;
+            pugi::xml_attribute attr;
+            if (attr = node.attribute("battery")) {
+                try {
+                    s.battery = attr.as_double(INVALID_VALUE);
+                } catch (const std::exception& e) {
+                    s.battery = INVALID_VALUE;
+                }
+            }
+            return s;
+        }
+
+        /// @brief Print the class
+        friend std::ostream& operator<<(std::ostream& os, const status& s) {
+            os << "status: ";
+            if (!s.is_valid()) { os << " -NOT VALID- "; }
+            os << "\n\tbattery: ";
+            if (std::isnan(s.battery)) { os << "NaN"; }
+            else { os << std::fixed << std::setprecision(2) << s.battery; }
+            os << "\n";
+            return os;
+        }
+
+    private:
+        static constexpr double INVALID_VALUE = std::numeric_limits<double>::quiet_NaN(); /// Sentinel value for invalid double
+    };
+
+    /// @brief A COT Message subschema class for strokecolor data
+    class strokecolor
+    {
+    public:
+        int value; /// Color value (ARGB as signed 32-bit integer)
+
+        /// @brief Constructor - Initializes Everything
+        strokecolor(int value = INVALID_VALUE) : value(value) {}
+
+        /// @brief Equality comparison operator
+        bool operator==(const strokecolor& other) const {
+            return value == other.value;
+        }
+
+        /// @brief Inequality comparison operator
+        bool operator!=(const strokecolor& other) const {
+            return !(*this == other);
+        }
+
+        /// @brief Checks if the class has valid data
+        /// @param rslt Optional result structure for invalid reason
+        /// @return true if valid, else false
+        bool is_valid(result* rslt = nullptr) const {
+            if (value == INVALID_VALUE) {
+                if (rslt) { *rslt = result(result::error_code::StructureDataInvalid, "strokecolor value is unset"); }
+                return false;
+            }
+            return true;
+        }
+
+        /// @brief Serialize to XML string
+        std::string to_xml() const {
+            if (!is_valid()) {
+                return "<strokeColor/>"; // Empty tag for unset color
+            }
+            std::ostringstream oss;
+            oss << "<strokeColor value=\"" << value << "\"/>";
+            return oss.str();
+        }
+
+        /// @brief Deserialize from XML node
+        static strokecolor from_xml(const pugi::xml_node& node) {
+            strokecolor color;
+            pugi::xml_attribute attr;
+            if (attr = node.attribute("value")) {
+                try {
+                    color.value = attr.as_int(INVALID_VALUE);
+                } catch (const std::exception& e) {
+                    color.value = INVALID_VALUE;
+                }
+            }
+            return color;
+        }
+
+        /// @brief Print the class
+        friend std::ostream& operator<<(std::ostream& os, const strokecolor& color) {
+            os << "strokecolor: ";
+            if (!color.is_valid()) { os << " -NOT VALID- (Unset)"; }
+            else { os << "\n\tvalue: " << color.value; }
+            os << "\n";
+            return os;
+        }
+
+    private:
+        static constexpr int INVALID_VALUE = std::numeric_limits<int>::min(); /// Sentinel value for invalid color
+    };
+
+    /// @brief A COT Message subschema class for fillcolor data
+    class fillcolor
+    {
+    public:
+        int value; /// Color value (ARGB as signed 32-bit integer)
+
+        /// @brief Constructor - Initializes Everything
+        fillcolor(int value = INVALID_VALUE) : value(value) {}
+
+        /// @brief Equality comparison operator
+        bool operator==(const fillcolor& other) const {
+            return value == other.value;
+        }
+
+        /// @brief Inequality comparison operator
+        bool operator!=(const fillcolor& other) const {
+            return !(*this == other);
+        }
+
+        /// @brief Checks if the class has valid data
+        /// @param rslt Optional result structure for invalid reason
+        /// @return true if valid, else false
+        bool is_valid(result* rslt = nullptr) const {
+            if (value == INVALID_VALUE) {
+                if (rslt) { *rslt = result(result::error_code::StructureDataInvalid, "fillcolor value is unset"); }
+                return false;
+            }
+            return true;
+        }
+
+        /// @brief Serialize to XML string
+        std::string to_xml() const {
+            if (!is_valid()) {
+                return "<fillColor/>"; // Empty tag for unset color
+            }
+            std::ostringstream oss;
+            oss << "<fillColor value=\"" << value << "\"/>";
+            return oss.str();
+        }
+
+        /// @brief Deserialize from XML node
+        static fillcolor from_xml(const pugi::xml_node& node) {
+            fillcolor color;
+            pugi::xml_attribute attr;
+            if (attr = node.attribute("value")) {
+                try {
+                    color.value = attr.as_int(INVALID_VALUE);
+                } catch (const std::exception& e) {
+                    color.value = INVALID_VALUE;
+                }
+            }
+            return color;
+        }
+
+        /// @brief Print the class
+        friend std::ostream& operator<<(std::ostream& os, const fillcolor& color) {
+            os << "fillcolor: ";
+            if (!color.is_valid()) { os << " -NOT VALID- (Unset)"; }
+            else { os << "\n\tvalue: " << color.value; }
+            os << "\n";
+            return os;
+        }
+
+    private:
+        static constexpr int INVALID_VALUE = std::numeric_limits<int>::min(); /// Sentinel value for invalid color
+    };
+
+    /// @brief A COT Message subschema class for color data
+    class color {
+    public:
+        int argb; /// Color value (ARGB as signed 32-bit integer)
+
+        /// @brief Constructor - Initializes Everything
+        color(int argb = INVALID_VALUE) : argb(argb) {}
+
+        /// @brief Equality comparison operator
+        bool operator==(const color& other) const {
+            return argb == other.argb;
+        }
+
+        /// @brief Inequality comparison operator
+        bool operator!=(const color& other) const {
+            return !(*this == other);
+        }
+
+        /// @brief Checks if the class has valid data
+        /// @param rslt Optional result structure for invalid reason
+        /// @return true if valid, else false
+        bool is_valid(result* rslt = nullptr) const {
+            if (argb == INVALID_VALUE) {
+                if (rslt) { *rslt = result(result::error_code::StructureDataInvalid, "argb is unset"); }
+                return false;
+            }
+            return true;
+        }
+
+        /// @brief Serialize to XML string
+        std::string to_xml() const {
+            if (!is_valid()) {
+                return "<color/>"; // Empty tag for unset color
+            }
+            std::ostringstream oss;
+            oss << "<color argb=\"" << argb << "\"/>";
+            return oss.str();
+        }
+
+        /// @brief Deserialize from XML node
+        static color from_xml(const pugi::xml_node& node)
+        {
+            color c;
+            pugi::xml_attribute attr;
+            if (attr = node.attribute("argb")) {
+                try {
+                    c.argb = attr.as_int(INVALID_VALUE);
+                } catch (const std::exception& e) {
+                    c.argb = INVALID_VALUE;
+                }
+            }
+            return c;
+        }
+
+        /// @brief Print the class
+        friend std::ostream& operator<<(std::ostream& os, const color& c) {
+            os << "color: ";
+            if (!c.is_valid()) {
+                os << " -NOT VALID- (Unset)";
+            } else {
+                os << "\n\targb: " << c.argb;
+            }
+            os << "\n";
+            return os;
+        }
+
+    private:
+        static constexpr int INVALID_VALUE = std::numeric_limits<int>::min(); /// Sentinel value for invalid color
+    };
+
+    /// @brief A COT Message subschema class for usericon data
+    class usericon
+    {
+    public:
+        std::string iconsetpath; /// Icon set path
+
+        /// @brief Constructor - Initializes Everything
+        usericon(const std::string& iconpath = INVALID_VALUE) : iconsetpath(iconpath) {}
+
+        /// @brief Equality comparison operator
+        bool operator==(const usericon& other) const
+        {
+            return iconsetpath == other.iconsetpath;
+        }
+
+        /// @brief Inequality comparison operator
+        bool operator!=(const usericon& other) const
+        {
+            return !(*this == other);
+        }
+
+        /// @brief Checks if the class has valid data
+        /// @param rslt Optional result structure for invalid reason
+        /// @return true if valid, else false
+        bool is_valid(result* rslt = nullptr) const {
+            if (iconsetpath.empty()) {
+                if (rslt) { *rslt = result(result::error_code::StructureDataInvalid, "iconsetpath is unset"); }
+                return false;
+            }
+            return true;
+        }
+
+        /// @brief Serialize to XML string
+        std::string to_xml() const {
+            if (is_valid()) {
+                std::ostringstream oss;
+                oss << "<usericon iconsetpath=\"" << iconsetpath << "\"/>";
+                return oss.str();
+            }
+            return "";
+        }
+
+        /// @brief Deserialize from XML node
+        static usericon from_xml(const pugi::xml_node& node) {
+            usericon ui;
+            pugi::xml_attribute attr;
+            if (attr = node.attribute("iconsetpath")) {
+                ui.iconsetpath = attr.as_string();
+            }
+            return ui;
+        }
+
+        /// @brief Print the class
+        friend std::ostream& operator<<(std::ostream& os, const usericon& ui) {
+            os << "usericon: ";
+            if (!ui.is_valid()) { os << " -NOT VALID- "; }
+            os << "\n\ticonsetpath: " << (ui.is_valid() ? "None" : ui.iconsetpath) << "\n";
+            return os;
+        }
+
+    private:
+        static constexpr const char* INVALID_VALUE = ""; /// Sentinel value for invalid string
+    };
+
+    /// @brief A COT Message subschema class for model data
+    class model
+    {
+    public:
+        std::string value; /// Model value
+
+        /// @brief Constructor - Initializes Everything
+        model(const std::string& val = INVALID_VALUE) : value(val) {}
+
+        /// @brief Equality comparison operator
+        bool operator==(const model& other) const {
+            return value == other.value;
+        }
+
+        /// @brief Inequality comparison operator
+        bool operator!=(const model& other) const {
+            return !(*this == other);
+        }
+
+        /// @brief Checks if the class has valid data
+        /// @param rslt Optional result structure for invalid reason
+        /// @return true if valid, else false
+        bool is_valid(result* rslt = nullptr) const {
+            if (value == INVALID_VALUE) {
+                if (rslt) { *rslt = result(result::error_code::StructureDataInvalid, "value is empty"); }
+                return false;
+            }
+            return true;
+        }
+
+        /// @brief Serialize to XML string
+        std::string to_xml() const {
+            if (is_valid())
+            {
+                std::ostringstream oss;
+                oss << "<model value=\"" << value << "\"/>";
+                return oss.str();
+            }
+            return "";
+        }
+
+        /// @brief Deserialize from XML node
+        static model from_xml(const pugi::xml_node& node) {
+            model m;
+            pugi::xml_attribute attr;
+            if (attr = node.attribute("value"))
+            {
+                m.value = attr.as_string();
+            }
+            return m;
+        }
+
+        /// @brief Print the class
+        friend std::ostream& operator<<(std::ostream& os, const model& m) {
+            os << "model: ";
+            if (!m.is_valid()) { os << " -NOT VALID- "; }
+            os << "\n\tValue: " << (m.value.empty() ? "None" : m.value) << "\n";
+            return os;
+        }
+
+    private:
+        static constexpr const char* INVALID_VALUE = ""; /// Sentinel value for invalid string
+    };
+
+    /// @brief A COT Message subschema class for point data 
     class point
     {
     public:
@@ -504,12 +1294,12 @@ namespace cot
             circularError(circularError), linearError(linearError) {
         }
 
-        bool is_valid(std::string* errorMsg = nullptr) const
+        bool is_valid(result* rslt = nullptr) const
         {
             if (std::isnan(latitude) || std::isnan(longitude) ||
                 std::isnan(hae) || std::isnan(circularError) || std::isnan(linearError))
             {
-                if (errorMsg) *errorMsg = "Point is missing required fields";
+                if (rslt) { *rslt = result(result::error_code::InvalidPoint, "Point is missing required fields"); }
                 return false;
             }
             return true;
@@ -535,7 +1325,7 @@ namespace cot
 
         std::string to_xml() const
         {
-            if (!IsValid()) return "<point/>";
+            if (!is_valid()) return "<point/>";
             std::ostringstream oss;
             oss << "<point lat=\"" << std::fixed << std::setprecision(6) << latitude
                 << "\" lon=\"" << longitude << "\" hae=\"" << hae
@@ -572,6 +1362,7 @@ namespace cot
         }
     };
 
+    /// @brief A COT Message subschema class for event data 
     class event {
     public:
         /// @brief Constructor - Initializes everything
@@ -587,7 +1378,7 @@ namespace cot
             if (!p.is_valid(&errors))
             {
                 valid = false;
-                if (errorMsg && !errors.empty()) *errorMsg += "Event invalid: " + errors + "; ";
+                if (errorMsg) *errorMsg += "Event invalid: " + errors + "; ";
             }
 
             return valid;
@@ -614,6 +1405,13 @@ namespace cot
         }
 
     private:
+        double version;
+        std::string uid;
+        std::string type;
+        datetime time;
+        datetime start;
+        datetime stale;
+        std::string how;
         point p;
     };
 
@@ -646,7 +1444,9 @@ namespace cot
         }
 
         /// @brief Checks if the class has valid data
-        bool is_valid(std::string* errorMsg = nullptr) const
+        /// @param rslt Optional result structure for invalid reason
+        /// @return true if valid, else false
+        bool is_valid(result* rslt = nullptr) const
         {
             bool valid = true;
             std::string errors;
@@ -837,24 +1637,24 @@ namespace cot
         }
 
         // Parse event, point, and detail (if present)
-        cot.event = Event::FromXml(eventNode);
-        cot.point = Point::Data::FromXml(eventNode.child("point"));
+        cot.event = Event::from_xml(eventNode);
+        cot.point = Point::Data::from_xml(eventNode.child("point"));
         if (pugi::xml_node detailNode = eventNode.child("detail"))
         {
-            cot.detail = Detail::FromXml(detailNode);
+            cot.detail = Detail::from_xml(detailNode);
         }
 
         // Validate parsed data
         std::string error;
-        if (!cot.event.IsValid(&error))
+        if (!cot.event.is_valid(&error))
         {
             return Result(Result::Code::InvalidEvent, std::string("Parsed Event is invalid: " + error));
         }
-        if (!cot.point.IsValid(&error))
+        if (!cot.point.is_valid(&error))
         {
             return Result(Result::Code::InvalidPoint, std::string("Parsed Point is invalid: " + error));
         }
-        if (eventNode.child("detail") && !cot.detail.IsValid(&error))
+        if (eventNode.child("detail") && !cot.detail.is_valid(&error))
         {
             return Result(Result::Code::InvalidDetail, std::string("Parsed Detail is invalid: " + error));
         }
@@ -904,8 +1704,8 @@ namespace cot
         // Navigate to <event> and <detail>
         pugi::xml_node eventNode = doc.child("event");
 
-        // Use Track::FromXml to parse the track node
-        event = Event::FromXml(eventNode);
+        // Use Track::from_xml to parse the track node
+        event = Event::from_xml(eventNode);
 
         // Success
         return result(result::error_code::Success);
@@ -949,8 +1749,8 @@ namespace cot
             return result(result::error_code::InsufficientData);
         }
 
-        // Use Point::FromXml to parse the track node
-        point = Point::FromXml(pointNode);
+        // Use Point::from_xml to parse the track node
+        point = Point::from_xml(pointNode);
 
         // Success
         return result(result::error_code::Success);
@@ -994,8 +1794,8 @@ namespace cot
             return result(result::error_code::InsufficientData);
         }
 
-        // Use Detail::FromXml to parse the track node
-        detail = Detail::FromXml(detailNode);
+        // Use Detail::from_xml to parse the track node
+        detail = Detail::from_xml(detailNode);
 
         // Success
         return result(result::error_code::Success);
