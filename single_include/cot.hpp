@@ -1,7 +1,7 @@
 #pragma once
 /////////////////////////////////////////////////////////////////////////////////
-// @file            CoT_Utility.h
-// @brief           A class for generating and parsing CoT messages
+// @file            cot.hpp
+// @brief           a single include api for handling CoT messages
 // @author          Chip Brommer
 /////////////////////////////////////////////////////////////////////////////////
 
@@ -26,6 +26,8 @@ namespace cot
     constexpr auto COT_UTILITY_MAJOR = 0;
     constexpr auto COT_UTILITY_MINOR = 5;
     constexpr auto COT_UTILITY_BUILD = 0;
+
+#pragma region error_content
 
     /// @brief Result structure for CoT operations
     struct result {
@@ -122,6 +124,8 @@ namespace cot
     void set_error_handler(ErrorHandler handler) {
         error_handler = std::move(handler);
     }
+
+#pragma endregion
 
 #pragma region message_classes
 
@@ -1268,6 +1272,385 @@ namespace cot
             os << "model: ";
             if (!m.is_valid()) { os << " -NOT VALID- "; }
             os << "\n\tValue: " << (m.value.empty() ? "None" : m.value) << "\n";
+            return os;
+        }
+
+    private:
+        static constexpr const char* INVALID_VALUE = ""; /// Sentinel value for invalid string
+    };
+
+    /// @brief A COT Message subschema class for track data
+    class track
+    {
+    public:
+        double course;      /// Direction of motion with respect to true north in degrees (0 to 360). 
+        double speed;       /// Magnitude of motion in meters per second (non-negative). 
+        double slope;       /// Vertical component of motion in degrees (-90 to 90, negative for downward).
+        double eCourse;     /// 1-sigma error for course in degrees (non-negative).
+        double eSpeed;      /// 1-sigma error for speed in meters per second (non-negative).
+        double eSlope;      /// 1-sigma error for slope in degrees (non-negative).
+        double version;     /// Version of the track schema (positive).
+
+        /// @brief Constructor - Initializes everything. course and speed are required, others optional.
+        track(const double course = INVALID_VALUE,
+            const double speed = INVALID_VALUE,
+            const double slope = INVALID_VALUE,
+            const double eCourse = INVALID_VALUE,
+            const double eSpeed = INVALID_VALUE,
+            const double eSlope = INVALID_VALUE,
+            const double version = INVALID_VALUE) :
+            course(course), speed(speed), slope(slope),
+            eCourse(eCourse), eSpeed(eSpeed), eSlope(eSlope),
+            version(version) {
+        }
+
+        /// @brief Equal comparison operator
+        bool operator==(const track& t) const {
+            const double EPSILON = 1e-6;
+
+            auto equal = [](double a, double b, double epsilon) {
+                return std::isnan(a) && std::isnan(b) || std::abs(a - b) < epsilon;
+                };
+
+            return equal(course, t.course, EPSILON) &&
+                equal(speed, t.speed, EPSILON) &&
+                equal(slope, t.slope, EPSILON) &&
+                equal(eCourse, t.eCourse, EPSILON) &&
+                equal(eSpeed, t.eSpeed, EPSILON) &&
+                equal(eSlope, t.eSlope, EPSILON) &&
+                equal(version, t.version, EPSILON);
+        }
+
+        /// @brief Not-equal comparison operator
+        bool operator!=(const track& t) const {
+            return !(*this == t);
+        }
+
+        /// @brief Checks if the class has valid data
+        /// @param rslt Optional result structure for invalid reason
+        /// @return true if valid, else false
+        bool is_valid(result* rslt = nullptr) const {
+            if (std::isnan(course)) {
+                if (rslt) { *rslt = result(result::error_code::StructureDataInvalid, "Course is NaN"); }
+                return false;
+            }
+            if (course < COURSE_MIN || course > COURSE_MAX) {
+                if (rslt) { *rslt = result(result::error_code::StructureDataInvalid, "Course out of range [0, 360]"); }
+                return false;
+            }
+            if (std::isnan(speed)) {
+                if (rslt) { *rslt = result(result::error_code::StructureDataInvalid, "Speed is NaN"); }
+                return false;
+            }
+            if (speed < SPEED_MIN) {
+                if (rslt) { *rslt = result(result::error_code::StructureDataInvalid, "Speed is negative"); }
+                return false;
+            }
+            if (!std::isnan(slope) && (slope < SLOPE_MIN || slope > SLOPE_MAX)) {
+                if (rslt) { *rslt = result(result::error_code::StructureDataInvalid, "Slope out of range [-90, 90]"); }
+                return false;
+            }
+            if (!std::isnan(eCourse) && eCourse < 0) {
+                if (rslt) { *rslt = result(result::error_code::StructureDataInvalid, "eCourse is negative"); }
+                return false;
+            }
+            if (!std::isnan(eSpeed) && eSpeed < 0) {
+                if (rslt) { *rslt = result(result::error_code::StructureDataInvalid, "eSpeed is negative"); }
+                return false;
+            }
+            if (!std::isnan(eSlope) && eSlope < 0) {
+                if (rslt) { *rslt = result(result::error_code::StructureDataInvalid, "eSlope is negative"); }
+                return false;
+            }
+            if (!std::isnan(version) && version <= 0) {
+                if (rslt) { *rslt = result(result::error_code::StructureDataInvalid, "Version is non-positive"); }
+                return false;
+            }
+            return true;
+        }
+
+        /// @brief Print the class
+        friend std::ostream& operator<<(std::ostream& os, const track& t) {
+            os << "track: ";  if (!t.is_valid()) { os << " -NOT VALID- "; }
+            os << "\n" << std::fixed << std::setprecision(6)
+                << "\tcourse:          " << t.course << "\n"
+                << "\tspeed:           " << t.speed << "\n";
+            if (!std::isnan(t.slope))   os << "\tslope:           " << t.slope << "\n";
+            if (!std::isnan(t.eCourse)) os << "\teCourse:         " << t.eCourse << "\n";
+            if (!std::isnan(t.eSpeed))  os << "\teSpeed:          " << t.eSpeed << "\n";
+            if (!std::isnan(t.eSlope))  os << "\teSlope:          " << t.eSlope << "\n";
+            if (!std::isnan(t.version)) os << "\tversion:         " << t.version << "\n";
+            os << std::defaultfloat << "\n";
+            return os;
+        }
+
+        /// @brief Serialize to XML string
+        std::string to_xml() const {
+            std::ostringstream oss;
+            oss << "<track";
+            if (!std::isnan(course)) oss << " course=\"" << std::fixed << std::setprecision(6) << course << "\"";
+            if (!std::isnan(speed)) oss << " speed=\"" << speed << "\"";
+            if (!std::isnan(slope)) oss << " slope=\"" << slope << "\"";
+            if (!std::isnan(eCourse)) oss << " eCourse=\"" << eCourse << "\"";
+            if (!std::isnan(eSpeed)) oss << " eSpeed=\"" << eSpeed << "\"";
+            if (!std::isnan(eSlope)) oss << " eSlope=\"" << eSlope << "\"";
+            if (!std::isnan(version)) oss << " version=\"" << version << "\"";
+            oss << "/>";
+            return oss.str();
+        }
+
+        /// @brief Deserialize from XML node
+        static track from_xml(const pugi::xml_node& node) {
+            track t;
+            pugi::xml_attribute attr;
+            (attr = node.attribute("course")) ? t.course = attr.as_double() : t.course = INVALID_VALUE;
+            (attr = node.attribute("speed")) ? t.speed = attr.as_double() : t.speed = INVALID_VALUE;
+            (attr = node.attribute("slope")) ? t.slope = attr.as_double() : t.slope = INVALID_VALUE;
+            (attr = node.attribute("eCourse")) ? t.eCourse = attr.as_double() : t.eCourse = INVALID_VALUE;
+            (attr = node.attribute("eSpeed")) ? t.eSpeed = attr.as_double() : t.eSpeed = INVALID_VALUE;
+            (attr = node.attribute("eSlope")) ? t.eSlope = attr.as_double() : t.eSlope = INVALID_VALUE;
+            (attr = node.attribute("version")) ? t.version = attr.as_double() : t.version = INVALID_VALUE;
+            return t;
+        }
+
+    private:
+        static constexpr double INVALID_VALUE = std::numeric_limits<double>::quiet_NaN();
+        static constexpr double COURSE_MIN = 0.0;    /// Minimum course in degrees
+        static constexpr double COURSE_MAX = 360.0;  /// Maximum course in degrees
+        static constexpr double SPEED_MIN = 0.0;     /// Minimum speed in meters per second
+        static constexpr double SLOPE_MIN = -90.0;   /// Minimum slope in degrees
+        static constexpr double SLOPE_MAX = 90.0;    /// Maximum slope in degrees
+    };
+
+    /// @brief A COT Message subschema class for link data
+    class link
+    {
+    public:
+        std::string uid;          /// Unique identifier
+        std::string remarks;      /// Remarks
+        std::string relation;     /// Relation
+        std::string callsign;     /// Callsign
+        std::string type;         /// Type
+        std::string point;        /// Point as a string (e.g., "lat,lon")
+        double latitude;          /// Latitude portion of the point
+        double longitude;         /// Longitude portion of the point
+
+        /// @brief Constructor - Initializes Everything
+        link(const std::string& uid = INVALID_STRING,
+            const std::string& remarks = INVALID_STRING,
+            const std::string& relation = INVALID_STRING,
+            const std::string& callsign = INVALID_STRING,
+            const std::string& type = INVALID_STRING,
+            const std::string& point = INVALID_STRING,
+            double lat = INVALID_VALUE,
+            double lon = INVALID_VALUE) :
+            uid(uid), remarks(remarks), relation(relation),
+            callsign(callsign), type(type), point(point),
+            latitude(lat), longitude(lon) {
+        }
+
+        /// @brief Equality comparison operator
+        bool operator==(const link& other) const {
+            constexpr double EPSILON = 1e-6;
+            return uid == other.uid &&
+                remarks == other.remarks &&
+                relation == other.relation &&
+                callsign == other.callsign &&
+                type == other.type &&
+                point == other.point &&
+                (std::isnan(latitude) && std::isnan(other.latitude) ||
+                    std::abs(latitude - other.latitude) < EPSILON) &&
+                (std::isnan(longitude) && std::isnan(other.longitude) ||
+                    std::abs(longitude - other.longitude) < EPSILON);
+        }
+
+        /// @brief Inequality comparison operator
+        bool operator!=(const link& other) const {
+            return !(*this == other);
+        }
+
+        /// @brief Checks if the class has valid data
+        /// @param rslt Optional result structure for invalid reason
+        /// @return true if valid, else false
+        bool is_valid(result* rslt = nullptr) const {
+            if (std::isnan(latitude) || std::isnan(longitude) || uid.empty() || type.empty())
+            {
+                if (rslt) { *rslt = result(result::error_code::StructureDataInvalid, "Invalid latitude or longitude"); }
+                return false;
+            }
+            // String fields are optional, so empty is valid
+            return true;
+        }
+
+        /// @brief Serialize to XML string
+        std::string to_xml() const {
+            std::ostringstream oss;
+            oss << "<link";
+            if (!uid.empty()) oss << " uid=\"" << uid << "\"";
+            if (!remarks.empty()) oss << " remarks=\"" << remarks << "\"";
+            if (!relation.empty()) oss << " relation=\"" << relation << "\"";
+            if (!callsign.empty()) oss << " callsign=\"" << callsign << "\"";
+            if (!type.empty()) oss << " type=\"" << type << "\"";
+            if (!point.empty()) oss << " point=\"" << point << "\"";
+            oss << "/>";
+            return oss.str();
+        }
+
+        /// @brief Deserialize from XML node
+        static link from_xml(const pugi::xml_node& node) {
+            link l;
+            pugi::xml_attribute attr;
+            if (attr = node.attribute("uid")) l.uid = attr.as_string();
+            if (attr = node.attribute("remarks")) l.remarks = attr.as_string();
+            if (attr = node.attribute("relation")) l.relation = attr.as_string();
+            if (attr = node.attribute("callsign")) l.callsign = attr.as_string();
+            if (attr = node.attribute("type")) l.type = attr.as_string();
+            if (attr = node.attribute("point")) l.point = attr.as_string();
+            try
+            {
+                auto [lat, lon] = l.get_lat_lon_from_point();
+                l.latitude = lat;
+                l.longitude = lon;
+            }
+            catch (const std::exception& e)
+            {
+                l.latitude = INVALID_VALUE;
+                l.longitude = INVALID_VALUE;
+            }
+            return l;
+        }
+
+        /// @brief Parse point into latitude and longitude
+        std::pair<double, double> get_lat_lon_from_point() const {
+            if (point.empty()) {
+                return { INVALID_VALUE, INVALID_VALUE };
+            }
+            size_t commaPos = point.find(',');
+            if (commaPos == std::string::npos) {
+                return { INVALID_VALUE, INVALID_VALUE };
+            }
+            try {
+                double lat = std::stod(point.substr(0, commaPos));
+                double lon = std::stod(point.substr(commaPos + 1));
+                return { lat, lon };
+            } catch (const std::exception& e) {
+                return { INVALID_VALUE, INVALID_VALUE };
+            }
+        }
+
+        /// @brief Print the class
+        friend std::ostream& operator<<(std::ostream& os, const link& l) {
+            os << "link: ";
+            if (!l.is_valid()) { os << " -NOT VALID- "; }
+            os << "\n"
+                << "\tuid: " << (l.uid.empty() ? "None" : l.uid) << "\n"
+                << "\tremarks: " << (l.remarks.empty() ? "None" : l.remarks) << "\n"
+                << "\trelation: " << (l.relation.empty() ? "None" : l.relation) << "\n"
+                << "\tcallsign: " << (l.callsign.empty() ? "None" : l.callsign) << "\n"
+                << "\ttype: " << (l.type.empty() ? "None" : l.type) << "\n"
+                << "\tpoint: " << (l.point.empty() ? "None" : l.point) << "\n"
+                << "\tlatitude: ";
+            if (std::isnan(l.latitude)) {
+                os << "NaN";
+            } else {
+                os << std::fixed << std::setprecision(6) << l.latitude;
+            }
+            os << "\n\tlongitude: ";
+            if (std::isnan(l.longitude)) {
+                os << "NaN";
+            } else {
+                os << std::fixed << std::setprecision(6) << l.longitude;
+            }
+            os << "\n";
+            return os;
+        }
+
+    private:
+        static constexpr double INVALID_VALUE = std::numeric_limits<double>::quiet_NaN();
+        static constexpr const char* INVALID_STRING = "";
+    };
+
+    /// @brief A struct to store custom detail elements in a CoT message
+    class customdetail
+    {
+    public:
+        std::string name;                               /// XML tag name (e.g., "customTag")
+        std::map<std::string, std::string> attributes;  /// XML attributes as key-value pairs
+        std::string content;                            /// Inner text or CDATA
+
+        /// @brief Constructor
+        customdetail(const std::string& name = INVALID_VALUE,
+            const std::map<std::string, std::string>& attributes = {},
+            const std::string& content = INVALID_VALUE) :
+            name(name), attributes(attributes), content(content) {
+        }
+
+        /// @brief Equality comparison
+        bool operator==(const customdetail& other) const {
+            return name == other.name &&
+                attributes == other.attributes &&
+                content == other.content;
+        }
+
+        /// @brief Inequality comparison
+        bool operator!=(const customdetail& other) const {
+            return !(*this == other);
+        }
+
+        /// @brief Validate the custom detail
+        /// @param rslt Optional result structure for invalid reason
+        /// @return true if valid, else false
+        bool is_valid(result* rslt = nullptr) const {
+            if (name.empty() || (attributes.length() == 0 && content.empty())) {
+                if (rslt) { *rslt = result(result::error_code::StructureDataInvalid, "name is empty or missing data"); }
+                return false;
+            }
+            return true;
+        }
+
+        /// @brief Serialize to XML
+        std::string to_xml() const {
+            std::ostringstream oss;
+            oss << "<" << name;
+            for (const auto& [key, value] : attributes)
+            {
+                oss << " " << key << "=\"" << value << "\"";
+            }
+            if (content.empty())
+            {
+                oss << "/>";
+            }
+            else
+            {
+                oss << ">" << content << "</" << name << ">";
+            }
+            return oss.str();
+        }
+
+        /// @brief Deserialize from XML node
+        static customdetail from_xml(const pugi::xml_node& node) {
+            customdetail detail;
+            detail.name = node.name();
+            for (pugi::xml_attribute attr : node.attributes()) {
+                detail.attributes[attr.name()] = attr.as_string();
+            }
+            detail.content = node.child_value();
+            return detail;
+        }
+
+        /// @brief Print the custom detail
+        friend std::ostream& operator<<(std::ostream& os, const customdetail& detail) {
+            os << "\tcustomdetail: " << detail.name;
+            if (!detail.is_valid()) { os << " -NOT VALID-"; }
+            os << "\n";
+            for (const auto& [key, value] : detail.attributes)
+            {
+                os << "\t\t" << key << ": " << value << "\n";
+            }
+            if (!detail.content.empty())
+            {
+                os << "\t\tcontent: " << detail.content << "\n";
+            }
             return os;
         }
 
