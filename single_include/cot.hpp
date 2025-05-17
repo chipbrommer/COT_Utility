@@ -12,6 +12,7 @@
 //          --------------------            ------------------------------------
 #include <iostream>                         // ostream
 #include <iomanip>                          // setw
+#include <map>                              // ordered map
 #include <optional>
 #include <string>
 #include <string_view>
@@ -1601,7 +1602,7 @@ namespace cot
         /// @param rslt Optional result structure for invalid reason
         /// @return true if valid, else false
         bool is_valid(result* rslt = nullptr) const {
-            if (name.empty() || (attributes.length() == 0 && content.empty())) {
+            if (name.empty() || (attributes.count() == 0 && content.empty())) {
                 if (rslt) { *rslt = result(result::error_code::StructureDataInvalid, "name is empty or missing data"); }
                 return false;
             }
@@ -1662,12 +1663,13 @@ namespace cot
     class point
     {
     public:
-        double latitude;
+        double latitude;        
         double longitude;
         double hae;
         double circularError;
         double linearError;
 
+        /// @brief Constructor
         point(double latitude = std::numeric_limits<double>::quiet_NaN(),
             double longitude = std::numeric_limits<double>::quiet_NaN(),
             double hae = std::numeric_limits<double>::quiet_NaN(),
@@ -1677,19 +1679,8 @@ namespace cot
             circularError(circularError), linearError(linearError) {
         }
 
-        bool is_valid(result* rslt = nullptr) const
-        {
-            if (std::isnan(latitude) || std::isnan(longitude) ||
-                std::isnan(hae) || std::isnan(circularError) || std::isnan(linearError))
-            {
-                if (rslt) { *rslt = result(result::error_code::InvalidPoint, "Point is missing required fields"); }
-                return false;
-            }
-            return true;
-        }
-
-        bool operator==(const point& other) const
-        {
+        /// @brief Equality comparison
+        bool operator==(const point& other) const {
             constexpr double EPSILON = 1e-6;
             auto equal = [](double a, double b)
                 {
@@ -1701,13 +1692,26 @@ namespace cot
                 equal(linearError, other.linearError);
         }
 
-        bool operator!=(const point& other) const
-        {
+        /// @brief Inequality comparison
+        bool operator!=(const point& other) const {
             return !(*this == other);
         }
 
-        std::string to_xml() const
-        {
+        /// @brief Validate the point
+        /// @param rslt Optional result structure for invalid reason
+        /// @return true if valid, else false
+        bool is_valid(result* rslt = nullptr) const {
+            if (std::isnan(latitude) || std::isnan(longitude) ||
+                std::isnan(hae) || std::isnan(circularError) || std::isnan(linearError))
+            {
+                if (rslt) { *rslt = result(result::error_code::InvalidPoint, "Point is missing required fields"); }
+                return false;
+            }
+            return true;
+        }
+
+        /// @brief Serialize to XML
+        std::string to_xml() const {
             if (!is_valid()) return "<point/>";
             std::ostringstream oss;
             oss << "<point lat=\"" << std::fixed << std::setprecision(6) << latitude
@@ -1716,8 +1720,8 @@ namespace cot
             return oss.str();
         }
 
-        static result from_xml(const pugi::xml_node& node, point& p)
-        {
+        /// @brief Deserialize from XML node
+        static point from_xml(const pugi::xml_node& node, result* rslt = nullptr) {
             point p;
             try {
                 if (auto attr = node.attribute("lat")) p.latitude = attr.as_double(std::numeric_limits<double>::quiet_NaN());
@@ -1727,20 +1731,20 @@ namespace cot
                 if (auto attr = node.attribute("le")) p.linearError = attr.as_double(std::numeric_limits<double>::quiet_NaN());
             }
             catch (const std::exception& e) {
-                result(result::error_code::InvalidPoint, "Error parsing point attributes: " + e.what());
+                if(rslt) *rslt = result(result::error_code::InvalidPoint, "Error parsing point attributes: " + e.what());
             }
-            return point;
+            return p;
         }
 
-        friend std::ostream& operator<<(std::ostream& os, const Data& point)
-        {
-            os << "Point: ";
-            if (!point.is_valid()) os << " -NOT VALID- ";
-            os << "\n\tLatitude: " << (std::isnan(point.latitude) ? "NaN" : std::to_string(point.latitude))
-                << "\n\tLongitude: " << (std::isnan(point.longitude) ? "NaN" : std::to_string(point.longitude))
-                << "\n\tHAE: " << (std::isnan(point.hae) ? "NaN" : std::to_string(point.hae))
-                << "\n\tCE: " << (std::isnan(point.circularError) ? "NaN" : std::to_string(point.circularError))
-                << "\n\tLE: " << (std::isnan(point.linearError) ? "NaN" : std::to_string(point.linearError)) << "\n";
+        /// @brief Print the custom detail
+        friend std::ostream& operator<<(std::ostream& os, const point& p) {
+            os << "point: ";
+            if (!p.is_valid()) os << " -NOT VALID- ";
+            os << "\n\tlatitude: " << (std::isnan(p.latitude) ? "NaN" : std::to_string(p.latitude))
+                << "\n\tlongitude: " << (std::isnan(p.longitude) ? "NaN" : std::to_string(p.longitude))
+                << "\n\thae: " << (std::isnan(p.hae) ? "NaN" : std::to_string(p.hae))
+                << "\n\tce: " << (std::isnan(p.circularError) ? "NaN" : std::to_string(p.circularError))
+                << "\n\tle: " << (std::isnan(p.linearError) ? "NaN" : std::to_string(p.linearError)) << "\n";
             return os;
         }
     };
