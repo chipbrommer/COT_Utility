@@ -10,6 +10,10 @@
 //  Include files:
 //          name                            reason included
 //          --------------------            ------------------------------------
+#include <algorithm>
+#include <climits>                          // MAX and MIN
+#include <cmath>                            // isnan
+#include <functional>                       // function
 #include <iostream>                         // ostream
 #include <iomanip>                          // setw
 #include <map>                              // ordered map
@@ -39,7 +43,7 @@ namespace cot
             InvalidData,        
             InvalidEvent,           // XML is missing Event tag
             InvalidPoint,           // XML is missing Point tag
-            InvalidDetail,          // XML has invalid Detail tag
+            InvalidDetail,          // XML has invalid detail tag
             InvalidDate,
             InvalidTime,
             InvalidHow,
@@ -53,17 +57,20 @@ namespace cot
             GeneralError,
         };
 
+        /// @brief Constructor for success case
+        result() : m_code(error_code::Success), m_description(to_string(error_code::Success)) {}
+
+        /// @brief Constructor for default code
+        result(error_code code) : m_code(code), m_description(to_string(code)) {}
+
+        /// @brief Constructor for error case with custom description
+        result(error_code e, std::string desc) : m_code(e), m_description(std::move(desc)) {}
+
         /// @brief Check if the operation was successful
         bool is_success() const { return m_code == error_code::Success; }
 
         /// @brief Check if the operation failed
         bool is_failed() const { return !is_success(); }
-
-        /// @brief Constructor for success case
-        result() : m_code(error_code::Success), m_description("") {}
-
-        /// @brief Constructor for error case
-        result(error_code e, std::string desc) : m_code(e), m_description(std::move(desc)) {}
 
         /// @brief Convert to string for debugging or logging
         std::string to_string() const {
@@ -363,7 +370,7 @@ namespace cot
                 return false;
             }
 
-            if (rslt) { *rslt = result(result::error_code::Success); }
+            if (rslt) { *rslt = result(); }
             return true;
         }
 
@@ -1659,6 +1666,303 @@ namespace cot
         static constexpr const char* INVALID_VALUE = ""; /// Sentinel value for invalid string
     };
 
+    /// @brief A CoT Message subschema class for detail data
+    class detail
+    {
+    public:
+        takv takv_;                                 /// TAKV Sub-Schema
+        contact contact_;                           /// Contact Sub-Schema
+        uid uid_;                                   /// UID Sub-Schema
+        model model_;                               /// Model Sub-Schema
+        precisionlocation precisionlocation_;       /// PrecisionLocation Sub-Schema
+        group group_;                               /// Group Sub-Schema
+        status status_;                             /// Status Sub-Schema
+        track track_;                               /// Track Sub-Schema
+        strokecolor strokecolor_;                   /// StrokeColor Sub-Schema
+        fillcolor fillcolor_;                       /// FillColor Sub-Schema
+        color color_;                               /// Color Sub-Schema
+        usericon usericon_;                         /// UserIcon Sub-Schema
+        std::string remarks;                        /// Remarks information
+        std::vector<link> links;                    /// Links Sub-Schema
+        std::vector<customdetail> custom_details;   /// Custom detail elements
+
+        /// @brief Constructor - Initializes everything
+        detail(const takv& takv = takv(),
+            const contact& contact = contact(),
+            const uid& uid = uid(),
+            const model& model = model(),
+            const precisionlocation& precisionLocation = precisionlocation(),
+            const group& group = group(),
+            const status& status = status(),
+            const track& track = track(),
+            const strokecolor& strokeColor = strokecolor(),
+            const fillcolor& fillColor = fillcolor(),
+            const color& color = color(),
+            const usericon& userIcon = usericon(),
+            const std::string& remarks = "",
+            const std::vector<link>& links = {},
+            const std::vector<customdetail>& customDetails = {}) :
+            takv_(takv),
+            contact_(contact),
+            uid_(uid),
+            model_(model),
+            precisionlocation_(precisionLocation),
+            group_(group),
+            status_(status),
+            track_(track),
+            strokecolor_(strokeColor),
+            fillcolor_(fillColor),
+            color_(color),
+            usericon_(userIcon),
+            remarks(remarks),
+            links(links),
+            custom_details(customDetails) {
+        }
+
+        /// @brief Equality comparison operator
+        bool operator==(const detail& other) const {
+            return takv_ == other.takv_ &&
+                contact_ == other.contact_ &&
+                uid_ == other.uid_ &&
+                model_ == other.model_ &&
+                precisionlocation_ == other.precisionlocation_ &&
+                group_ == other.group_ &&
+                status_ == other.status_ &&
+                track_ == other.track_ &&
+                strokecolor_ == other.strokecolor_ &&
+                fillcolor_ == other.fillcolor_ &&
+                color_ == other.color_ &&
+                usericon_ == other.usericon_ &&
+                remarks == other.remarks &&
+                links == other.links &&
+                custom_details == other.custom_details;
+        }
+
+        /// @brief Inequality comparison operator
+        bool operator!=(const detail& other) const {
+            return !(*this == other);
+        }
+
+        /// @brief Checks if the class has valid data
+        bool is_valid() const  {
+            // Currently permissive; all sub-schemas are optional
+            return true;
+        }
+
+        /// @brief Serialize to XML string
+        std::string to_xml() const {
+            std::ostringstream oss;
+            oss << "<detail>";
+            if (takv_.is_valid()) oss << takv_.to_xml();
+            if (contact_.is_valid()) oss << contact_.to_xml();
+            if (uid_.is_valid()) oss << uid_.to_xml();
+            if (model_.is_valid()) oss << model_.to_xml();
+            if (precisionlocation_.is_valid()) oss << precisionlocation_.to_xml();
+            if (group_.is_valid()) oss << group_.to_xml();
+            if (status_.is_valid()) oss << status_.to_xml();
+            if (track_.is_valid()) oss << track_.to_xml();
+            if (strokecolor_.is_valid()) oss << strokecolor_.to_xml();
+            if (fillcolor_.is_valid()) oss << fillcolor_.to_xml();
+            if (color_.is_valid()) oss << color_.to_xml();
+            if (usericon_.is_valid()) oss << usericon_.to_xml();
+            if (!remarks.empty()) oss << "<remarks>" << remarks << "</remarks>";
+            for (const auto& link : links) {
+                oss << link.to_xml();
+            }
+            for (const auto& custom : custom_details) {
+                oss << custom.to_xml();
+            }
+            oss << "</detail>";
+            return oss.str();
+        }
+
+        /// @brief Deserialize from XML node
+        static detail from_xml(const pugi::xml_node& node) {
+            detail d;
+
+            // Dispatch table for sub-schema parsing
+            static const std::map<std::string, std::function<void(pugi::xml_node, detail&)>> parsers = {
+                {"takv", [](pugi::xml_node n, detail& d) { d.takv_ = takv::from_xml(n); }},
+                {"contact", [](pugi::xml_node n, detail& d) { d.contact_ = contact::from_xml(n); }},
+                {"uid", [](pugi::xml_node n, detail& d) { d.uid_ = uid::from_xml(n); }},
+                {"model", [](pugi::xml_node n, detail& d) { d.model_ = model::from_xml(n); }},
+                {"precisionlocation", [](pugi::xml_node n, detail& d) { d.precisionlocation_ = precisionlocation::from_xml(n); }},
+                {"__group", [](pugi::xml_node n, detail& d) { d.group_ = group::from_xml(n); }},
+                {"status", [](pugi::xml_node n, detail& d) { d.status_ = status::from_xml(n); }},
+                {"track", [](pugi::xml_node n, detail& d) { d.track_ = track::from_xml(n); }},
+                {"strokeColor", [](pugi::xml_node n, detail& d) { d.strokecolor_ = strokecolor::from_xml(n); }},
+                {"fillColor", [](pugi::xml_node n, detail& d) { d.fillcolor_ = fillcolor::from_xml(n); }},
+                {"color", [](pugi::xml_node n, detail& d) { d.color_ = color::from_xml(n); }},
+                {"usericon", [](pugi::xml_node n, detail& d) { d.usericon_ = usericon::from_xml(n); }},
+                {"remarks", [](pugi::xml_node n, detail& d) { d.remarks = n.child_value(); }},
+                {"link", [](pugi::xml_node n, detail& d) { d.links.push_back(link::from_xml(n)); }}
+            };
+
+            // Parse child nodes
+            for (pugi::xml_node child : node.children()) {
+                std::string name = child.name();
+                try {
+                    auto it = parsers.find(name);
+                    if (it != parsers.end()) {
+                        it->second(child, detail); // Call the parser function
+                    } else if (!name.empty()) {
+                        // Unknown nodes are custom details
+                        detail.custom_details.push_back(customdetail::from_xml(child));
+                    }
+                } catch (const std::exception& e) {
+                    std::cerr << "Error parsing <" << name << ">: " << e.what() << std::endl;
+                }
+            }
+
+            return detail;
+        }
+
+        /// @brief Add a new custom detail
+        /// @param name XML tag name (required, non-empty)
+        /// @param attributes XML attributes as key-value pairs (optional)
+        /// @param content Inner text or CDATA (optional)
+        /// @return true if added successfully, false if invalid (e.g., empty name) or already exists
+        bool add_custom_detail(const std::string& name,
+            const std::map<std::string, std::string>& attributes = {},
+            const std::string& content = "")
+        {
+            if (name.empty()) {
+                return false; // Invalid tag name
+            }
+
+            // Check if a custom detail with this name already exists
+            auto it = std::find_if(custom_details.begin(), custom_details.end(),
+                [&name](const custom_details& detail) { return detail.name == name; });
+
+            if (it != custom_details.end()) {
+                return false; // Duplicate name
+            }
+            custom_details.emplace_back(name, attributes, content);
+            return true;
+        }
+
+        /// @brief Modify an existing custom detail
+        /// @param name XML tag name to match (required, non-empty)
+        /// @param matchAttributes Optional attributes to match exactly (empty means match any)
+        /// @param matchContent Optional content to match exactly (empty means match any)
+        /// @param newAttributes New attributes to set (replaces existing attributes)
+        /// @param newContent New content to set (replaces existing content)
+        /// @return true if a matching custom detail was modified, false if not found or invalid
+        bool modify_custom_detail(const std::string& name,
+            const std::map<std::string, std::string>& matchAttributes,
+            const std::string& matchContent,
+            const std::map<std::string, std::string>& newAttributes,
+            const std::string& newContent) {
+            if (name.empty()) {
+                return false; // Invalid tag name
+            }
+
+            auto it = std::find_if(custom_details.begin(), custom_details.end(),
+                [&name, &matchAttributes, &matchContent](const customdetail& detail) {
+                    bool nameMatch = detail.name == name;
+                    bool attrMatch = matchAttributes.empty() || detail.attributes == matchAttributes;
+                    bool contentMatch = matchContent.empty() || detail.content == matchContent;
+                    return nameMatch && attrMatch && contentMatch;
+                });
+
+            if (it != custom_details.end()) {
+                it->attributes = newAttributes;
+                it->content = newContent;
+                return true;
+            }
+            return false; // No match found
+        }
+
+        /// @brief Add or modify a custom detail
+        /// @param name XML tag name (required, non-empty)
+        /// @param attributes XML attributes as key-value pairs
+        /// @param content Inner text or CDATA
+        /// @param matchAttributes Optional attributes to match for modification (empty means match any)
+        /// @param matchContent Optional content to match for modification (empty means match any)
+        /// @return true if added or modified successfully, false if invalid
+        bool add_or_modify_custom_detail(const std::string& name,
+            const std::map<std::string, std::string>& attributes,
+            const std::string& content,
+            const std::map<std::string, std::string>& matchAttributes = {},
+            const std::string& matchContent = "")
+        {
+            // Try to modify first
+            if (modify_custom_detail(name, matchAttributes, matchContent, attributes, content)) {
+                return true; // Modified existing detail
+            }
+            // If modification fails, try to add
+            return add_custom_detail(name, attributes, content);
+        }
+
+        /// @brief Remove a custom detail by name, with optional attributes and content matching
+        /// @param name XML tag name to match (required, non-empty)
+        /// @param attributes Optional attributes to match exactly (empty means match any)
+        /// @param content Optional content to match exactly (empty means match any)
+        /// @return true if a matching custom detail was removed, false if not found or invalid
+        bool remove_custom_detail(const std::string& name,
+            const std::map<std::string, std::string>& attributes = {},
+            const std::string& content = "") {
+            if (name.empty()) {
+                return false; // Invalid tag name
+            }
+
+            auto it = std::find_if(custom_details.begin(), custom_details.end(),
+                [&name, &attributes, &content](const customdetail& detail) {
+                    bool nameMatch = detail.name == name;
+                    bool attrMatch = attributes.empty() || detail.attributes == attributes;
+                    bool contentMatch = content.empty() || detail.content == content;
+                    return nameMatch && attrMatch && contentMatch;
+                });
+
+            if (it != custom_details.end()) {
+                custom_details.erase(it);
+                return true;
+            }
+            return false; // No match found
+        }
+
+        /// @brief Print the class
+        friend std::ostream& operator<<(std::ostream& os, const detail& detail) {
+            os << "detail: ";
+            if (!detail.is_valid()) { os << " -NOT VALID- "; }
+            os << "\n"
+                << detail.takv_
+                << detail.contact_
+                << detail.uid_
+                << detail.model_
+                << detail.precisionlocation_
+                << detail.group_
+                << detail.status_
+                << detail.track_
+                << detail.strokecolor_
+                << detail.fillcolor_
+                << detail.color_
+                << detail.usericon_
+                << "remarks: " << (detail.remarks.empty() ? "None" : detail.remarks) << "\n"
+                << "Links:\n";
+            if (detail.links.empty()) {
+                os << "\tNone\n";
+            } else {
+                for (const auto& link : detail.links) {
+                    os << "\t" << link;
+                }
+            }
+            os << "Custom Details:\n";
+            if (detail.customDetails.empty()) {
+                os << "\tNone\n";
+            } else {
+                for (const auto& custom : detail.customDetails) {
+                    os << custom;
+                }
+            }
+            os << "\n";
+            return os;
+        }
+
+    private:
+        static constexpr double INVALID_VALUE = std::numeric_limits<double>::quiet_NaN();
+    };
+
     /// @brief A COT Message subschema class for point data 
     class point
     {
@@ -1753,19 +2057,55 @@ namespace cot
     class event {
     public:
         /// @brief Constructor - Initializes everything
-        event() : {}
+        event(double version = INVALID_VERSION,
+            const std::string& uid = INVALID_STRING,
+            const std::string& type = INVALID_STRING,
+            const datetime& time = datetime(),
+            const datetime& start = datetime(),
+            const datetime& stale = datetime(),
+            const std::string& how = INVALID_STRING,
+            const point& point = point(),
+            const detail& detail = detail())
+            : version(version),
+            uid(uid),
+            type(type),
+            time(time), 
+            start(start), 
+            stale(stale), 
+            how(how),
+            p(point),
+            d(detail) {
+        }
+
+        /// @brief Equality comparison
+        bool operator==(const event& other) const {
+            constexpr double EPSILON = 1e-6;
+            bool versionEqual = (std::isnan(version) && std::isnan(other.version)) ||
+                std::abs(version - other.version) < EPSILON;
+            return versionEqual &&
+                uid == other.uid &&
+                type == other.type &&
+                time == other.time &&
+                start == other.start &&
+                stale == other.stale &&
+                how == other.how &&
+                p == other.p &&
+                d == other.d;
+        }
+
+        /// @brief Inequality comparison
+        bool operator!=(const event& other) const {
+            return !(*this == other);
+        }
 
         /// @brief Checks if the class has valid data
-        bool is_valid(std::string* errorMsg = nullptr) const
-        {
+        bool is_valid(result* rslt = nullptr) const {
             bool valid = true;
             std::string errors;
 
             // Verify member items are valid
-            if (!p.is_valid(&errors))
-            {
+            if (!p.is_valid(rslt)) {
                 valid = false;
-                if (errorMsg) *errorMsg += "Event invalid: " + errors + "; ";
             }
 
             return valid;
@@ -1774,24 +2114,37 @@ namespace cot
         /// @brief Getter for Point sub-schema
         const point& get_point() const { return p; }
 
+        /// @brief Getter for Detail sub-schema
+        const detail& get_detail() const { return d; }
+
         /// @brief Setter for Point sub-schema with validation
-        result set_point(const point& newPoint)
-        {
-            if (!newPoint.is_valid())
-            {
-                result(result::error_code::InvalidPoint, "Cannot set invalid Point");
-                return false;
+        result set_point(const point& newPoint) {
+            if (!newPoint.is_valid()) {
+                return result(result::error_code::InvalidPoint, "Cannot set invalid Point");
             }
             p = newPoint;
-            return true;
+            return result();
         }
 
-        void clear_point()
-        {
+        /// @brief Setter for Point sub-schema with validation
+        result set_detail(const detail& newdetail) {
+            if (!newdetail.is_valid()) {
+                return result(result::error_code::InvalidDetail, "Cannot set invalid Detail");
+            }
+            d = newdetail;
+            return result();
+        }
+
+        /// @brief Clear the point schema
+        void clear_point() {
             p = point();
         }
 
-    private:
+        /// @brief clear the detail schema
+        void clear_detail() {
+            d = detail();
+        }
+
         double version;
         std::string uid;
         std::string type;
@@ -1800,54 +2153,60 @@ namespace cot
         datetime stale;
         std::string how;
         point p;
+        detail d;
+    private:
+        static constexpr double INVALID_VERSION = std::numeric_limits<double>::quiet_NaN();
+        static constexpr const char* INVALID_STRING = "";
     };
 
     /// @brief A root XML CoT Message schema class for entire xml message data
     class message {
     public:
-        Event event;                    /// Holds Event Sub-schema
+        event event_;                    /// Holds Event Sub-schema
         std::string xml_version;        /// Holds version from XML tag
         std::string xml_encoding;       /// Holds hold encoding from XML tag
         std::string xml_standalone;     /// Holds holds standalone bool from XML tag
 
         /// @brief Constructor - Initializes everything
-        message(const Event& event = Event()) :
-            event(event) {
+        message(const event& event = event(),
+            const std::string& xml_version = INVALID_STRING,
+            const std::string& xml_encoding = INVALID_STRING,
+            const std::string& xml_standalone = INVALID_STRING) :
+            event_(event),
+            xml_version(xml_version),
+            xml_encoding(xml_encoding),
+            xml_standalone(xml_standalone) {
         }
 
         /// @brief Equality comparison operator
-        bool operator==(const message& other) const
-        {
-            return event == other.event &&
+        bool operator==(const message& other) const {
+            return event_ == other.event_ &&
                 xml_version == other.xml_version &&
                 xml_encoding == other.xml_encoding &&
                 xml_standalone == other.xml_standalone;
         }
 
         /// @brief Inequality comparison operator
-        bool operator!=(const message& other) const
-        {
+        bool operator!=(const message& other) const {
             return !(*this == other);
         }
 
         /// @brief Checks if the class has valid data
         /// @param rslt Optional result structure for invalid reason
         /// @return true if valid, else false
-        bool is_valid(result* rslt = nullptr) const
-        {
+        bool is_valid(result* rslt = nullptr) const {
             bool valid = true;
-            std::string errors;
 
             // Event and Point are required in CoT
-            if (!event.is_valid(&errors))
-            {
+            if (!event_.is_valid(rslt)) {
                 valid = false;
-                if (errorMsg && !errors.empty()) *errorMsg += "Event invalid: " + errors + "; ";
             }
 
             return valid;
         }
- 
+
+    private:
+        static constexpr const char* INVALID_STRING = "";
     };
 
 #pragma endregion
@@ -1909,12 +2268,13 @@ namespace cot
     /// @param cot Schema to convert to XML
     /// @param xml std::string contianing xml text, xml is empty if error occurs
     /// @return result indicating success or failure with description
-    [[nodiscard]] result generate_xml_cot(const schema& cot, std::string& xml) {
+    [[nodiscard]] result generate_xml_cot(const message& cot, std::string& xml) {
         // Validate schema
         std::string error;
-        auto validation_result = cot.is_valid(&error);
+        result rslt;
+        auto validation_result = cot.is_valid(&rslt);
         if (!validation_result) {
-            return result{ result::error_code::InvalidCotSchema, "Invalid cot schema: " + error };
+            return result{ result::error_code::InvalidData, "Invalid cot schema: " + error };
         }
 
         // Create XML document
@@ -1978,7 +2338,7 @@ namespace cot
                 std::stringstream modifiedXmlStream;
                 doc.save(modifiedXmlStream);
                 responseMessage = modifiedXmlStream.str();
-                return result(result::error_code::Success);
+                return result();
             }
 
             // No modification made
@@ -1990,71 +2350,62 @@ namespace cot
 
     /// @brief Parse a CoT message from a string buffer
     /// @param buffer Input buffer containing XML data
-    /// @param cot Output schema to store parsed data
+    /// @param cot Output message schema to store parsed data
     /// @return Result indicating success or failure with description
-    [[nodiscard]] result parse_cot(std::string_view buffer, Schema& cot)
-    {
+    [[nodiscard]] result parse_cot(std::string_view buffer, message& cot) {
         // Convert input buffer to string and remove garbage before <?xml
         std::string xmlBuffer(buffer);
         result rslt = prep_message(xmlBuffer);
 
-        if (rslt.is_failed())
-        {
+        if (rslt.is_failed()) {
             return rslt;
         }
 
         // Parse XML
         pugi::xml_document doc;
-        pugi::xml_parse_result result = doc.load_string(buffer.c_str());
-        if (!result) { return Result(Result::Code::ProcessingError); }
+        pugi::xml_parse_result xmlresult = doc.load_string(buffer);
+        if (!xmlresult) { return result(result::error_code::ProcessingError); }
 
         // Validate structure
         pugi::xml_node eventNode = doc.child("event");
-        if (!eventNode || doc.root().select_nodes("event").size() != 1)
-        {
-            return Result(result::error_code::InvalidEvent);
+        if (!eventNode || doc.root().select_nodes("event").size() != 1) {
+            return result(result::error_code::InvalidEvent);
         }
-        if (eventNode.select_nodes("point").size() != 1)
-        {
-            return Result(Result::Code::InvalidPoint);
+        if (eventNode.select_nodes("point").size() != 1) {
+            return result(result::error_code::InvalidPoint);
         }
-        if (eventNode.select_nodes("detail").size() > 1)
-        {
-            return Result(Result::Code::InvalidXml);
+        if (eventNode.select_nodes("detail").size() > 1) {
+            return result(result::error_code::InvalidXml);
         }
 
         // Parse event, point, and detail (if present)
-        cot.event = Event::from_xml(eventNode);
+        cot.event_ = Event::from_xml(eventNode);
         cot.point = Point::Data::from_xml(eventNode.child("point"));
         if (pugi::xml_node detailNode = eventNode.child("detail"))
         {
-            cot.detail = Detail::from_xml(detailNode);
+            cot.detail = detail::from_xml(detailNode);
         }
 
         // Validate parsed data
         std::string error;
-        if (!cot.event.is_valid(&error))
-        {
-            return Result(Result::Code::InvalidEvent, std::string("Parsed Event is invalid: " + error));
+        if (!cot.event.is_valid(&error)) {
+            return result(result::error_code::InvalidEvent, std::string("Parsed Event is invalid: " + error));
         }
-        if (!cot.point.is_valid(&error))
-        {
-            return Result(Result::Code::InvalidPoint, std::string("Parsed Point is invalid: " + error));
+        if (!cot.point.is_valid(&error)) {
+            return result(result::error_code::InvalidPoint, std::string("Parsed Point is invalid: " + error));
         }
-        if (eventNode.child("detail") && !cot.detail.is_valid(&error))
-        {
-            return Result(Result::Code::InvalidDetail, std::string("Parsed Detail is invalid: " + error));
+        if (eventNode.child("detail") && !cot.detail.is_valid(&error)) {
+            return result(result::error_code::InvalidDetail, std::string("Parsed detail is invalid: " + error));
         }
 
-        return Result(Result::Code::Success);
+        return result(result::error_code::Success);
     }
 
     /// @brief Parse a CoT message from a character buffer
     /// @param buffer Input buffer containing XML data
-    /// @param cot Output schema to store parsed data
+    /// @param cot Output message schema to store parsed data
     /// @return Result indicating success or failure with description
-    [[nodiscard]] result parse_cot(const char* buffer, Schema& cot)
-    {
+    [[nodiscard]] result parse_cot(const char* buffer, message& cot) {
         return parse_cot(std::string_view(buffer), cot);
     }
 
@@ -2095,7 +2446,7 @@ namespace cot
         event = Event::from_xml(eventNode);
 
         // Success
-        return result(result::error_code::Success);
+        return result();
     }
 
     /// @brief Parse the Point element from a CoT message
@@ -2140,14 +2491,14 @@ namespace cot
         point = Point::from_xml(pointNode);
 
         // Success
-        return result(result::error_code::Success);
+        return result();
     }
 
-    /// @brief Parse the Detail element from a CoT message
+    /// @brief Parse the detail element from a CoT message
     /// @param buffer Input buffer containing XML data
     /// @param detail parsed detail instance
     /// @return result indicating success or failure with description
-    [[nodiscard]] result parse_detail_from_cot(std::string_view buffer, Detail& detail)
+    [[nodiscard]] result parse_detail_from_cot(std::string_view buffer, detail& detail)
     {
         // Prep message for parsing
         std::string xmlBuffer(buffer);
@@ -2181,11 +2532,11 @@ namespace cot
             return result(result::error_code::InsufficientData);
         }
 
-        // Use Detail::from_xml to parse the track node
-        detail = Detail::from_xml(detailNode);
+        // Use detail::from_xml to parse the track node
+        detail = detail::from_xml(detailNode);
 
         // Success
-        return result(result::error_code::Success);
+        return result();
     }
 
 #pragma endregion

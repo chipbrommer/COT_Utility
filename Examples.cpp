@@ -1,4 +1,4 @@
-
+#if false
 #include <iostream>
 #include "cot_utility.h"
 
@@ -140,3 +140,16 @@ int main()
 
     return 0;
 }
+#else
+
+#include "single_include/cot.hpp"
+
+int main() {
+    cot::message = cot::message();
+    cot::parse_cot
+
+
+    return 0;
+}
+
+#endif
