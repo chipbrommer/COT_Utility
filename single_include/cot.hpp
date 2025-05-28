@@ -554,16 +554,16 @@ namespace cot
         /// @return result structure with pass or invalid reason if set fails
         result set_from_system_clock()
         {
-            result tmp{};
-            *this = from_system_clock(tmp);
-            return tmp;
+            result rslt;
+            *this = from_system_clock(&rslt);
+            return rslt;
         }
 
         /// @brief Equality comparison operator
         bool operator==(const datetime& other) const
         {
-            return static_cast<const Date&>(*this) == static_cast<const Date&>(other) &&
-                static_cast<const Time&>(*this) == static_cast<const Time&>(other);
+            return static_cast<const date&>(*this) == static_cast<const date&>(other) &&
+                static_cast<const time&>(*this) == static_cast<const time&>(other);
         }
 
         /// @brief Inequality comparison operator
@@ -1815,7 +1815,7 @@ namespace cot
                 }
             }
 
-            return detail;
+            return d;
         }
 
         /// @brief Add a new custom detail
@@ -1833,7 +1833,7 @@ namespace cot
 
             // Check if a custom detail with this name already exists
             auto it = std::find_if(custom_details.begin(), custom_details.end(),
-                [&name](const custom_details& detail) { return detail.name == name; });
+                [&name](const customdetail& detail) { return detail.name == name; });
 
             if (it != custom_details.end()) {
                 return false; // Duplicate name
@@ -2065,8 +2065,8 @@ namespace cot
             const datetime& start = datetime(),
             const datetime& stale = datetime(),
             const std::string& how = INVALID_STRING,
-            const point& point = point(),
-            const detail& detail = detail())
+            const point& p = point(),
+            const detail& d = detail())
             : version(version),
             uid(uid),
             type(type),
@@ -2074,8 +2074,8 @@ namespace cot
             start(start), 
             stale(stale), 
             how(how),
-            p(point),
-            d(detail) {
+            point_(p),
+            detail_(d) {
         }
 
         /// @brief Equality comparison
@@ -2090,8 +2090,8 @@ namespace cot
                 start == other.start &&
                 stale == other.stale &&
                 how == other.how &&
-                p == other.p &&
-                d == other.d;
+                point_ == other.point_ &&
+                detail_ == other.detail_;
         }
 
         /// @brief Inequality comparison
@@ -2099,30 +2099,112 @@ namespace cot
             return !(*this == other);
         }
 
+        // @brief convenient print
+        friend std::ostream& operator<<(std::ostream& os, const event& e)
+        {
+            os << "Event: ";
+            if (!e.is_valid()) os << " -NOT VALID- ";
+            os << "\n"
+                << "\tVersion: " << (std::isnan(e.version) ? "NaN" : std::to_string(e.version)) << "\n"
+                << "\tType: " << (e.type.empty() ? "None" : e.type) << "\n"
+                << "\tRoot Type: " << static_cast<int>(e.rootType) << " - "
+                << Root::TypeToString.at(e.rootType) << "\n"
+                << "\tIndicator: " << static_cast<int>(e.indicator) << " - "
+                << Point::TypeToString.at(e.indicator) << "\n"
+                << "\tLocation: " << static_cast<int>(e.location) << " - "
+                << Location::TypeToString.at(e.location) << "\n"
+                << "\tUID: " << (e.uid.empty() ? "None" : e.uid) << "\n"
+                << "\tTime: " << e.time << "\n"
+                << "\tStart: " << e.start << "\n"
+                << "\tStale: " << e.stale << "\n"
+                << "\tHow: " << (e.how.empty() ? "None" : e.how) << "\n"
+                << "\tHow Entry: " << static_cast<int>(e.howEntry) << " - "
+                << How::Entry::TypeToString.at(e.howEntry) << "\n"
+                << "\tHow Data: " << static_cast<int>(e.howData) << " - "
+                << How::Data::TypeToString.at(e.howData) << "\n";
+            return os;
+        }
+
         /// @brief Checks if the class has valid data
         bool is_valid(result* rslt = nullptr) const {
             bool valid = true;
 
             // Verify member items are valid
-            if (!p.is_valid(rslt)) {
+            if (!point_.is_valid(rslt)) {
                 valid = false;
             }
 
             return valid;
         }
 
+        /// @brief to string
+        /// @return string containing the xml event
+        std::string to_xml() const {
+            std::ostringstream oss;
+            oss << "<event"
+                << " version=\"" << std::fixed << std::setprecision(1) << version << "\""
+                << " type=\"" << type << "\""
+                << " uid=\"" << uid << "\""
+                << " time=\"" << time.to_cot_timestamp() << "\""
+                << " start=\"" << start.to_cot_timestamp() << "\""
+                << " stale=\"" << stale.to_cot_timestamp() << "\""
+                << " how=\"" << how << ">";
+            oss << point_.is_valid() ? point_.to_xml() : "";
+            oss << detail_.is_valid() ? detail_.to_xml() : "";
+            oss << "</event>";
+            return oss.str();
+        }
+
+        /// @brief Deserialize from XML node
+        static event from_xml(const pugi::xml_node& node, result* rslt = nullptr) {
+            event e;
+            try {
+                if (auto attr = node.attribute("version")) e.version = attr.as_double(std::numeric_limits<double>::quiet_NaN());
+                //@todo - type
+                if (auto attr = node.attribute("uid")) e.uid = attr.as_string();
+                if (auto attr = node.attribute("time")) e.time = datetime::from_cot_timestamp(attr.as_string());
+                if (auto attr = node.attribute("start")) e.start = datetime::from_cot_timestamp(attr.as_string());
+                if (auto attr = node.attribute("stale")) e.stale = datetime::from_cot_timestamp(attr.as_string());
+                //@todo - how
+
+                // Parse the event sub types
+                static const std::map<std::string, std::function<void(pugi::xml_node, event&)>> parsers = {
+                    {"point", [](pugi::xml_node n, event& e) { e.point_ = point::from_xml(n); }},
+                    {"detail", [](pugi::xml_node n, event& e) { e.detail_ = detail::from_xml(n); }}
+                };
+
+                // Parse child nodes
+                for (pugi::xml_node child : node.children()) {
+                    std::string name = child.name();
+                    try {
+                        auto it = parsers.find(name);
+                        if (it != parsers.end()) {
+                            it->second(child, item);
+                        }
+                    }
+                    catch (const std::exception& e) {
+                        std::cerr << "Error parsing <" << name << ">: " << e.what() << std::endl;
+                    }
+                }
+            }
+            catch (const std::exception& ex) {
+                if (rslt) *rslt = result(result::error_code::InvalidEvent, "Error parsing event attributes: " + ex.what());
+            }
+            return e;
+        }
+
         /// @brief Getter for Point sub-schema
-        const point& get_point() const { return p; }
+        const point& get_point() const { return point_; }
 
         /// @brief Getter for Detail sub-schema
-        const detail& get_detail() const { return d; }
+        const detail& get_detail() const { return detail_; }
 
         /// @brief Setter for Point sub-schema with validation
         result set_point(const point& newPoint) {
             if (!newPoint.is_valid()) {
                 return result(result::error_code::InvalidPoint, "Cannot set invalid Point");
             }
-            p = newPoint;
+            point_ = newPoint;
             return result();
         }
 
@@ -2131,19 +2213,15 @@ namespace cot
             if (!newdetail.is_valid()) {
                 return result(result::error_code::InvalidDetail, "Cannot set invalid Detail");
             }
-            d = newdetail;
+            detail_ = newdetail;
             return result();
         }
 
         /// @brief Clear the point schema
-        void clear_point() {
-            p = point();
-        }
+        void clear_point() { point_ = point(); }
 
         /// @brief clear the detail schema
-        void clear_detail() {
-            d = detail();
-        }
+        void clear_detail() { detail_ = detail(); }
 
         double version;
         std::string uid;
@@ -2152,8 +2230,8 @@ namespace cot
         datetime start;
         datetime stale;
         std::string how;
-        point p;
-        detail d;
+        point point_;
+        detail detail_;
     private:
         static constexpr double INVALID_VERSION = std::numeric_limits<double>::quiet_NaN();
         static constexpr const char* INVALID_STRING = "";
@@ -2208,8 +2286,66 @@ namespace cot
         /// @brief Get the message in a convenient format string
         /// @return message in a convenient format string
         std::string to_pretty_string() {
-            std::string str << event_;
-            return str;
+            std::stringstream oss;
+            oss << event_;
+            return oss.str();
+        }
+
+        std::string to_xml_string() {
+            std::ostringstream oss;
+            oss << "<?xml"
+                << " version=\"" << xml_version << "\""
+                << " encoding=\"" << xml_encoding << "\""
+                << " standalone=\"" << xml_standalone << "\""
+                << "?>";
+            oss << event_.is_valid() ? event_.to_xml() : "";
+            return oss.str();
+        }
+
+        /// @brief Deserialize from XML node
+        static message from_xml(const pugi::xml_node& node, result* rslt = nullptr) {
+            message cot;
+            try {
+                if (auto attr = node.attribute("version")) cot.xml_version = attr.as_string();
+                if (auto attr = node.attribute("encoding")) cot.xml_encoding = attr.as_string();
+                if (auto attr = node.attribute("standalone")) cot.xml_standalone = attr.as_string();
+
+                // Parse the event sub types
+                static const std::map<std::string, std::function<void(pugi::xml_node, message&)>> parsers = {
+                    {"event", [](pugi::xml_node n, message& msg) { msg.event_ = event::from_xml(n); }}
+                };
+
+                // Parse child nodes
+                for (pugi::xml_node child : node.children()) {
+                    std::string name = child.name();
+                    try {
+                        auto it = parsers.find(name);
+                        if (it != parsers.end()) {
+                            it->second(child, item);
+                        }
+                    }
+                    catch (const std::exception& e) {
+                        std::cerr << "Error parsing <" << name << ">: " << e.what() << std::endl;
+                    }
+                }
+            }
+            catch (const std::exception& ex) {
+                if (rslt) *rslt = result(result::error_code::InvalidEvent, "Error parsing event attributes: " + ex.what());
+            }
+            return e;
+        }
+
+        /// @brief Deserialize from XML string
+        static message from_xml_string(const std::string& xml, result* rslt = nullptr) {
+            pugi::xml_document doc;
+            pugi::xml_parse_result result = doc.load_string(xml.c_str());
+            if (!result)
+            {
+                std::cerr << "Failed to parse XML string: " << result.description() << std::endl;
+                if (rslt) { rslt = result(result::error_code::ProcessingError, "Failed to parse XML string: " + result.description()); }
+                return message();
+            }
+            return from_xml(doc.child("event"));
         }
 
         /// @brief Print the class
@@ -2245,7 +2381,7 @@ namespace cot
     /// @return result indicating success or failure with description
     result verify_xml(std::string buffer) {
         if (buffer.empty()) {
-            return result{ result::error_code::InvalidInput, "Empty input buffer" }
+            return result{ result::error_code::InvalidInput, "Empty input buffer" };
         }
 
         pugi::xml_document doc;
@@ -2296,26 +2432,25 @@ namespace cot
     /// @brief prep an xml buffer to be parsed, will clear content before the starting xml tag
     /// @param xml string view containtaining the xml
     /// @return result indicating success or failure with description
-    result prep_message(std::string& xml)
+    result prep_xml_message(std::string& xml)
     {
         if (xml.empty()) {
-            return result{ result::error_code::InvalidInput, "Empty input buffer" }
+            return result{ result::error_code::InvalidInput, "Empty input buffer" };
         }
 
         size_t position = xml.find("<?xml");
-        if (position == std::string::npos)
-        {
+        if (position == std::string::npos) {
             return result(result::error_code::InvalidXml);
         }
         xml.erase(0, position);
 
         // Verify XML structure
         result rslt = verify_xml(xml);
-        if (rslt.is_failed())
-        {
+        if (rslt.is_failed()) {
             return rslt;
         }
-        return result::error_code::Success);
+
+        return result(result::error_code::Success);
     }
 
     /// @brief Create an XML CoT message from a schema
@@ -2404,7 +2539,7 @@ namespace cot
     [[nodiscard]] result parse_cot(std::string_view buffer, message& cot) {
         // Convert input buffer to string and remove garbage before <?xml
         std::string xmlBuffer(buffer);
-        result rslt = prep_message(xmlBuffer);
+        result rslt = prep_xml_message(xmlBuffer);
 
         if (rslt.is_failed()) {
             return rslt;
@@ -2442,7 +2577,7 @@ namespace cot
     [[nodiscard]] result parse_event_from_cot(std::string_view buffer, event& e) {
         // Prep message for parsing
         std::string xmlBuffer(buffer);
-        result rslt = prep_message(xmlBuffer);
+        result rslt = prep_xml_message(xmlBuffer);
 
         if (rslt.is_failed()) {
             return rslt;
@@ -2476,7 +2611,7 @@ namespace cot
     [[nodiscard]] result parse_point_from_cot(std::string_view buffer, point& p) {
         // Prep message for parsing
         std::string xmlBuffer(buffer);
-        result rslt = prep_message(xmlBuffer);
+        result rslt = prep_xml_message(xmlBuffer);
 
         if (rslt.is_failed()) {
             return rslt;
@@ -2514,7 +2649,7 @@ namespace cot
     [[nodiscard]] result parse_detail_from_cot(std::string_view buffer, detail& detail) {
         // Prep message for parsing
         std::string xmlBuffer(buffer);
-        result rslt = prep_message(xmlBuffer);
+        result rslt = prep_xml_message(xmlBuffer);
 
         if (rslt.is_failed()) {
             return rslt;

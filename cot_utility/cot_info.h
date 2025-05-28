@@ -442,24 +442,7 @@ public:
         return valid;
     }
 
-    std::string ToXml(bool add_ending_tag = false) const 
-    {
-        if (!IsValid()) return "";
-        std::ostringstream oss;
-        oss << "<event"
-            << " version=\"" << std::fixed << std::setprecision(1) << version << "\""
-            << " type=\"" << type << "\""
-            << " uid=\"" << uid << "\""
-            << " time=\"" << time.ToCotTimestamp() << "\""
-            << " start=\"" << start.ToCotTimestamp() << "\""
-            << " stale=\"" << stale.ToCotTimestamp() << "\""
-            << " how=\"" << how << ">";
-        if (add_ending_tag)
-        {
-            oss << "</event>";
-        }
-        return oss.str();
-    }
+
 
     static Event FromXml(const pugi::xml_node& node)
     {
