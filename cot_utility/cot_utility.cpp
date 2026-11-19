@@ -132,7 +132,6 @@ Result CoT_Utility::UpdateReceivedCOTMessage(std::string& receivedMessage, CoT_S
     return Result(Result::Code::ProcessingError, result.description());
 }
 
-
 Result CoT_Utility::ParseTrackFromCoT(const char* buffer, Track& track)
 {
     // Convert input buffer to string and remove garbage before <?xml
