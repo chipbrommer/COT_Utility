@@ -35,6 +35,8 @@ namespace cot
 			InvalidContact,         ///< Invalid contact data
 			InvalidUid,             ///< Invalid uid data
 			InvalidTog,             ///< Invalid tog data
+			InvalidRange,           ///< Invalid range data
+			InvalidRangeUnits,      ///< Invalid rangeunits data
 			InvalidPrecisionLocation, ///< Invalid precisionlocation data
 			InvalidGroup,           ///< Invalid group data
 			InvalidStatus,          ///< Invalid status data
@@ -131,6 +133,8 @@ namespace cot
 			case error_code::InvalidContact: return "Invalid contact data";
 			case error_code::InvalidUid: return "Invalid uid data";
 			case error_code::InvalidTog: return "Invalid tog data";
+			case error_code::InvalidRange: return "Invalid range data";
+			case error_code::InvalidRangeUnits: return "Invalid rangeunits data";
 			case error_code::InvalidPrecisionLocation: return "Invalid precisionlocation data";
 			case error_code::InvalidGroup: return "Invalid group data";
 			case error_code::InvalidStatus: return "Invalid status data";
