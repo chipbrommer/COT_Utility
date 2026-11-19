@@ -17,6 +17,9 @@ namespace cot::subschemas
             color fillcolor = color(),
             color color = color(),
             fillColor fillColor = fillColor(),
+            strokeColor strokeColor = strokeColor(),
+            strokeStyle strokeStyle = strokeStyle(),
+            strokeWeight strokeWeight = strokeWeight(),
             image image = image(),
             inclination inclination = inclination(),
             labels_on labels_on = labels_on(),
@@ -43,6 +46,9 @@ namespace cot::subschemas
             fillcolor_(std::move(fillcolor)),
             color_(std::move(color)),
             fillColor_(std::move(fillColor)),
+            strokeColor_(std::move(strokeColor)),
+            strokeStyle_(std::move(strokeStyle)),
+            strokeWeight_(std::move(strokeWeight)),
             image_(std::move(image)),
             inclination_(std::move(inclination)),
             labels_on_(std::move(labels_on)),
@@ -73,6 +79,9 @@ namespace cot::subschemas
                 fillcolor_ == other.fillcolor_ &&
                 color_ == other.color_ &&
                 fillColor_ == other.fillColor_ &&
+                strokeColor_ == other.strokeColor_ &&
+                strokeStyle_ == other.strokeStyle_ &&
+                strokeWeight_ == other.strokeWeight_ &&
                 image_ == other.image_ &&
                 inclination_ == other.inclination_ &&
                 labels_on_ == other.labels_on_ &&
@@ -116,6 +125,24 @@ namespace cot::subschemas
             }
             if (has_fillColor_data() && !fillColor_.is_valid()) {
                 auto res = result{ result::error_code::InvalidDetail, "Invalid fillColor data" };
+                if (rslt) *rslt = res;
+                if (error_handler) error_handler(res);
+                return false;
+            }
+            if (has_strokeColor_data() && !strokeColor_.is_valid()) {
+                auto res = result{ result::error_code::InvalidDetail, "Invalid strokeColor data" };
+                if (rslt) *rslt = res;
+                if (error_handler) error_handler(res);
+                return false;
+            }
+            if (has_strokeStyle_data() && !strokeStyle_.is_valid()) {
+                auto res = result{ result::error_code::InvalidDetail, "Invalid strokeStyle data" };
+                if (rslt) *rslt = res;
+                if (error_handler) error_handler(res);
+                return false;
+            }
+            if (has_strokeWeight_data() && !strokeWeight_.is_valid()) {
+                auto res = result{ result::error_code::InvalidDetail, "Invalid strokeWeight data" };
                 if (rslt) *rslt = res;
                 if (error_handler) error_handler(res);
                 return false;
@@ -257,6 +284,18 @@ namespace cot::subschemas
                 auto res = fillColor_.to_xml(node);
                 if (!res.is_success()) return res;
             }
+            if (has_strokeColor_data() && strokeColor_.is_valid()) {
+                auto res = strokeColor_.to_xml(node);
+                if (!res.is_success()) return res;
+            }
+            if (has_strokeStyle_data() && strokeStyle_.is_valid()) {
+                auto res = strokeStyle_.to_xml(node);
+                if (!res.is_success()) return res;
+            }
+            if (has_strokeWeight_data() && strokeWeight_.is_valid()) {
+                auto res = strokeWeight_.to_xml(node);
+                if (!res.is_success()) return res;
+            }
             if (has_image_data() && image_.is_valid()) {
                 auto res = image_.to_xml(node);
                 if (!res.is_success()) return res;
@@ -344,6 +383,9 @@ namespace cot::subschemas
                     else if (name == "fillcolor") d.fillcolor_ = color::from_xml(child, rslt, "fillcolor");
                     else if (name == "color") d.color_ = color::from_xml(child, rslt, "color");
                     else if (name == "fillColor") d.fillColor_ = fillColor::from_xml(child, rslt);
+                    else if (name == "strokeColor") d.strokeColor_ = strokeColor::from_xml(child, rslt);
+                    else if (name == "strokeStyle") d.strokeStyle_ = strokeStyle::from_xml(child, rslt);
+                    else if (name == "strokeWeight") d.strokeWeight_ = strokeWeight::from_xml(child, rslt);
                     else if (name == "image") d.image_ = image::from_xml(child, rslt);
                     else if (name == "inclination") d.inclination_ = inclination::from_xml(child, rslt);
                     else if (name == "labels_on") d.labels_on_ = labels_on::from_xml(child, rslt);
@@ -500,6 +542,9 @@ namespace cot::subschemas
                 << d.fillcolor_
                 << d.color_;
             if (d.has_fillColor_data()) os << d.fillColor_;
+            if (d.has_strokeColor_data()) os << d.strokeColor_;
+            if (d.has_strokeStyle_data()) os << d.strokeStyle_;
+            if (d.has_strokeWeight_data()) os << d.strokeWeight_;
             if (d.has_image_data()) os << d.image_;
             if (d.has_inclination_data()) os << d.inclination_;
             if (d.has_labels_on_data()) os << d.labels_on_;
@@ -533,6 +578,9 @@ namespace cot::subschemas
         color fillcolor_;
         color color_;
         fillColor fillColor_;
+        strokeColor strokeColor_;
+        strokeStyle strokeStyle_;
+        strokeWeight strokeWeight_;
         image image_;
         inclination inclination_;
         labels_on labels_on_;
@@ -552,6 +600,21 @@ namespace cot::subschemas
         /// @brief Checks if fillColor has a non-default value
         [[nodiscard]] bool has_fillColor_data() const noexcept {
             return fillColor_.value != std::numeric_limits<int>::min();
+        }
+
+        /// @brief Checks if strokeColor has a non-default value
+        [[nodiscard]] bool has_strokeColor_data() const noexcept {
+            return strokeColor_.value != std::numeric_limits<int>::min();
+        }
+
+        /// @brief Checks if strokeStyle has a non-empty value
+        [[nodiscard]] bool has_strokeStyle_data() const noexcept {
+            return !strokeStyle_.value.empty();
+        }
+
+        /// @brief Checks if strokeWeight has a non-NaN value
+        [[nodiscard]] bool has_strokeWeight_data() const noexcept {
+            return !std::isnan(strokeWeight_.value);
         }
 
         /// @brief Checks if any image fields are populated

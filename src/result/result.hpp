@@ -10,6 +10,13 @@ namespace cot
 			InvalidPoint,           ///< XML is missing or has invalid <point> tag
 			InvalidDetail,          ///< XML has invalid <detail> tag
 			InvalidColor,           ///< Invalid color data (strokecolor, fillcolor, color)
+			InvalidFillColor,       ///< Invalid fillColor data
+			InvalidImage,           ///< Invalid image data
+			InvalidInclination,     ///< Invalid inclination data
+			InvalidLabelsOn,        ///< Invalid labels_on data
+			InvalidStrokeColor,     ///< Invalid strokeColor data
+			InvalidStrokeStyle,     ///< Invalid strokeStyle data
+			InvalidStrokeWeight,    ///< Invalid strokeWeight data
 			InvalidUserIcon,        ///< Invalid usericon data
 			InvalidModel,           ///< Invalid model data
 			InvalidTrack,           ///< Invalid track data
@@ -22,6 +29,7 @@ namespace cot
 			InvalidCreator,         ///< Invalid creator data
 			InvalidDisplay,         ///< Invalid display data
 			InvalidEmergency,       ///< Invalid emergency data
+			InvalidAddress,         ///< Invalid address data
 			InvalidCustomDetail,    ///< Invalid custom detail data
 			InvalidTakv,            ///< Invalid takv data
 			InvalidContact,         ///< Invalid contact data
@@ -97,6 +105,13 @@ namespace cot
 			case error_code::InvalidPoint: return "XML has invalid Point tag";
 			case error_code::InvalidDetail: return "XML has invalid Detail tag";
 			case error_code::InvalidColor: return "Invalid color data";
+			case error_code::InvalidFillColor: return "Invalid fillcolor data";
+			case error_code::InvalidImage: return "Invalid image data";
+			case error_code::InvalidInclination: return "Invalid inclination data";
+			case error_code::InvalidLabelsOn: return "Invalid labels_on data";
+			case error_code::InvalidStrokeColor: return "Invalid strokecolor data";
+			case error_code::InvalidStrokeStyle: return "Invalid strokestyle data";
+			case error_code::InvalidStrokeWeight: return "Invalid strokeweight data";
 			case error_code::InvalidUserIcon: return "Invalid usericon data";
 			case error_code::InvalidModel: return "Invalid model data";
 			case error_code::InvalidTrack: return "Invalid track data";
@@ -109,6 +124,7 @@ namespace cot
 			case error_code::InvalidCreator: return "Invalid creator data";
 			case error_code::InvalidDisplay: return "Invalid display data";
 			case error_code::InvalidEmergency: return "Invalid emergency data";
+			case error_code::InvalidAddress: return "Invalid address data";
 			case error_code::InvalidCustomDetail: return "Invalid custom detail data";
 			case error_code::InvalidTakv: return "Invalid takv data";
 			case error_code::InvalidContact: return "Invalid contact data";
