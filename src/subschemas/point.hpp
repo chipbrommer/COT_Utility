@@ -17,8 +17,8 @@ namespace cot::subschemas
 		/// @brief Equality comparison
 		bool operator==(const point& other) const noexcept {
 			constexpr double EPSILON = 1e-6;
-			auto equal = [](double a, double b) {
-				return std::isnan(a) && std::isnan(b) ||
+			auto equal = [](double a, double b) noexcept {
+				return (std::isnan(a) && std::isnan(b)) ||
 					std::abs(a - b) < EPSILON;
 				};
 			return equal(latitude, other.latitude) &&
@@ -35,30 +35,37 @@ namespace cot::subschemas
 		/// @param rslt Optional result structure for invalid reason
 		/// @return True if valid, false otherwise
 		bool is_valid(result* rslt = nullptr) const {
-			if (std::isnan(latitude) || latitude < LAT_MIN || latitude > LAT_MAX) {
+			if (!std::isfinite(latitude) || latitude < LAT_MIN || latitude > LAT_MAX) {
 				auto res = result{ result::error_code::InvalidPoint,
-								  "Invalid latitude: must be between -90 and 90" };
+								  "Invalid latitude: must be a finite number between -90 and 90" };
 				if (rslt) *rslt = res;
 				if (error_handler) error_handler(res);
 				return false;
 			}
-			if (std::isnan(longitude) || longitude < LON_MIN || longitude > LON_MAX) {
+			if (!std::isfinite(longitude) || longitude < LON_MIN || longitude > LON_MAX) {
 				auto res = result{ result::error_code::InvalidPoint,
-								  "Invalid longitude: must be between -180 and 180" };
+								  "Invalid longitude: must be a finite number between -180 and 180" };
 				if (rslt) *rslt = res;
 				if (error_handler) error_handler(res);
 				return false;
 			}
-			if (!std::isnan(circularError) && circularError < 0) {
+			if (!std::isnan(hae) && !std::isfinite(hae)) {
 				auto res = result{ result::error_code::InvalidPoint,
-								  "Circular error cannot be negative" };
+								  "HAE must be finite when set" };
 				if (rslt) *rslt = res;
 				if (error_handler) error_handler(res);
 				return false;
 			}
-			if (!std::isnan(linearError) && linearError < 0) {
+			if (!std::isnan(circularError) && (!std::isfinite(circularError) || circularError < 0.0)) {
 				auto res = result{ result::error_code::InvalidPoint,
-								  "Linear error cannot be negative" };
+								  "Circular error must be non-negative and finite" };
+				if (rslt) *rslt = res;
+				if (error_handler) error_handler(res);
+				return false;
+			}
+			if (!std::isnan(linearError) && (!std::isfinite(linearError) || linearError < 0.0)) {
+				auto res = result{ result::error_code::InvalidPoint,
+								  "Linear error must be non-negative and finite" };
 				if (rslt) *rslt = res;
 				if (error_handler) error_handler(res);
 				return false;
@@ -70,8 +77,9 @@ namespace cot::subschemas
 		/// @param parent The parent XML node to append to
 		/// @return Result indicating success or failure
 		result to_xml(pugi::xml_node& parent) const {
-			if (!is_valid()) {
-				auto res = result{ result::error_code::InvalidPoint, "Invalid point data" };
+			result val_res;
+			if (!is_valid(&val_res)) {
+				auto res = result{ result::error_code::InvalidPoint, val_res.description() };
 				if (error_handler) error_handler(res);
 				return res;
 			}
@@ -96,20 +104,44 @@ namespace cot::subschemas
 				if (error_handler) error_handler(res);
 				return p;
 			}
-			try {
-				p.latitude = node.attribute("lat").as_double(INVALID_VALUE);
-				p.longitude = node.attribute("lon").as_double(INVALID_VALUE);
-				p.hae = node.attribute("hae").as_double(INVALID_VALUE);
-				p.circularError = node.attribute("ce").as_double(INVALID_VALUE);
-				p.linearError = node.attribute("le").as_double(INVALID_VALUE);
-			}
-			catch (const std::exception& e) {
-				auto res = result{ result::error_code::InvalidPoint,
-								  "Error parsing point attributes: " + std::string(e.what()) };
-				if (rslt) *rslt = res;
-				if (error_handler) error_handler(res);
-			}
-			if (!p.is_valid(rslt) && rslt && rslt->is_success()) {
+
+			auto parse_attr = [&rslt](const char* attr_name, double& target) -> bool {
+				auto attr = node.attribute(attr_name);
+				if (!attr) return true;
+				std::string raw = attr.as_string();
+				if (raw.empty()) return true;
+				try {
+					std::size_t idx = 0;
+					double parsed = std::stod(raw, &idx);
+					if (idx != raw.size()) {
+						auto res = result{ result::error_code::InvalidPoint,
+										  std::string("Trailing characters in point attribute '") + attr_name + "'" };
+						if (rslt) *rslt = res;
+						if (error_handler) error_handler(res);
+						target = INVALID_VALUE;
+						return false;
+					}
+					target = parsed;
+					return true;
+				}
+				catch (const std::exception& e) {
+					auto res = result{ result::error_code::InvalidPoint,
+									  std::string("Error parsing point attribute '") + attr_name + "': " + e.what() };
+					if (rslt) *rslt = res;
+					if (error_handler) error_handler(res);
+					target = INVALID_VALUE;
+					return false;
+				}
+				};
+
+			bool ok = true;
+			ok = parse_attr("lat", p.latitude) && ok;
+			ok = parse_attr("lon", p.longitude) && ok;
+			ok = parse_attr("hae", p.hae) && ok;
+			ok = parse_attr("ce", p.circularError) && ok;
+			ok = parse_attr("le", p.linearError) && ok;
+
+			if (ok && !p.is_valid(rslt) && rslt && rslt->is_success()) {
 				*rslt = result{ result::error_code::InvalidPoint, "Invalid point data after parsing" };
 				if (error_handler) error_handler(*rslt);
 			}
@@ -118,12 +150,21 @@ namespace cot::subschemas
 
 		/// @brief Stream output for printing
 		friend std::ostream& operator<<(std::ostream& os, const point& p) {
+			std::ios::fmtflags old_flags = os.flags();
+			std::streamsize old_precision = os.precision();
+
 			os << "point: ";
 			if (!p.is_valid()) os << " -NOT VALID- ";
 			os << "\n\tlatitude: ";
-			if (std::isnan(p.latitude)) os << "NaN"; else os << std::fixed << std::setprecision(6) << p.latitude;
+			if (std::isnan(p.latitude)) os << "NaN";
+			else os << std::fixed << std::setprecision(6) << p.latitude;
 			os << "\n\tlongitude: ";
-			if (std::isnan(p.longitude)) os << "NaN"; else os << std::fixed << std::setprecision(6) << p.longitude;
+			if (std::isnan(p.longitude)) os << "NaN";
+			else os << std::fixed << std::setprecision(6) << p.longitude;
+
+			os.flags(old_flags);
+			os.precision(old_precision);
+
 			os << "\n\thae: ";
 			if (std::isnan(p.hae)) os << "NaN"; else os << p.hae;
 			os << "\n\tce: ";
@@ -134,11 +175,11 @@ namespace cot::subschemas
 			return os;
 		}
 
-		double latitude{ 0.0 };
-		double longitude{ 0.0 };
-		double hae{ 0.0 };
-		double circularError{ 0.0 };
-		double linearError{ 0.0 };
+		double latitude{ INVALID_VALUE };
+		double longitude{ INVALID_VALUE };
+		double hae{ INVALID_VALUE };
+		double circularError{ INVALID_VALUE };
+		double linearError{ INVALID_VALUE };
 
 	private:
 		inline static constexpr double INVALID_VALUE = std::numeric_limits<double>::quiet_NaN();
