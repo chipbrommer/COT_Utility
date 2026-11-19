@@ -1,4 +1,14 @@
 #pragma once
+#include <algorithm>
+#include <cmath>
+#include <limits>
+#include <map>
+#include <ostream>
+#include <string>
+#include <utility>
+#include <vector>
+#include <pugixml.hpp>
+
 namespace cot::subschemas
 {
     /// @brief A CoT Message subschema class for detail data
@@ -33,6 +43,7 @@ namespace cot::subschemas
             display display = display(),
             emergency emergency = emergency(),
             address address = address(),
+            takcontrol takcontrol = takcontrol(),
             std::vector<link> links = {},
             std::vector<customdetail> custom_details = {})
             : takv_(std::move(takv)),
@@ -63,6 +74,7 @@ namespace cot::subschemas
             display_(std::move(display)),
             emergency_(std::move(emergency)),
             address_(std::move(address)),
+            takcontrol_(std::move(takcontrol)),
             links(std::move(links)),
             custom_details(std::move(custom_details)) {
         }
@@ -97,6 +109,7 @@ namespace cot::subschemas
                 display_ == other.display_ &&
                 emergency_ == other.emergency_ &&
                 address_ == other.address_ &&
+                takcontrol_ == other.takcontrol_ &&
                 links == other.links &&
                 custom_details == other.custom_details;
         }
@@ -224,6 +237,12 @@ namespace cot::subschemas
             }
             if (has_address_data() && !address_.is_valid()) {
                 auto res = result{ result::error_code::InvalidDetail, "Invalid address data" };
+                if (rslt) *rslt = res;
+                if (error_handler) error_handler(res);
+                return false;
+            }
+            if (has_takcontrol_data() && !takcontrol_.is_valid()) {
+                auto res = result{ result::error_code::InvalidDetail, "Invalid TakControl data" };
                 if (rslt) *rslt = res;
                 if (error_handler) error_handler(res);
                 return false;
@@ -370,6 +389,10 @@ namespace cot::subschemas
                 auto res = address_.to_xml(node);
                 if (!res.is_success()) return res;
             }
+            if (has_takcontrol_data() && takcontrol_.is_valid()) {
+                auto res = takcontrol_.to_xml(node);
+                if (!res.is_success()) return res;
+            }
             for (const auto& link : links) {
                 auto res = link.to_xml(node);
                 if (!res.is_success()) return res;
@@ -424,6 +447,7 @@ namespace cot::subschemas
                     else if (name == "display") d.display_ = display::from_xml(child, rslt);
                     else if (name == "emergency") d.emergency_ = emergency::from_xml(child, rslt);
                     else if (name == "__address") d.address_ = address::from_xml(child, rslt);
+                    else if (name == "TakControl") d.takcontrol_ = takcontrol::from_xml(child, rslt);
                     else if (name == "link") d.links.push_back(link::from_xml(child, rslt));
                     else if (!name.empty()) d.custom_details.push_back(customdetail::from_xml(child, rslt));
                 }
@@ -584,6 +608,7 @@ namespace cot::subschemas
             if (d.has_display_data()) os << d.display_;
             if (d.has_emergency_data()) os << d.emergency_;
             if (d.has_address_data()) os << d.address_;
+            if (d.has_takcontrol_data()) os << d.takcontrol_;
             os << "\tlinks:\n";
             if (d.links.empty()) os << "\t\tNone\n";
             else for (const auto& link : d.links) os << link;
@@ -621,6 +646,7 @@ namespace cot::subschemas
         display display_;
         emergency emergency_;
         address address_;
+        takcontrol takcontrol_;
         std::vector<link> links;
         std::vector<customdetail> custom_details;
 
@@ -704,6 +730,11 @@ namespace cot::subschemas
         [[nodiscard]] bool has_address_data() const noexcept {
             return !address_.text.empty() || !address_.geocoder.empty() ||
                 !address_.time.empty();
+        }
+
+        /// @brief Checks if any TakControl child elements are populated
+        [[nodiscard]] bool has_takcontrol_data() const noexcept {
+            return takcontrol_.has_data();
         }
     };
 }
