@@ -17,7 +17,13 @@ namespace cot::subschemas
             color fillcolor = color(),
             color color = color(),
             usericon usericon = usericon(),
-            std::string remarks = "",
+            remarks remarks = remarks(),
+            link_attr link_attr = link_attr(),
+            milicon milicon = milicon(),
+            milsym milsym = milsym(),
+            creator creator = creator(),
+            display display = display(),
+            emergency emergency = emergency(),
             std::vector<link> links = {},
             std::vector<customdetail> custom_details = {})
             : takv_(std::move(takv)),
@@ -32,7 +38,13 @@ namespace cot::subschemas
             fillcolor_(std::move(fillcolor)),
             color_(std::move(color)),
             usericon_(std::move(usericon)),
-            remarks(std::move(remarks)),
+            remarks_(std::move(remarks)),
+            link_attr_(std::move(link_attr)),
+            milicon_(std::move(milicon)),
+            milsym_(std::move(milsym)),
+            creator_(std::move(creator)),
+            display_(std::move(display)),
+            emergency_(std::move(emergency)),
             links(std::move(links)),
             custom_details(std::move(custom_details)) {
         }
@@ -51,7 +63,13 @@ namespace cot::subschemas
                 fillcolor_ == other.fillcolor_ &&
                 color_ == other.color_ &&
                 usericon_ == other.usericon_ &&
-                remarks == other.remarks &&
+                remarks_ == other.remarks_ &&
+                link_attr_ == other.link_attr_ &&
+                milicon_ == other.milicon_ &&
+                milsym_ == other.milsym_ &&
+                creator_ == other.creator_ &&
+                display_ == other.display_ &&
+                emergency_ == other.emergency_ &&
                 links == other.links &&
                 custom_details == other.custom_details;
         }
@@ -71,6 +89,48 @@ namespace cot::subschemas
             }
             if (!group_.is_valid()) {
                 auto res = result{ result::error_code::InvalidDetail, "Invalid group data" };
+                if (rslt) *rslt = res;
+                if (error_handler) error_handler(res);
+                return false;
+            }
+            if (!remarks_.is_valid()) {
+                auto res = result{ result::error_code::InvalidDetail, "Invalid remarks data" };
+                if (rslt) *rslt = res;
+                if (error_handler) error_handler(res);
+                return false;
+            }
+            if (has_link_attr_data() && !link_attr_.is_valid()) {
+                auto res = result{ result::error_code::InvalidDetail, "Invalid link_attr data" };
+                if (rslt) *rslt = res;
+                if (error_handler) error_handler(res);
+                return false;
+            }
+            if (!milicon_.id.empty() && !milicon_.is_valid()) {
+                auto res = result{ result::error_code::InvalidDetail, "Invalid milicon data" };
+                if (rslt) *rslt = res;
+                if (error_handler) error_handler(res);
+                return false;
+            }
+            if ((!milsym_.id.empty() || !milsym_.modifiers.empty()) && !milsym_.is_valid()) {
+                auto res = result{ result::error_code::InvalidDetail, "Invalid milsym data" };
+                if (rslt) *rslt = res;
+                if (error_handler) error_handler(res);
+                return false;
+            }
+            if (has_creator_data() && !creator_.is_valid()) {
+                auto res = result{ result::error_code::InvalidDetail, "Invalid creator data" };
+                if (rslt) *rslt = res;
+                if (error_handler) error_handler(res);
+                return false;
+            }
+            if (!display_.is_valid()) {
+                auto res = result{ result::error_code::InvalidDetail, "Invalid display data" };
+                if (rslt) *rslt = res;
+                if (error_handler) error_handler(res);
+                return false;
+            }
+            if (has_emergency_data() && !emergency_.is_valid()) {
+                auto res = result{ result::error_code::InvalidDetail, "Invalid emergency data" };
                 if (rslt) *rslt = res;
                 if (error_handler) error_handler(res);
                 return false;
@@ -152,8 +212,34 @@ namespace cot::subschemas
                 auto res = usericon_.to_xml(node);
                 if (!res.is_success()) return res;
             }
-            if (!remarks.empty()) {
-                node.append_child("remarks").append_child(pugi::node_pcdata).set_value(remarks.c_str());
+            if (remarks_.is_valid() && (!remarks_.text.empty() || !remarks_.source.empty() ||
+                !remarks_.to.empty() || remarks_.time.has_value())) {
+                auto res = remarks_.to_xml(node);
+                if (!res.is_success()) return res;
+            }
+            if (has_link_attr_data() && link_attr_.is_valid()) {
+                auto res = link_attr_.to_xml(node);
+                if (!res.is_success()) return res;
+            }
+            if (milicon_.is_valid()) {
+                auto res = milicon_.to_xml(node);
+                if (!res.is_success()) return res;
+            }
+            if (milsym_.is_valid()) {
+                auto res = milsym_.to_xml(node);
+                if (!res.is_success()) return res;
+            }
+            if (has_creator_data() && creator_.is_valid()) {
+                auto res = creator_.to_xml(node);
+                if (!res.is_success()) return res;
+            }
+            if (has_display_data() && display_.is_valid()) {
+                auto res = display_.to_xml(node);
+                if (!res.is_success()) return res;
+            }
+            if (has_emergency_data() && emergency_.is_valid()) {
+                auto res = emergency_.to_xml(node);
+                if (!res.is_success()) return res;
             }
             for (const auto& link : links) {
                 auto res = link.to_xml(node);
@@ -193,7 +279,13 @@ namespace cot::subschemas
                     else if (name == "fillcolor") d.fillcolor_ = color::from_xml(child, rslt, "fillcolor");
                     else if (name == "color") d.color_ = color::from_xml(child, rslt, "color");
                     else if (name == "usericon") d.usericon_ = usericon::from_xml(child, rslt);
-                    else if (name == "remarks") d.remarks = child.child_value();
+                    else if (name == "remarks") d.remarks_ = remarks::from_xml(child, rslt);
+                    else if (name == "link_attr") d.link_attr_ = link_attr::from_xml(child, rslt);
+                    else if (name == "__milicon") d.milicon_ = milicon::from_xml(child, rslt);
+                    else if (name == "__milsym") d.milsym_ = milsym::from_xml(child, rslt);
+                    else if (name == "creator") d.creator_ = creator::from_xml(child, rslt);
+                    else if (name == "display") d.display_ = display::from_xml(child, rslt);
+                    else if (name == "emergency") d.emergency_ = emergency::from_xml(child, rslt);
                     else if (name == "link") d.links.push_back(link::from_xml(child, rslt));
                     else if (!name.empty()) d.custom_details.push_back(customdetail::from_xml(child, rslt));
                 }
@@ -338,8 +430,14 @@ namespace cot::subschemas
                 << d.fillcolor_
                 << d.color_
                 << d.usericon_
-                << "\tremarks: " << (d.remarks.empty() ? "None" : d.remarks) << "\n"
-                << "\tlinks:\n";
+                << d.remarks_;
+            if (d.has_link_attr_data()) os << d.link_attr_;
+            if (!d.milicon_.id.empty()) os << d.milicon_;
+            if (!d.milsym_.id.empty() || !d.milsym_.modifiers.empty()) os << d.milsym_;
+            if (d.has_creator_data()) os << d.creator_;
+            if (d.has_display_data()) os << d.display_;
+            if (d.has_emergency_data()) os << d.emergency_;
+            os << "\tlinks:\n";
             if (d.links.empty()) os << "\t\tNone\n";
             else for (const auto& link : d.links) os << link;
             os << "\tcustom_details:\n";
@@ -360,8 +458,40 @@ namespace cot::subschemas
         color fillcolor_;
         color color_;
         usericon usericon_;
-        std::string remarks;
+        remarks remarks_;
+        link_attr link_attr_;
+        milicon milicon_;
+        milsym milsym_;
+        creator creator_;
+        display display_;
+        emergency emergency_;
         std::vector<link> links;
         std::vector<customdetail> custom_details;
+
+    private:
+        /// @brief Checks if any link_attr fields are populated
+        [[nodiscard]] bool has_link_attr_data() const noexcept {
+            return !link_attr_.color.empty() || !link_attr_.method.empty() ||
+                !link_attr_.direction.empty() || !link_attr_.routetype.empty() ||
+                !link_attr_.order.empty();
+        }
+
+        /// @brief Checks if any creator fields are populated
+        [[nodiscard]] bool has_creator_data() const noexcept {
+            return !creator_.callsign.empty() || !creator_.time.empty() ||
+                !creator_.type.empty() || !creator_.uid.empty();
+        }
+
+        /// @brief Checks if any display fields are populated
+        [[nodiscard]] bool has_display_data() const noexcept {
+            return !std::isnan(display_.maxzoom) || !std::isnan(display_.minzoom) ||
+                display_.has_rotate;
+        }
+
+        /// @brief Checks if any emergency fields are populated
+        [[nodiscard]] bool has_emergency_data() const noexcept {
+            return !emergency_.text.empty() || !emergency_.type.empty() ||
+                emergency_.has_cancel;
+        }
     };
 }
