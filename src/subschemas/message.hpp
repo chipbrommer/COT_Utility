@@ -1,0 +1,167 @@
+#pragma once
+namespace cot::subschemas
+{    
+    /// @brief A root XML CoT message schema class
+    class message {
+    public:
+        /// @brief Constructor - Initializes everything
+        explicit message(event e = event(),
+            std::string xml_version = "1.0",
+            std::string xml_encoding = "utf-8",
+            std::string xml_standalone = "yes") noexcept
+            : event_(std::move(e)),
+            xml_version(std::move(xml_version)),
+            xml_encoding(std::move(xml_encoding)),
+            xml_standalone(std::move(xml_standalone)) {
+        }
+
+        /// @brief Equality comparison
+        bool operator==(const message& other) const noexcept {
+            return event_ == other.event_ &&
+                xml_version == other.xml_version &&
+                xml_encoding == other.xml_encoding &&
+                xml_standalone == other.xml_standalone;
+        }
+
+        /// @brief Inequality comparison
+        bool operator!=(const message& other) const noexcept { return !(*this == other); }
+
+        /// @brief Checks if the class has valid data
+        /// @param rslt Optional result structure for invalid reason
+        /// @return True if valid, false otherwise
+        bool is_valid(result* rslt = nullptr) const {
+            if (xml_version != "1.0") {
+                auto res = result{ result::error_code::InvalidXml, "XML version must be 1.0" };
+                if (rslt) *rslt = res;
+                if (error_handler) error_handler(res);
+                return false;
+            }
+            if (xml_encoding != "utf-8") {
+                auto res = result{ result::error_code::InvalidXml, "XML encoding must be utf-8" };
+                if (rslt) *rslt = res;
+                if (error_handler) error_handler(res);
+                return false;
+            }
+            if (xml_standalone != "yes" && xml_standalone != "no") {
+                auto res = result{ result::error_code::InvalidXml, "XML standalone must be yes or no" };
+                if (rslt) *rslt = res;
+                if (error_handler) error_handler(res);
+                return false;
+            }
+            if (!event_.is_valid()) {
+                auto res = result{ result::error_code::InvalidEvent, "Invalid event" };
+                if (rslt) *rslt = res;
+                if (error_handler) error_handler(res);
+                return false;
+            }
+            return true;
+        }
+
+        /// @brief Serializes to XML
+        /// @param parent The parent XML node (typically document)
+        /// @return Result indicating success or failure
+        result to_xml(pugi::xml_node& parent) const {
+            if (!is_valid()) {
+                auto res = result{ result::error_code::InvalidEvent, "Invalid message data" };
+                if (error_handler) error_handler(res);
+                return res;
+            }
+            auto decl = parent.append_child(pugi::node_declaration);
+            decl.append_attribute("version") = xml_version.c_str();
+            decl.append_attribute("encoding") = xml_encoding.c_str();
+            decl.append_attribute("standalone") = xml_standalone.c_str();
+            return event_.to_xml(parent);
+        }
+
+        /// @brief Serializes to XML string
+        /// @param rslt Optional result for error details
+        /// @return XML string or empty if invalid
+        std::string to_xml_string(result* rslt = nullptr) const {
+            pugi::xml_document doc;
+            auto res = to_xml(doc);
+            if (!res.is_success()) {
+                if (rslt) *rslt = res;
+                if (error_handler) error_handler(res);
+                return "";
+            }
+            return xml_document_to_string(doc, true, rslt);
+        }
+
+        /// @brief Deserializes from an XML node
+        /// @param node The XML document node
+        /// @param rslt Optional result for error details
+        /// @return Deserialized message
+        static message from_xml(const pugi::xml_node& node, result* rslt = nullptr) {
+            message m;
+            try {
+                if (auto decl = node.child(pugi::node_declaration)) {
+                    m.xml_version = decl.attribute("version").as_string("1.0");
+                    m.xml_encoding = decl.attribute("encoding").as_string("utf-8");
+                    m.xml_standalone = decl.attribute("standalone").as_string("yes");
+                }
+                if (auto event_node = node.child("event")) {
+                    m.event_ = event::from_xml(event_node, rslt);
+                }
+                else {
+                    auto res = result{ result::error_code::InvalidEvent, "No <event> node found" };
+                    if (rslt) *rslt = res;
+                    if (error_handler) error_handler(res);
+                }
+                if (!m.is_valid(rslt) && rslt && rslt->is_success()) {
+                    *rslt = result{ result::error_code::InvalidEvent, "Invalid message data after parsing" };
+                    if (error_handler) error_handler(*rslt);
+                }
+            }
+            catch (const std::exception& ex) {
+                auto res = result{ result::error_code::InvalidEvent,
+                                  "Error parsing message: " + std::string(ex.what()) };
+                if (rslt) *rslt = res;
+                if (error_handler) error_handler(res);
+            }
+            return m;
+        }
+
+        /// @brief Deserializes from an XML string
+        /// @param xml The XML string to parse
+        /// @param rslt Optional result for error details
+        /// @return Deserialized message
+        static message from_xml_string(std::string_view xml, result* rslt = nullptr) {
+            if (xml.empty()) {
+                auto res = result{ result::error_code::InvalidInput, "Empty XML string" };
+                if (rslt) *rslt = res;
+                if (error_handler) error_handler(res);
+                return message();
+            }
+            pugi::xml_document doc;
+            pugi::xml_parse_result parse_result = doc.load_buffer(xml.data(), xml.size());
+            if (!parse_result) {
+                auto res = result{ result::error_code::InvalidXml,
+                                  std::string(parse_result.description()) + " at offset " +
+                                  std::to_string(parse_result.offset) };
+                if (rslt) *rslt = res;
+                if (error_handler) error_handler(res);
+                return message();
+            }
+            return from_xml(doc, rslt);
+        }
+
+        /// @brief Stream output for printing
+        friend std::ostream& operator<<(std::ostream& os, const message& m) {
+            os << "message: ";
+            if (!m.is_valid()) os << " -NOT VALID- ";
+            os << "\n\txml_version: " << (m.xml_version.empty() ? "None" : m.xml_version)
+                << "\n\txml_encoding: " << (m.xml_encoding.empty() ? "None" : m.xml_encoding)
+                << "\n\txml_standalone: " << (m.xml_standalone.empty() ? "None" : m.xml_standalone)
+                << "\n" << m.event_;
+            return os;
+        }
+
+        event event_;
+        std::string xml_version{ INVALID_STRING };
+        std::string xml_encoding{ INVALID_STRING };
+        std::string xml_standalone{ INVALID_STRING };
+
+    private:
+        inline static constexpr const char* INVALID_STRING = "";
+    };
+}
