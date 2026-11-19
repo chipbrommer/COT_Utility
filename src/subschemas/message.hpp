@@ -1,6 +1,16 @@
 #pragma once
+#include <algorithm>
+#include <cctype>
+#include <ostream>
+#include <string>
+#include <string_view>
+#include <utility>
+#include <pugixml.hpp>
+
+#include "event.hpp"
+
 namespace cot::subschemas
-{    
+{
     /// @brief A root XML CoT message schema class
     class message {
     public:
@@ -36,20 +46,22 @@ namespace cot::subschemas
                 if (error_handler) error_handler(res);
                 return false;
             }
-            if (xml_encoding != "utf-8") {
+            if (!equals_ignore_case(xml_encoding, "utf-8")) {
                 auto res = result{ result::error_code::InvalidXml, "XML encoding must be utf-8" };
                 if (rslt) *rslt = res;
                 if (error_handler) error_handler(res);
                 return false;
             }
-            if (xml_standalone != "yes" && xml_standalone != "no") {
+            if (!equals_ignore_case(xml_standalone, "yes") && !equals_ignore_case(xml_standalone, "no")) {
                 auto res = result{ result::error_code::InvalidXml, "XML standalone must be yes or no" };
                 if (rslt) *rslt = res;
                 if (error_handler) error_handler(res);
                 return false;
             }
-            if (!event_.is_valid()) {
-                auto res = result{ result::error_code::InvalidEvent, "Invalid event" };
+            result ev_res;
+            if (!event_.is_valid(&ev_res)) {
+                auto res = result{ result::error_code::InvalidEvent,
+                                  ev_res.description().empty() ? std::string("Invalid event") : ev_res.description() };
                 if (rslt) *rslt = res;
                 if (error_handler) error_handler(res);
                 return false;
@@ -61,8 +73,10 @@ namespace cot::subschemas
         /// @param parent The parent XML node (typically document)
         /// @return Result indicating success or failure
         result to_xml(pugi::xml_node& parent) const {
-            if (!is_valid()) {
-                auto res = result{ result::error_code::InvalidEvent, "Invalid message data" };
+            result val_res;
+            if (!is_valid(&val_res)) {
+                auto res = result{ result::error_code::InvalidEvent,
+                                  val_res.description().empty() ? std::string("Invalid message data") : val_res.description() };
                 if (error_handler) error_handler(res);
                 return res;
             }
@@ -95,21 +109,38 @@ namespace cot::subschemas
             message m;
             try {
                 if (auto decl = node.child(pugi::node_declaration)) {
-                    m.xml_version = decl.attribute("version").as_string("1.0");
-                    m.xml_encoding = decl.attribute("encoding").as_string("utf-8");
-                    m.xml_standalone = decl.attribute("standalone").as_string("yes");
+                    if (auto v = decl.attribute("version")) {
+                        m.xml_version = v.as_string("1.0");
+                    }
+                    if (auto enc = decl.attribute("encoding")) {
+                        m.xml_encoding = enc.as_string("utf-8");
+                    }
+                    if (auto sa = decl.attribute("standalone")) {
+                        m.xml_standalone = sa.as_string("yes");
+                    }
                 }
-                if (auto event_node = node.child("event")) {
-                    m.event_ = event::from_xml(event_node, rslt);
-                }
-                else {
+
+                pugi::xml_node event_node = (node.type() == pugi::node_element && node.name() == std::string_view("event"))
+                    ? node
+                    : node.child("event");
+
+                if (!event_node) {
                     auto res = result{ result::error_code::InvalidEvent, "No <event> node found" };
                     if (rslt) *rslt = res;
                     if (error_handler) error_handler(res);
+                    return m;
                 }
-                if (!m.is_valid(rslt) && rslt && rslt->is_success()) {
-                    *rslt = result{ result::error_code::InvalidEvent, "Invalid message data after parsing" };
-                    if (error_handler) error_handler(*rslt);
+
+                result ev_res;
+                m.event_ = event::from_xml(event_node, &ev_res);
+                if (ev_res.is_failed()) {
+                    if (rslt) *rslt = ev_res;
+                    return m;
+                }
+
+                result val_res;
+                if (!m.is_valid(&val_res)) {
+                    if (rslt) *rslt = val_res;
                 }
             }
             catch (const std::exception& ex) {
@@ -145,6 +176,9 @@ namespace cot::subschemas
             return from_xml(doc, rslt);
         }
 
+        /// @brief Clears the contained event
+        void clear_event() noexcept { event_ = event(); }
+
         /// @brief Stream output for printing
         friend std::ostream& operator<<(std::ostream& os, const message& m) {
             os << "message: ";
@@ -157,11 +191,24 @@ namespace cot::subschemas
         }
 
         event event_;
-        std::string xml_version{ INVALID_STRING };
-        std::string xml_encoding{ INVALID_STRING };
-        std::string xml_standalone{ INVALID_STRING };
+        std::string xml_version{ "1.0" };
+        std::string xml_encoding{ "utf-8" };
+        std::string xml_standalone{ "yes" };
 
     private:
-        inline static constexpr const char* INVALID_STRING = "";
+        /// @brief Compares two strings for equality without regard to ASCII case
+        /// @param a First string view to compare
+        /// @param b Second string view to compare
+        /// @return True if both views have the same length and matching case-insensitive characters
+        static bool equals_ignore_case(std::string_view a, std::string_view b) noexcept {
+            if (a.size() != b.size()) return false;
+            for (std::size_t i = 0; i < a.size(); ++i) {
+                if (std::tolower(static_cast<unsigned char>(a[i])) !=
+                    std::tolower(static_cast<unsigned char>(b[i]))) {
+                    return false;
+                }
+            }
+            return true;
+        }
     };
 }
