@@ -34,6 +34,7 @@ namespace cot
 			InvalidTakv,            ///< Invalid takv data
 			InvalidContact,         ///< Invalid contact data
 			InvalidUid,             ///< Invalid uid data
+			InvalidTog,             ///< Invalid tog data
 			InvalidPrecisionLocation, ///< Invalid precisionlocation data
 			InvalidGroup,           ///< Invalid group data
 			InvalidStatus,          ///< Invalid status data
@@ -129,6 +130,7 @@ namespace cot
 			case error_code::InvalidTakv: return "Invalid takv data";
 			case error_code::InvalidContact: return "Invalid contact data";
 			case error_code::InvalidUid: return "Invalid uid data";
+			case error_code::InvalidTog: return "Invalid tog data";
 			case error_code::InvalidPrecisionLocation: return "Invalid precisionlocation data";
 			case error_code::InvalidGroup: return "Invalid group data";
 			case error_code::InvalidStatus: return "Invalid status data";
