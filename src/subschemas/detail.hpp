@@ -9,6 +9,39 @@
 #include <vector>
 #include <pugixml.hpp>
 
+#include "ackrequest.hpp"
+#include "address.hpp"
+#include "color.hpp"
+#include "contact.hpp"
+#include "creator.hpp"
+#include "customdetail.hpp"
+#include "display.hpp"
+#include "emergency.hpp"
+#include "fillcolor.hpp"
+#include "group.hpp"
+#include "image.hpp"
+#include "inclination.hpp"
+#include "labels_on.hpp"
+#include "link.hpp"
+#include "link_attr.hpp"
+#include "milicon.hpp"
+#include "milsym.hpp"
+#include "model.hpp"
+#include "precisionlocation.hpp"
+#include "range.hpp"
+#include "rangeunits.hpp"
+#include "remarks.hpp"
+#include "status.hpp"
+#include "strokecolor.hpp"
+#include "strokestyle.hpp"
+#include "strokeweight.hpp"
+#include "takcontrol.hpp"
+#include "takv.hpp"
+#include "tog.hpp"
+#include "track.hpp"
+#include "uid.hpp"
+#include "usericon.hpp"
+
 namespace cot::subschemas
 {
     /// @brief A CoT Message subschema class for detail data
@@ -44,6 +77,7 @@ namespace cot::subschemas
             emergency emergency = emergency(),
             address address = address(),
             takcontrol takcontrol = takcontrol(),
+            ackrequest ackrequest = ackrequest(),
             std::vector<link> links = {},
             std::vector<customdetail> custom_details = {})
             : takv_(std::move(takv)),
@@ -75,6 +109,7 @@ namespace cot::subschemas
             emergency_(std::move(emergency)),
             address_(std::move(address)),
             takcontrol_(std::move(takcontrol)),
+            ackrequest_(std::move(ackrequest)),
             links(std::move(links)),
             custom_details(std::move(custom_details)) {
         }
@@ -110,6 +145,7 @@ namespace cot::subschemas
                 emergency_ == other.emergency_ &&
                 address_ == other.address_ &&
                 takcontrol_ == other.takcontrol_ &&
+                ackrequest_ == other.ackrequest_ &&
                 links == other.links &&
                 custom_details == other.custom_details;
         }
@@ -243,6 +279,12 @@ namespace cot::subschemas
             }
             if (has_takcontrol_data() && !takcontrol_.is_valid()) {
                 auto res = result{ result::error_code::InvalidDetail, "Invalid TakControl data" };
+                if (rslt) *rslt = res;
+                if (error_handler) error_handler(res);
+                return false;
+            }
+            if (has_ackrequest_data() && !ackrequest_.is_valid()) {
+                auto res = result{ result::error_code::InvalidDetail, "Invalid ackrequest data" };
                 if (rslt) *rslt = res;
                 if (error_handler) error_handler(res);
                 return false;
@@ -393,6 +435,10 @@ namespace cot::subschemas
                 auto res = takcontrol_.to_xml(node);
                 if (!res.is_success()) return res;
             }
+            if (has_ackrequest_data() && ackrequest_.is_valid()) {
+                auto res = ackrequest_.to_xml(node);
+                if (!res.is_success()) return res;
+            }
             for (const auto& link : links) {
                 auto res = link.to_xml(node);
                 if (!res.is_success()) return res;
@@ -448,6 +494,7 @@ namespace cot::subschemas
                     else if (name == "emergency") d.emergency_ = emergency::from_xml(child, rslt);
                     else if (name == "__address") d.address_ = address::from_xml(child, rslt);
                     else if (name == "TakControl") d.takcontrol_ = takcontrol::from_xml(child, rslt);
+                    else if (name == "ackrequest") d.ackrequest_ = ackrequest::from_xml(child, rslt);
                     else if (name == "link") d.links.push_back(link::from_xml(child, rslt));
                     else if (!name.empty()) d.custom_details.push_back(customdetail::from_xml(child, rslt));
                 }
@@ -609,6 +656,7 @@ namespace cot::subschemas
             if (d.has_emergency_data()) os << d.emergency_;
             if (d.has_address_data()) os << d.address_;
             if (d.has_takcontrol_data()) os << d.takcontrol_;
+            if (d.has_ackrequest_data()) os << d.ackrequest_;
             os << "\tlinks:\n";
             if (d.links.empty()) os << "\t\tNone\n";
             else for (const auto& link : d.links) os << link;
@@ -647,6 +695,7 @@ namespace cot::subschemas
         emergency emergency_;
         address address_;
         takcontrol takcontrol_;
+        ackrequest ackrequest_;
         std::vector<link> links;
         std::vector<customdetail> custom_details;
 
@@ -735,6 +784,11 @@ namespace cot::subschemas
         /// @brief Checks if any TakControl child elements are populated
         [[nodiscard]] bool has_takcontrol_data() const noexcept {
             return takcontrol_.has_data();
+        }
+
+        /// @brief Checks if any ackrequest fields are populated
+        [[nodiscard]] bool has_ackrequest_data() const noexcept {
+            return ackrequest_.has_data();
         }
     };
 }
