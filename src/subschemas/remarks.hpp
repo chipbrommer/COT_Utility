@@ -27,8 +27,15 @@ namespace cot::subschemas
         /// @param rslt Optional result structure for invalid reason
         /// @return True if valid, false otherwise
         bool is_valid(result* rslt = nullptr) const {
-            if (time.has_value() && !time->is_valid(rslt)) {
-                return false;
+            if (time.has_value()) {
+                result dt_res;
+                if (!time->is_valid(&dt_res)) {
+                    auto res = result{ result::error_code::InvalidRemarks,
+                                      "Invalid remarks time: " + dt_res.description() };
+                    if (rslt) *rslt = res;
+                    if (error_handler) error_handler(res);
+                    return false;
+                }
             }
             return true;
         }
@@ -37,8 +44,9 @@ namespace cot::subschemas
         /// @param parent The parent XML node to append to
         /// @return Result indicating success or failure
         result to_xml(pugi::xml_node& parent) const {
-            if (!is_valid()) {
-                auto res = result{ result::error_code::InvalidRemarks, "Invalid remarks data" };
+            result val_res;
+            if (!is_valid(&val_res)) {
+                auto res = result{ result::error_code::InvalidRemarks, val_res.description() };
                 if (error_handler) error_handler(res);
                 return res;
             }
@@ -73,7 +81,7 @@ namespace cot::subschemas
                     datetime parsed = datetime::from_cot_timestamp(ts, &ts_res);
                     if (!ts_res.is_success()) {
                         auto res = result{ result::error_code::InvalidRemarks,
-                                          "Invalid remarks time: " + ts_res.description };
+                                          "Invalid remarks time: " + ts_res.description() };
                         if (rslt) *rslt = res;
                         if (error_handler) error_handler(res);
                         return r;
@@ -81,7 +89,16 @@ namespace cot::subschemas
                     r.time = parsed;
                 }
             }
-            if (auto txt = node.text()) r.text = txt.as_string();
+            if (auto txt = node.text()) {
+                r.text = txt.as_string();
+            }
+            if (r.text.empty()) {
+                for (auto child : node.children()) {
+                    if (child.type() == pugi::node_pcdata || child.type() == pugi::node_cdata) {
+                        r.text += child.value();
+                    }
+                }
+            }
             if (!r.is_valid(rslt) && rslt && rslt->is_success()) {
                 *rslt = result{ result::error_code::InvalidRemarks, "Invalid remarks data after parsing" };
                 if (error_handler) error_handler(*rslt);
@@ -108,5 +125,4 @@ namespace cot::subschemas
     private:
         inline static constexpr const char* INVALID_VALUE = "";
     };
-
 }
