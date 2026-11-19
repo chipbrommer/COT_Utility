@@ -11,6 +11,7 @@
 
 #include "ackrequest.hpp"
 #include "address.hpp"
+#include "chat.hpp"
 #include "color.hpp"
 #include "contact.hpp"
 #include "creator.hpp"
@@ -31,6 +32,7 @@
 #include "range.hpp"
 #include "rangeunits.hpp"
 #include "remarks.hpp"
+#include "spatial.hpp"
 #include "status.hpp"
 #include "strokecolor.hpp"
 #include "strokestyle.hpp"
@@ -78,6 +80,9 @@ namespace cot::subschemas
             address address = address(),
             takcontrol takcontrol = takcontrol(),
             ackrequest ackrequest = ackrequest(),
+            chat chat = chat(),
+            chat chatreceipt = chat(),
+            spatial spatial = spatial(),
             std::vector<link> links = {},
             std::vector<customdetail> custom_details = {})
             : takv_(std::move(takv)),
@@ -110,6 +115,9 @@ namespace cot::subschemas
             address_(std::move(address)),
             takcontrol_(std::move(takcontrol)),
             ackrequest_(std::move(ackrequest)),
+            chat_(std::move(chat)),
+            chatreceipt_(std::move(chatreceipt)),
+            spatial_(std::move(spatial)),
             links(std::move(links)),
             custom_details(std::move(custom_details)) {
         }
@@ -146,6 +154,9 @@ namespace cot::subschemas
                 address_ == other.address_ &&
                 takcontrol_ == other.takcontrol_ &&
                 ackrequest_ == other.ackrequest_ &&
+                chat_ == other.chat_ &&
+                chatreceipt_ == other.chatreceipt_ &&
+                spatial_ == other.spatial_ &&
                 links == other.links &&
                 custom_details == other.custom_details;
         }
@@ -285,6 +296,24 @@ namespace cot::subschemas
             }
             if (has_ackrequest_data() && !ackrequest_.is_valid()) {
                 auto res = result{ result::error_code::InvalidDetail, "Invalid ackrequest data" };
+                if (rslt) *rslt = res;
+                if (error_handler) error_handler(res);
+                return false;
+            }
+            if (has_chat_data() && !chat_.is_valid()) {
+                auto res = result{ result::error_code::InvalidDetail, "Invalid __chat data" };
+                if (rslt) *rslt = res;
+                if (error_handler) error_handler(res);
+                return false;
+            }
+            if (has_chatreceipt_data() && !chatreceipt_.is_valid()) {
+                auto res = result{ result::error_code::InvalidDetail, "Invalid __chatreceipt data" };
+                if (rslt) *rslt = res;
+                if (error_handler) error_handler(res);
+                return false;
+            }
+            if (has_spatial_data() && !spatial_.is_valid()) {
+                auto res = result{ result::error_code::InvalidDetail, "Invalid spatial data" };
                 if (rslt) *rslt = res;
                 if (error_handler) error_handler(res);
                 return false;
@@ -439,6 +468,18 @@ namespace cot::subschemas
                 auto res = ackrequest_.to_xml(node);
                 if (!res.is_success()) return res;
             }
+            if (has_chat_data() && chat_.is_valid()) {
+                auto res = chat_.to_xml(node, "__chat");
+                if (!res.is_success()) return res;
+            }
+            if (has_chatreceipt_data() && chatreceipt_.is_valid()) {
+                auto res = chatreceipt_.to_xml(node, "__chatreceipt");
+                if (!res.is_success()) return res;
+            }
+            if (has_spatial_data() && spatial_.is_valid()) {
+                auto res = spatial_.to_xml(node);
+                if (!res.is_success()) return res;
+            }
             for (const auto& link : links) {
                 auto res = link.to_xml(node);
                 if (!res.is_success()) return res;
@@ -495,6 +536,11 @@ namespace cot::subschemas
                     else if (name == "__address") d.address_ = address::from_xml(child, rslt);
                     else if (name == "TakControl") d.takcontrol_ = takcontrol::from_xml(child, rslt);
                     else if (name == "ackrequest") d.ackrequest_ = ackrequest::from_xml(child, rslt);
+                    else if (name == "__chat") d.chat_ = chat::from_xml(child, rslt, "__chat");
+                    else if (name == "__chatreceipt" || name == "__chatReceipt") {
+                        d.chatreceipt_ = chat::from_xml(child, rslt, name);
+                    }
+                    else if (name == "spatial") d.spatial_ = spatial::from_xml(child, rslt);
                     else if (name == "link") d.links.push_back(link::from_xml(child, rslt));
                     else if (!name.empty()) d.custom_details.push_back(customdetail::from_xml(child, rslt));
                 }
@@ -657,6 +703,9 @@ namespace cot::subschemas
             if (d.has_address_data()) os << d.address_;
             if (d.has_takcontrol_data()) os << d.takcontrol_;
             if (d.has_ackrequest_data()) os << d.ackrequest_;
+            if (d.has_chat_data()) os << d.chat_;
+            if (d.has_chatreceipt_data()) os << d.chatreceipt_;
+            if (d.has_spatial_data()) os << d.spatial_;
             os << "\tlinks:\n";
             if (d.links.empty()) os << "\t\tNone\n";
             else for (const auto& link : d.links) os << link;
@@ -696,6 +745,9 @@ namespace cot::subschemas
         address address_;
         takcontrol takcontrol_;
         ackrequest ackrequest_;
+        chat chat_;
+        chat chatreceipt_;
+        spatial spatial_;
         std::vector<link> links;
         std::vector<customdetail> custom_details;
 
@@ -752,9 +804,7 @@ namespace cot::subschemas
 
         /// @brief Checks if any link_attr fields are populated
         [[nodiscard]] bool has_link_attr_data() const noexcept {
-            return !link_attr_.color.empty() || !link_attr_.method.empty() ||
-                !link_attr_.direction.empty() || !link_attr_.routetype.empty() ||
-                !link_attr_.order.empty();
+            return link_attr_.has_data();
         }
 
         /// @brief Checks if any creator fields are populated
@@ -789,6 +839,21 @@ namespace cot::subschemas
         /// @brief Checks if any ackrequest fields are populated
         [[nodiscard]] bool has_ackrequest_data() const noexcept {
             return ackrequest_.has_data();
+        }
+
+        /// @brief Checks if any __chat fields are populated
+        [[nodiscard]] bool has_chat_data() const noexcept {
+            return chat_.has_data();
+        }
+
+        /// @brief Checks if any __chatreceipt fields are populated
+        [[nodiscard]] bool has_chatreceipt_data() const noexcept {
+            return chatreceipt_.has_data();
+        }
+
+        /// @brief Checks if any spatial fields or child elements are populated
+        [[nodiscard]] bool has_spatial_data() const noexcept {
+            return spatial_.has_data();
         }
     };
 }

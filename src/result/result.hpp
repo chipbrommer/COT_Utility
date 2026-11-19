@@ -1,4 +1,8 @@
 #pragma once
+#include <string>
+#include <string_view>
+#include <utility>
+
 namespace cot
 {
 	/// @brief Result structure for CoT operations
@@ -52,7 +56,9 @@ namespace cot
 			ProcessingError,        ///< Generic processing failure
 			NoModificationMade,     ///< No modification was made
 			StructureDataInvalid,   ///< Structure has invalid data (restored)
-			InvalidData             ///< Invalid data (restored)
+			InvalidData,            ///< Invalid data (restored)
+			InvalidChat,            ///< Invalid chat / chatreceipt data
+			InvalidSpatial          ///< Invalid spatial / attitude / spin data
 		};
 
 		/// @brief Constructs a successful result
@@ -153,6 +159,8 @@ namespace cot
 			case error_code::NoModificationMade: return "No modification made";
 			case error_code::StructureDataInvalid: return "Structure has invalid data";
 			case error_code::InvalidData: return "Invalid data";
+			case error_code::InvalidChat: return "Invalid chat data";
+			case error_code::InvalidSpatial: return "Invalid spatial data";
 			default: return "Unknown error";
 			}
 		}

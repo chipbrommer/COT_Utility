@@ -12,24 +12,27 @@
 //          --------------------            ------------------------------------
 #include <algorithm>
 #include <climits>                          // MAX and MIN
-#include <cmath>                            // isnan
+#include <cmath>                            // isnan, isfinite
 #include <cstddef>                          // size_t
 #include <functional>                       // function
-#include <iomanip>                          // setw
+#include <iomanip>                          // setw, setprecision
 #include <iostream>                         // ostream
+#include <limits>                           // numeric_limits
 #include <map>                              // ordered map
 #include <optional>
 #include <sstream>                          // stringstream
 #include <string>
 #include <string_view>
 #include <unordered_map>                    // maps
+#include <utility>                          // move
+#include <vector>
 //
 #include <pugixml.hpp>                      // pugi xml
 //
+#include "version.hpp"
+#include "result/result.hpp"
 #include "handlers/error_handler.hpp"
 #include "subschemas/message.hpp"
-#include "result/result.hpp"
-#include "version.hpp"
 //
 /////////////////////////////////////////////////////////////////////////////////
 
@@ -37,7 +40,14 @@ namespace cot
 {
     namespace detail_impl
     {
+        inline result report_error(result res, result* rslt = nullptr) {
+            if (rslt) *rslt = res;
+            if (error_handler) error_handler(res);
+            return res;
+        }
+
         inline pugi::xml_node find_first_element_by_name(pugi::xml_node root, const char* target_name) noexcept {
+            if (!target_name) return pugi::xml_node{};
             for (pugi::xml_node child : root.children()) {
                 if (child.type() == pugi::node_element) {
                     if (child.name() == std::string_view(target_name)) {
@@ -52,6 +62,7 @@ namespace cot
         }
 
         inline std::size_t count_top_level_elements(const pugi::xml_document& doc, const char* target_name) noexcept {
+            if (!target_name) return 0;
             std::size_t count = 0;
             for (pugi::xml_node child : doc.children()) {
                 if (child.type() == pugi::node_element && child.name() == std::string_view(target_name)) {
@@ -72,40 +83,48 @@ namespace cot
 
     /// @brief Verify a string buffer is valid XML
     /// @param buffer Input buffer to verify
+    /// @param rslt Optional result structure receiving outcome details
     /// @return result indicating success or failure with description
-    [[nodiscard]] inline result verify_xml(std::string_view buffer) {
+    [[nodiscard]] inline result verify_xml(std::string_view buffer, result* rslt = nullptr) {
         if (buffer.empty()) {
-            return result{ result::error_code::InvalidInput, "Empty input buffer" };
+            return detail_impl::report_error(
+                result{ result::error_code::InvalidInput, "Empty input buffer" }, rslt);
         }
 
         pugi::xml_document doc;
         pugi::xml_parse_result parse_result = doc.load_buffer(buffer.data(), buffer.size());
         if (!parse_result) {
-            return result{ result::error_code::InvalidXml,
-                           std::string(parse_result.description()) + " at offset " +
-                           std::to_string(parse_result.offset) };
+            return detail_impl::report_error(
+                result{ result::error_code::InvalidXml,
+                        std::string(parse_result.description()) + " at offset " +
+                        std::to_string(parse_result.offset) }, rslt);
         }
 
-        return result{ result::error_code::Success, "Successfully verified XML" };
+        result ok{ result::error_code::Success, "Successfully verified XML" };
+        if (rslt) *rslt = ok;
+        return ok;
     }
 
     /// @brief Prep an XML buffer to be parsed by trimming leading non-markup noise before the first '<'
     /// @param xml Mutable XML buffer to clean in-place
+    /// @param rslt Optional result structure receiving outcome details
     /// @return result indicating success or failure with description
-    [[nodiscard]] inline result prep_xml_message(std::string& xml) {
+    [[nodiscard]] inline result prep_xml_message(std::string& xml, result* rslt = nullptr) {
         if (xml.empty()) {
-            return result{ result::error_code::InvalidInput, "Empty input buffer" };
+            return detail_impl::report_error(
+                result{ result::error_code::InvalidInput, "Empty input buffer" }, rslt);
         }
 
         const std::size_t tag_start = xml.find('<');
         if (tag_start == std::string::npos) {
-            return result{ result::error_code::InvalidXml, "No XML markup found in buffer" };
+            return detail_impl::report_error(
+                result{ result::error_code::InvalidXml, "No XML markup found in buffer" }, rslt);
         }
         if (tag_start > 0) {
             xml.erase(0, tag_start);
         }
 
-        return verify_xml(xml);
+        return verify_xml(xml, rslt);
     }
 
     /// @brief Validate that a buffer is a valid CoT structure
@@ -117,8 +136,8 @@ namespace cot
         result* rslt = nullptr,
         pugi::xml_document* document = nullptr) {
         std::string cleaned(buffer);
-        result prep_res = prep_xml_message(cleaned);
-        if (prep_res.is_failed()) {
+        result prep_res;
+        if (prep_xml_message(cleaned, &prep_res).is_failed()) {
             if (rslt) *rslt = prep_res;
             return false;
         }
@@ -126,18 +145,16 @@ namespace cot
         pugi::xml_document doc;
         pugi::xml_parse_result xml_result = doc.load_buffer(cleaned.data(), cleaned.size());
         if (!xml_result) {
-            if (rslt) {
-                *rslt = result{ result::error_code::InvalidXml, xml_result.description() };
-            }
+            detail_impl::report_error(
+                result{ result::error_code::InvalidXml, xml_result.description() }, rslt);
             return false;
         }
 
         const std::size_t event_count = detail_impl::count_top_level_elements(doc, "event");
         if (event_count != 1) {
-            if (rslt) {
-                *rslt = result{ result::error_code::InvalidEvent,
-                                event_count == 0 ? "Missing <event> element" : "Multiple <event> elements found" };
-            }
+            detail_impl::report_error(
+                result{ result::error_code::InvalidEvent,
+                        event_count == 0 ? "Missing <event> element" : "Multiple <event> elements found" }, rslt);
             return false;
         }
 
@@ -152,17 +169,15 @@ namespace cot
         }
 
         if (point_count != 1) {
-            if (rslt) {
-                *rslt = result{ result::error_code::InvalidPoint,
-                                point_count == 0 ? "Missing <point> element" : "Multiple <point> elements found" };
-            }
+            detail_impl::report_error(
+                result{ result::error_code::InvalidPoint,
+                        point_count == 0 ? "Missing <point> element" : "Multiple <point> elements found" }, rslt);
             return false;
         }
 
         if (detail_count > 1) {
-            if (rslt) {
-                *rslt = result{ result::error_code::InvalidDetail, "Multiple <detail> elements found" };
-            }
+            detail_impl::report_error(
+                result{ result::error_code::InvalidDetail, "Multiple <detail> elements found" }, rslt);
             return false;
         }
 
@@ -170,9 +185,8 @@ namespace cot
             *document = std::move(doc);
         }
 
-        if (rslt) {
-            *rslt = result{ result::error_code::Success, "Valid CoT structure" };
-        }
+        result ok{ result::error_code::Success, "Valid CoT structure" };
+        if (rslt) *rslt = ok;
         return true;
     }
 
@@ -185,22 +199,25 @@ namespace cot
 
         result val_res;
         if (!cot.is_valid(&val_res)) {
-            return result{ result::error_code::InvalidData,
-                           "Invalid CoT schema: " + val_res.description() };
+            return detail_impl::report_error(
+                result{ result::error_code::InvalidData,
+                        "Invalid CoT schema: " + val_res.description() });
         }
 
         std::string temp = cot.to_xml();
         if (temp.empty()) {
-            return result{ result::error_code::ProcessingError,
-                           "Failed to serialize CoT message to XML string" };
+            return detail_impl::report_error(
+                result{ result::error_code::ProcessingError,
+                        "Failed to serialize CoT message to XML string" });
         }
 
         pugi::xml_document verify_doc;
         pugi::xml_parse_result parse_result = verify_doc.load_buffer(temp.data(), temp.size());
         if (!parse_result) {
-            return result{ result::error_code::InvalidXml,
-                           std::string(parse_result.description()) + " at offset " +
-                           std::to_string(parse_result.offset) };
+            return detail_impl::report_error(
+                result{ result::error_code::InvalidXml,
+                        std::string(parse_result.description()) + " at offset " +
+                        std::to_string(parse_result.offset) });
         }
 
         xml = std::move(temp);
@@ -218,8 +235,8 @@ namespace cot
         response.clear();
 
         std::string cleaned(received);
-        result prep_res = prep_xml_message(cleaned);
-        if (prep_res.is_failed()) {
+        result prep_res;
+        if (prep_xml_message(cleaned, &prep_res).is_failed()) {
             if (rslt) *rslt = prep_res;
             return prep_res;
         }
@@ -227,23 +244,20 @@ namespace cot
         pugi::xml_document doc;
         pugi::xml_parse_result res = doc.load_buffer(cleaned.data(), cleaned.size());
         if (!res) {
-            auto err = result{ result::error_code::ProcessingError, res.description() };
-            if (rslt) *rslt = err;
-            return err;
+            return detail_impl::report_error(
+                result{ result::error_code::ProcessingError, res.description() }, rslt);
         }
 
         pugi::xml_node status_node = detail_impl::find_first_element_by_name(doc, "status");
         if (!status_node) {
-            auto err = result{ result::error_code::NoModificationMade, "No <status> element found" };
-            if (rslt) *rslt = err;
-            return err;
+            return detail_impl::report_error(
+                result{ result::error_code::NoModificationMade, "No <status> element found" }, rslt);
         }
 
         if (status_node.attribute("acknowledgment")) {
-            auto err = result{ result::error_code::NoModificationMade,
-                               "<status> already has acknowledgment attribute" };
-            if (rslt) *rslt = err;
-            return err;
+            return detail_impl::report_error(
+                result{ result::error_code::NoModificationMade,
+                        "<status> already has acknowledgment attribute" }, rslt);
         }
 
         status_node.append_attribute("acknowledgment").set_value("ack");
@@ -289,7 +303,8 @@ namespace cot
     /// @return Result indicating success or failure with description
     [[nodiscard]] inline result parse_cot(const char* buffer, message& cot) {
         if (!buffer) {
-            return result{ result::error_code::InvalidInput, "Null input buffer" };
+            return detail_impl::report_error(
+                result{ result::error_code::InvalidInput, "Null input buffer" });
         }
         return parse_cot(std::string_view(buffer), cot);
     }
@@ -332,7 +347,8 @@ namespace cot
 
         pugi::xml_node point_node = doc.child("event").child("point");
         if (!point_node) {
-            return result{ result::error_code::InsufficientData, "Missing <point> element" };
+            return detail_impl::report_error(
+                result{ result::error_code::InsufficientData, "Missing <point> element" });
         }
 
         result pt_res;
@@ -357,7 +373,8 @@ namespace cot
 
         pugi::xml_node detail_node = doc.child("event").child("detail");
         if (!detail_node) {
-            return result{ result::error_code::InsufficientData, "Missing <detail> element" };
+            return detail_impl::report_error(
+                result{ result::error_code::InsufficientData, "Missing <detail> element" });
         }
 
         result det_res;
