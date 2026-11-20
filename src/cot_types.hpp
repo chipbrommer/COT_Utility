@@ -11,19 +11,22 @@
 
 namespace cot
 {
+	/// @brief CoT root message category ("a" = Atoms, "b" = Bits, etc.)
 	namespace Root
 	{
+		/// @brief Top-level CoT event type root token
 		enum class Type : int
 		{
-			a,
-			b,
-			t,
-			r,
-			c,
-			res,
-			Error
+			a,     ///< Atoms ("Atoms") — physical entities, tracks, and locations
+			b,     ///< Bits ("Bits") — data, chat, files, and capabilities
+			t,     ///< Tasking ("Tasking") — operational commands and tasking
+			r,     ///< Reply ("Reply") — responses and acknowledgments
+			c,     ///< Capability ("Capability") — system or sensor capabilities
+			res,   ///< Reservation ("Reservation") — resource reservations
+			Error  ///< Unrecognized or invalid root token
 		};
 
+		/// @brief Maps Root::Type enum values to human-readable category names
 		inline const std::unordered_map<Type, std::string> TypeToString = {
 			{ Type::a, "Atoms" },
 			{ Type::b, "Bits" },
@@ -34,6 +37,7 @@ namespace cot
 			{ Type::Error, "Error" }
 		};
 
+		/// @brief Maps human-readable root category names to Root::Type enum values
 		inline const std::unordered_map<std::string, Type> StringToType = {
 			{ "Atoms", Type::a },
 			{ "Bits", Type::b },
@@ -44,8 +48,8 @@ namespace cot
 		};
 
 		/// @brief Converts a CoT root token into a Root::Type enumeration value
-		/// @param root Root token string to convert
-		/// @return Root::Type enum conversion (Root::Type::Error if unrecognized)
+		/// @param root Root token string to convert (e.g., "a", "b", "t")
+		/// @return Corresponding Root::Type value, or Root::Type::Error if unrecognized
 		[[nodiscard]] inline Type CharToType(std::string_view root) noexcept
 		{
 			if (root == "a")   return Type::a;
@@ -58,24 +62,27 @@ namespace cot
 		}
 	} // namespace Root
 
+	/// @brief CoT affiliation / point-type taxonomy ("p", "u", "f", "h", etc.)
 	namespace Point
 	{
+		/// @brief CoT affiliation or point identity token
 		enum class Type : int
 		{
-			p,
-			u,
-			a,
-			f,
-			n,
-			s,
-			h,
-			j,
-			k,
-			o,
-			x,
-			Error
+			p,     ///< Pending ("Pending")
+			u,     ///< Unknown ("Unknown")
+			a,     ///< Assumed Friend ("Assumed Friend")
+			f,     ///< Friend ("Friend")
+			n,     ///< Neutral ("Neutral")
+			s,     ///< Suspect ("Suspect")
+			h,     ///< Hostile ("Hostile")
+			j,     ///< Joker ("Joker")
+			k,     ///< Faker ("Faker")
+			o,     ///< None Specified ("None Specified")
+			x,     ///< Other ("Other")
+			Error  ///< Unrecognized or invalid affiliation token
 		};
 
+		/// @brief Maps Point::Type enum values to human-readable affiliation names
 		inline const std::unordered_map<Type, std::string> TypeToString = {
 			{ Type::p, "Pending" },
 			{ Type::u, "Unknown" },
@@ -91,6 +98,7 @@ namespace cot
 			{ Type::Error, "Error" }
 		};
 
+		/// @brief Maps human-readable affiliation names to Point::Type enum values
 		inline const std::unordered_map<std::string, Type> StringToType = {
 			{ "Pending", Type::p },
 			{ "Unknown", Type::u },
@@ -106,8 +114,8 @@ namespace cot
 		};
 
 		/// @brief Converts a CoT affiliation token into a Point::Type enumeration value
-		/// @param type Affiliation token string to convert
-		/// @return Point::Type enum conversion (Point::Type::Error if unrecognized)
+		/// @param type Affiliation token string to convert (e.g., "f", "h", "u")
+		/// @return Corresponding Point::Type value, or Point::Type::Error if unrecognized
 		[[nodiscard]] inline Type CharToType(std::string_view type) noexcept
 		{
 			if (type == "p") return Type::p;
@@ -125,19 +133,22 @@ namespace cot
 		}
 	} // namespace Point
 
+	/// @brief CoT spatial dimension / operational domain ("P", "A", "G", "S", "U", "X")
 	namespace Location
 	{
+		/// @brief CoT spatial domain or dimension token
 		enum class Type : int
 		{
-			P,
-			A,
-			G,
-			S,
-			U,
-			X,
-			Error
+			P,     ///< Space ("Space")
+			A,     ///< Air ("Air")
+			G,     ///< Ground ("Ground")
+			S,     ///< Sea Surface ("Sea Surface")
+			U,     ///< Sea Subsurface ("Sea Subsurface")
+			X,     ///< Other ("Other")
+			Error  ///< Unrecognized or invalid dimension token
 		};
 
+		/// @brief Maps Location::Type enum values to human-readable domain names
 		inline const std::unordered_map<Type, std::string> TypeToString = {
 			{ Type::P, "Space" },
 			{ Type::A, "Air" },
@@ -148,6 +159,7 @@ namespace cot
 			{ Type::Error, "Error" }
 		};
 
+		/// @brief Maps human-readable domain names to Location::Type enum values
 		inline const std::unordered_map<std::string, Type> StringToType = {
 			{ "Space", Type::P },
 			{ "Air", Type::A },
@@ -158,8 +170,8 @@ namespace cot
 		};
 
 		/// @brief Converts a CoT dimension token into a Location::Type enumeration value
-		/// @param loc Dimension token string to convert
-		/// @return Location::Type enum conversion (Location::Type::Error if unrecognized)
+		/// @param loc Dimension token string to convert (e.g., "A", "G", "S")
+		/// @return Corresponding Location::Type value, or Location::Type::Error if unrecognized
 		[[nodiscard]] inline Type CharToType(std::string_view loc) noexcept
 		{
 			if (loc == "P") return Type::P;
@@ -172,19 +184,22 @@ namespace cot
 		}
 	} // namespace Location
 
+	/// @brief CoT "how" provenance taxonomy (how the data was generated or entered)
 	namespace How
 	{
-		/// @brief Type section of the 'how' data
+		/// @brief Origin/entry portion of the CoT "how" attribute ("h" = Human, "m" = Machine)
 		namespace Entry
 		{
+			/// @brief Source mechanism for how a CoT event was originated
 			enum class Type : int
 			{
-				h,
-				m,
-				Unknown,
-				Error
+				h,        ///< Human ("Human") — manually entered or observed by a person
+				m,        ///< Machine ("Machine") — automatically generated by sensor or system
+				Unknown,  ///< Unknown ("Unknown") — origin mechanism not specified
+				Error     ///< Error ("Error") — unrecognized or invalid entry token
 			};
 
+			/// @brief Maps How::Entry::Type enum values to human-readable descriptions
 			inline const std::unordered_map<Type, std::string> TypeToString = {
 				{ Type::h, "Human" },
 				{ Type::m, "Machine" },
@@ -192,6 +207,7 @@ namespace cot
 				{ Type::Error, "Error" }
 			};
 
+			/// @brief Maps human-readable entry descriptions to How::Entry::Type enum values
 			inline const std::unordered_map<std::string, Type> StringToType = {
 				{ "Human", Type::h },
 				{ "Machine", Type::m },
@@ -200,8 +216,8 @@ namespace cot
 			};
 
 			/// @brief Converts a 'how' entry token into an Entry::Type enumeration value
-			/// @param entry Entry token string to convert
-			/// @return Entry::Type enum conversion
+			/// @param entry Entry token string to convert ("h" or "m")
+			/// @return Corresponding Entry::Type value, or Entry::Type::Error if unrecognized
 			[[nodiscard]] inline Type CharToType(std::string_view entry) noexcept
 			{
 				if (entry == "h") return Type::h;
@@ -210,27 +226,29 @@ namespace cot
 			}
 		} // namespace Entry
 
-		/// @brief Data section of the 'how' data
+		/// @brief Method/source detail portion of the CoT "how" attribute
 		namespace Data
 		{
+			/// @brief Specific method or sensor source for CoT position/data generation
 			enum class Type : int
 			{
-				e,
-				cal,
-				t,
-				paste,
-				i,
-				g,
-				m,
-				s,
-				f,
-				con,
-				pred,
-				r,
-				Unknown,
-				Error
+				e,        ///< Estimated ("Estimated")
+				cal,      ///< Calculated ("Calculated")
+				t,        ///< Transcribed ("Transcribed")
+				paste,    ///< Cut and Paste ("Cut and Paste")
+				i,        ///< Mensurated ("Mensurated")
+				g,        ///< Derived From GPS ("Derived From GPS")
+				m,        ///< Magnetic ("Magnetic")
+				s,        ///< Simulated ("Simulated")
+				f,        ///< Fused ("Fused")
+				con,      ///< Configured ("Configured")
+				pred,     ///< Predicted ("Predicted")
+				r,        ///< Relayed ("Relayed")
+				Unknown,  ///< Unknown ("Unknown")
+				Error     ///< Error ("Error") — unrecognized or invalid data token
 			};
 
+			/// @brief Maps How::Data::Type enum values to human-readable method names
 			inline const std::unordered_map<Type, std::string> TypeToString = {
 				{ Type::e, "Estimated" },
 				{ Type::cal, "Calculated" },
@@ -248,6 +266,7 @@ namespace cot
 				{ Type::Error, "Error" }
 			};
 
+			/// @brief Maps human-readable method names to How::Data::Type enum values
 			inline const std::unordered_map<std::string, Type> StringToType = {
 				{ "Estimated", Type::e },
 				{ "Calculated", Type::cal },
@@ -266,9 +285,9 @@ namespace cot
 			};
 
 			/// @brief Converts a 'how' data token into a Data::Type enumeration value
-			/// @param data Data token string to convert
-			/// @param entry Corresponding How::Entry::Type context
-			/// @return Data::Type enum conversion
+			/// @param data Data token string to convert (e.g., "g", "m", "e", "cal")
+			/// @param entry Corresponding How::Entry::Type context ("h" vs. "m" token rules)
+			/// @return Corresponding Data::Type value, or Data::Type::Error if unrecognized
 			[[nodiscard]] inline Type CharToType(std::string_view data, Entry::Type entry) noexcept
 			{
 				if (entry == Entry::Type::h) {
