@@ -36,7 +36,7 @@ int main() {
     </detail>
 </event>)";
 
-    cot::subschemas::message msg;
+    cot::message msg;
     cot::result parse_res = cot::parse_cot(incoming_cot, msg);
     if (parse_res.is_failed()) {
         std::cerr << "Failed to parse CoT message: " << parse_res.to_string() << "\n";

@@ -118,7 +118,7 @@ namespace {
         EXPECT_FALSE(captured_errors.empty());
 
         const std::size_t count_after_verify = captured_errors.size();
-        cot::subschemas::message msg;
+        cot::message msg;
         EXPECT_TRUE(cot::parse_cot(R"(<event version="2.0"><__chat chatroom="OpsRoom"/></event>)", msg).is_failed());
         EXPECT_GT(captured_errors.size(), count_after_verify);
     }
@@ -136,7 +136,7 @@ namespace {
     </detail>
 </event>)";
 
-        cot::subschemas::message msg;
+        cot::message msg;
         ASSERT_TRUE(cot::parse_cot(valid_without_optional_subschemas, msg).is_success());
 
         std::string xml_out;

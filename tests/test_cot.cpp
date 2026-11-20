@@ -82,7 +82,7 @@ namespace {
               mission="MISSION-ALPHA"/>
     )";
 
-        cot::subschemas::message msg;
+        cot::message msg;
         ASSERT_TRUE(cot::parse_cot(make_event(detail_xml), msg).is_success());
         ASSERT_EQ(msg.event_.detail_.links.size(), 2u);
 
@@ -113,7 +113,7 @@ namespace {
         std::string xml_out;
         ASSERT_TRUE(cot::generate_xml_cot(msg, xml_out).is_success());
 
-        cot::subschemas::message msg_roundtrip;
+        cot::message msg_roundtrip;
         ASSERT_TRUE(cot::parse_cot(xml_out, msg_roundtrip).is_success());
         EXPECT_EQ(msg_roundtrip, msg);
 
@@ -143,7 +143,7 @@ namespace {
         </__chatreceipt>
     )";
 
-        cot::subschemas::message msg;
+        cot::message msg;
         ASSERT_TRUE(
             cot::parse_cot(make_event(detail_xml, "GeoChat.UID-ALPHA.OpsRoom.m-101", "b-t-f"), msg).is_success());
         EXPECT_TRUE(msg.event_.detail_.chat_.has_data());
@@ -158,13 +158,13 @@ namespace {
         std::string xml_out;
         ASSERT_TRUE(cot::generate_xml_cot(msg, xml_out).is_success());
 
-        cot::subschemas::message msg_roundtrip;
+        cot::message msg_roundtrip;
         ASSERT_TRUE(cot::parse_cot(xml_out, msg_roundtrip).is_success());
         EXPECT_EQ(msg_roundtrip.event_.detail_.chat_, msg.event_.detail_.chat_);
         EXPECT_EQ(msg_roundtrip.event_.detail_.chatreceipt_, msg.event_.detail_.chatreceipt_);
 
         // Missing required senderCallsign should fail
-        cot::subschemas::message bad_msg;
+        cot::message bad_msg;
         EXPECT_TRUE(cot::parse_cot(make_event(R"(<__chat chatroom="OpsRoom"/>)"), bad_msg).is_failed());
     }
 
@@ -176,7 +176,7 @@ namespace {
         </spatial>
     )";
 
-        cot::subschemas::message msg;
+        cot::message msg;
         ASSERT_TRUE(cot::parse_cot(make_event(detail_xml), msg).is_success());
         EXPECT_TRUE(msg.event_.detail_.spatial_.has_data());
         EXPECT_NEAR(msg.event_.detail_.spatial_.version, 1.0, kDefaultEps);
@@ -188,7 +188,7 @@ namespace {
         std::string xml_out;
         ASSERT_TRUE(cot::generate_xml_cot(msg, xml_out).is_success());
 
-        cot::subschemas::message msg_roundtrip;
+        cot::message msg_roundtrip;
         ASSERT_TRUE(cot::parse_cot(xml_out, msg_roundtrip).is_success());
         EXPECT_EQ(msg_roundtrip.event_.detail_.spatial_, msg.event_.detail_.spatial_);
 
@@ -198,13 +198,13 @@ namespace {
             <attitude pitch="0.0" roll="0.0"/>
         </spatial>
     )";
-        cot::subschemas::message partial_msg;
+        cot::message partial_msg;
         ASSERT_TRUE(cot::parse_cot(make_event(partial_xml), partial_msg).is_success());
         EXPECT_TRUE(partial_msg.event_.detail_.spatial_.attitude.has_data());
         EXPECT_FALSE(partial_msg.event_.detail_.spatial_.spin.has_data());
 
         // <attitude> missing required roll should fail
-        cot::subschemas::message bad_spatial;
+        cot::message bad_spatial;
         EXPECT_TRUE(cot::parse_cot(make_event(R"(<spatial><attitude pitch="1.0"/></spatial>)"), bad_spatial).is_failed());
     }
 

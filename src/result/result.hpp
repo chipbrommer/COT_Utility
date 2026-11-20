@@ -47,6 +47,7 @@ namespace cot
 			InvalidTog,               ///< Invalid tog data
 			InvalidRange,             ///< Invalid range data
 			InvalidRangeUnits,        ///< Invalid rangeunits data
+			InvalidSensor,             ///< Invalid sensor data
 			InvalidTakControl,        ///< Invalid TakControl data
 			InvalidAckRequest,        ///< Invalid ackrequest data
 			InvalidPrecisionLocation, ///< Invalid precisionlocation data
@@ -160,6 +161,7 @@ namespace cot
 			case error_code::InvalidTog: return "Invalid tog data";
 			case error_code::InvalidRange: return "Invalid range data";
 			case error_code::InvalidRangeUnits: return "Invalid rangeunits data";
+			case error_code::InvalidSensor: return "Invalid sensor data";
 			case error_code::InvalidTakControl: return "Invalid TakControl data";
 			case error_code::InvalidAckRequest: return "Invalid ackrequest data";
 			case error_code::InvalidPrecisionLocation: return "Invalid precisionlocation data";

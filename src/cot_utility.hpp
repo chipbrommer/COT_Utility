@@ -17,7 +17,7 @@
 #include "version.hpp"
 #include "result/result.hpp"
 #include "handlers/error_handler.hpp"
-#include "subschemas/message.hpp"
+#include "message/message.hpp"
 
 namespace cot
 {
@@ -186,7 +186,7 @@ namespace cot
     /// @param msg Schema to convert to XML
     /// @param xml Output string containing XML text (cleared on error)
     /// @return result indicating success or failure with description
-    [[nodiscard]] inline result generate_xml_cot(const subschemas::message& msg, std::string& xml) {
+    [[nodiscard]] inline result generate_xml_cot(const message& msg, std::string& xml) {
         xml.clear();
 
         result val_res;
@@ -272,7 +272,7 @@ namespace cot
     /// @param buffer Input buffer containing XML data
     /// @param msg Output message schema to store parsed data
     /// @return Result indicating success or failure with description
-    [[nodiscard]] inline result parse_cot(std::string_view buffer, subschemas::message& msg) {
+    [[nodiscard]] inline result parse_cot(std::string_view buffer, message& msg) {
         pugi::xml_document doc;
         result struct_res;
         if (!validate_cot_structure(buffer, &struct_res, &doc)) {
@@ -298,7 +298,7 @@ namespace cot
     /// @param buffer Input buffer containing XML data
     /// @param msg Output message schema to store parsed data
     /// @return Result indicating success or failure with description
-    [[nodiscard]] inline result parse_cot(const char* buffer, subschemas::message& msg) {
+    [[nodiscard]] inline result parse_cot(const char* buffer, message& msg) {
         if (!buffer) {
             return detail_impl::report_error(
                 result{ result::error_code::InvalidInput, "Null input buffer" });
