@@ -1,4 +1,9 @@
 #pragma once 
+
+#include "datetime.hpp"
+#include "detail.hpp"
+#include "point.hpp"
+
 namespace cot::subschemas
 {
     /// @brief A CoT Message subschema class for event data
