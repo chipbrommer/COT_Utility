@@ -1,4 +1,21 @@
 #pragma once
+/////////////////////////////////////////////////////////////////////////////////
+// @file            inclination.hpp
+// @brief           A CoT Message subschema class for inclination data.
+// @author          Chip Brommer
+/////////////////////////////////////////////////////////////////////////////////
+
+#include <cmath>
+#include <exception>
+#include <limits>
+#include <ostream>
+#include <string>
+
+#include <pugixml.hpp>
+
+#include "../handlers/error_handler.hpp"
+#include "../result/result.hpp"
+
 namespace cot::subschemas
 {
     /// @brief A CoT Message subschema class for inclination data
@@ -11,7 +28,8 @@ namespace cot::subschemas
         bool operator==(const inclination& other) const noexcept {
             constexpr double EPSILON = 1e-6;
             return (std::isnan(value) && std::isnan(other.value)) ||
-                std::abs(value - other.value) < EPSILON;
+                (!std::isnan(value) && !std::isnan(other.value) &&
+                    std::abs(value - other.value) < EPSILON);
         }
 
         /// @brief Inequality comparison
@@ -68,9 +86,11 @@ namespace cot::subschemas
                     inc.value = INVALID_NUM;
                 }
             }
-            if (!inc.is_valid(rslt) && rslt && rslt->is_success()) {
-                *rslt = result{ result::error_code::InvalidInclination, "Invalid inclination data after parsing" };
-                if (error_handler) error_handler(*rslt);
+            if (!inc.is_valid(rslt)) {
+                auto res = result{ result::error_code::InvalidInclination,
+                                  "Invalid inclination data after parsing" };
+                if (rslt && rslt->is_success()) *rslt = res;
+                if (error_handler) error_handler(res);
             }
             return inc;
         }

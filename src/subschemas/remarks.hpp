@@ -1,5 +1,21 @@
 #pragma once
+/////////////////////////////////////////////////////////////////////////////////
+// @file            remarks.hpp
+// @brief           A CoT Message subschema class for remarks data.
+// @author          Chip Brommer
+/////////////////////////////////////////////////////////////////////////////////
+
 #include <optional>
+#include <ostream>
+#include <string>
+#include <utility>
+
+#include <pugixml.hpp>
+
+#include "../handlers/error_handler.hpp"
+#include "../result/result.hpp"
+#include "datetime.hpp"
+
 namespace cot::subschemas
 {
     /// @brief A CoT Message subschema class for remarks data
@@ -30,8 +46,11 @@ namespace cot::subschemas
             if (time.has_value()) {
                 result dt_res;
                 if (!time->is_valid(&dt_res)) {
+                    const std::string detail = dt_res.description().empty()
+                        ? std::string("Invalid datetime")
+                        : dt_res.description();
                     auto res = result{ result::error_code::InvalidRemarks,
-                                      "Invalid remarks time: " + dt_res.description() };
+                                      "Invalid remarks time: " + detail };
                     if (rslt) *rslt = res;
                     if (error_handler) error_handler(res);
                     return false;
@@ -99,9 +118,11 @@ namespace cot::subschemas
                     }
                 }
             }
-            if (!r.is_valid(rslt) && rslt && rslt->is_success()) {
-                *rslt = result{ result::error_code::InvalidRemarks, "Invalid remarks data after parsing" };
-                if (error_handler) error_handler(*rslt);
+            if (!r.is_valid(rslt)) {
+                auto res = result{ result::error_code::InvalidRemarks,
+                                  "Invalid remarks data after parsing" };
+                if (rslt && rslt->is_success()) *rslt = res;
+                if (error_handler) error_handler(res);
             }
             return r;
         }
@@ -117,9 +138,9 @@ namespace cot::subschemas
             return os;
         }
 
-        std::string text{ "" };
-        std::string source{ "" };
-        std::string to{ "" };
+        std::string text{ INVALID_VALUE };
+        std::string source{ INVALID_VALUE };
+        std::string to{ INVALID_VALUE };
         std::optional<datetime> time{ std::nullopt };
 
     private:

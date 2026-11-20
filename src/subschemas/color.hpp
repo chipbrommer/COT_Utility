@@ -1,4 +1,21 @@
 #pragma once
+/////////////////////////////////////////////////////////////////////////////////
+// @file            color.hpp
+// @brief           A CoT Message subschema class for color data
+// @author          Chip Brommer
+/////////////////////////////////////////////////////////////////////////////////
+
+#include <exception>
+#include <limits>
+#include <ostream>
+#include <string>
+#include <string_view>
+
+#include <pugixml.hpp>
+
+#include "../handlers/error_handler.hpp"
+#include "../result/result.hpp"
+
 namespace cot::subschemas
 {
 	/// @brief A CoT Message subschema class for color data (replaces strokecolor, fillcolor, color)
@@ -36,7 +53,8 @@ namespace cot::subschemas
 				if (error_handler) error_handler(res);
 				return res;
 			}
-			auto node = parent.append_child(tag_name.data());
+			const std::string tag_str(tag_name);
+			auto node = parent.append_child(tag_str.c_str());
 			// Use "value" for strokecolor and fillcolor, "argb" for color
 			const char* attr_name = (tag_name == "strokecolor" || tag_name == "fillcolor") ? "value" : "argb";
 			node.append_attribute(attr_name) = argb;
@@ -73,9 +91,10 @@ namespace cot::subschemas
 					c.argb = INVALID_VALUE;
 				}
 			}
-			if (!c.is_valid(rslt) && rslt && rslt->is_success()) {
-				*rslt = result{ result::error_code::InvalidColor, "Invalid color data after parsing" };
-				if (error_handler) error_handler(*rslt);
+			if (!c.is_valid(rslt)) {
+				auto res = result{ result::error_code::InvalidColor, "Invalid color data after parsing" };
+				if (rslt && rslt->is_success()) *rslt = res;
+				if (error_handler) error_handler(res);
 			}
 			return c;
 		}
@@ -89,7 +108,7 @@ namespace cot::subschemas
 			return os;
 		}
 
-		int argb{ 0 };
+		int argb{ INVALID_VALUE };
 
 	private:
 		inline static constexpr int INVALID_VALUE = std::numeric_limits<int>::min();

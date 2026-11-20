@@ -1,5 +1,12 @@
 #pragma once
+/////////////////////////////////////////////////////////////////////////////////
+// @file            link.hpp
+// @brief           A CoT Message subschema class for <link> elements in <detail>.
+// @author          Chip Brommer
+/////////////////////////////////////////////////////////////////////////////////
+
 #include <cmath>
+#include <cstddef>
 #include <iomanip>
 #include <limits>
 #include <ostream>
@@ -8,7 +15,11 @@
 #include <string>
 #include <string_view>
 #include <utility>
+
 #include <pugixml.hpp>
+
+#include "../handlers/error_handler.hpp"
+#include "../result/result.hpp"
 
 namespace cot::subschemas
 {
@@ -254,6 +265,13 @@ namespace cot::subschemas
 
         /// @brief Stream output for printing
         friend std::ostream& operator<<(std::ostream& os, const link& l) {
+            auto fmt_coord = [](double val) -> std::string {
+                if (std::isnan(val)) return "None";
+                std::ostringstream oss;
+                oss << std::fixed << std::setprecision(6) << val;
+                return oss.str();
+                };
+
             os << "link: ";
             if (!l.is_valid()) os << " -NOT VALID- ";
             os << "\n\tuid: " << (l.uid.empty() ? "None" : l.uid)
@@ -268,13 +286,9 @@ namespace cot::subschemas
                 << "\n\tproduction_time: " << (l.production_time.empty() ? "None" : l.production_time)
                 << "\n\tremarks: " << (l.remarks.empty() ? "None" : l.remarks)
                 << "\n\turl: " << (l.url.empty() ? "None" : l.url)
-                << "\n\tlatitude: ";
-            if (std::isnan(l.latitude)) os << "None";
-            else os << std::fixed << std::setprecision(6) << l.latitude;
-            os << "\n\tlongitude: ";
-            if (std::isnan(l.longitude)) os << "None";
-            else os << std::fixed << std::setprecision(6) << l.longitude;
-            os << "\n";
+                << "\n\tlatitude: " << fmt_coord(l.latitude)
+                << "\n\tlongitude: " << fmt_coord(l.longitude)
+                << "\n";
             return os;
         }
 

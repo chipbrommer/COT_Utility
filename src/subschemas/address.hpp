@@ -1,4 +1,19 @@
 #pragma once
+/////////////////////////////////////////////////////////////////////////////////
+// @file            address.hpp
+// @brief           A CoT Message subschema class for address data.
+// @author          Chip Brommer
+/////////////////////////////////////////////////////////////////////////////////
+
+#include <ostream>
+#include <string>
+#include <utility>
+
+#include <pugixml.hpp>
+
+#include "../handlers/error_handler.hpp"
+#include "../result/result.hpp"
+
 namespace cot::subschemas
 {
     /// @brief A CoT Message subschema class for address data
@@ -65,9 +80,10 @@ namespace cot::subschemas
             if (auto attr = node.attribute("text")) addr.text = attr.as_string();
             if (auto attr = node.attribute("geocoder")) addr.geocoder = attr.as_string();
             if (auto attr = node.attribute("time")) addr.time = attr.as_string();
-            if (!addr.is_valid(rslt) && rslt && rslt->is_success()) {
-                *rslt = result{ result::error_code::InvalidAddress, "Invalid address data after parsing" };
-                if (error_handler) error_handler(*rslt);
+            if (!addr.is_valid(rslt)) {
+                auto res = result{ result::error_code::InvalidAddress, "Invalid address data after parsing" };
+                if (rslt && rslt->is_success()) *rslt = res;
+                if (error_handler) error_handler(res);
             }
             return addr;
         }

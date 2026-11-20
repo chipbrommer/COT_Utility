@@ -23,6 +23,7 @@ namespace cot
 			r,     ///< Reply ("Reply") — responses and acknowledgments
 			c,     ///< Capability ("Capability") — system or sensor capabilities
 			res,   ///< Reservation ("Reservation") — resource reservations
+			Unknown, ///< Unknown ("Unknown") — unrecognized or unspecified root token
 			Error  ///< Unrecognized or invalid root token
 		};
 
@@ -34,6 +35,7 @@ namespace cot
 			{ Type::r, "Reply" },
 			{ Type::c, "Capability" },
 			{ Type::res, "Reservation" },
+			{ Type::Unknown, "Unknown" },
 			{ Type::Error, "Error" }
 		};
 
@@ -44,7 +46,9 @@ namespace cot
 			{ "Tasking", Type::t },
 			{ "Reply", Type::r },
 			{ "Capability", Type::c },
-			{ "Reservation", Type::res }
+			{ "Reservation", Type::res },
+			{ "Unknown", Type::Unknown },
+			{ "Error", Type::Error }
 		};
 
 		/// @brief Converts a CoT root token into a Root::Type enumeration value
@@ -79,6 +83,7 @@ namespace cot
 			k,     ///< Faker ("Faker")
 			o,     ///< None Specified ("None Specified")
 			x,     ///< Other ("Other")
+			Unknown, ///< Unknown ("Unknown") — unrecognized or unspecified affiliation token
 			Error  ///< Unrecognized or invalid affiliation token
 		};
 
@@ -95,6 +100,7 @@ namespace cot
 			{ Type::k, "Faker" },
 			{ Type::o, "None Specified" },
 			{ Type::x, "Other" },
+			{ Type::Unknown, "Unknown" },
 			{ Type::Error, "Error" }
 		};
 
@@ -110,7 +116,9 @@ namespace cot
 			{ "Joker", Type::j },
 			{ "Faker", Type::k },
 			{ "None Specified", Type::o },
-			{ "Other", Type::x }
+			{ "Other", Type::x },
+			{ "Unknown", Type::Unknown },
+			{ "Error", Type::Error }
 		};
 
 		/// @brief Converts a CoT affiliation token into a Point::Type enumeration value
@@ -145,6 +153,7 @@ namespace cot
 			S,     ///< Sea Surface ("Sea Surface")
 			U,     ///< Sea Subsurface ("Sea Subsurface")
 			X,     ///< Other ("Other")
+			Unknown, ///< Unknown ("Unknown") — unrecognized or unspecified dimension token
 			Error  ///< Unrecognized or invalid dimension token
 		};
 
@@ -156,6 +165,7 @@ namespace cot
 			{ Type::S, "Sea Surface" },
 			{ Type::U, "Sea Subsurface" },
 			{ Type::X, "Other" },
+			{ Type::Unknown, "Unknown" },
 			{ Type::Error, "Error" }
 		};
 
@@ -166,7 +176,9 @@ namespace cot
 			{ "Ground", Type::G },
 			{ "Sea Surface", Type::S },
 			{ "Sea Subsurface", Type::U },
-			{ "Other", Type::X }
+			{ "Other", Type::X },
+			{ "Unknown", Type::Unknown },
+			{ "Error", Type::Error }
 		};
 
 		/// @brief Converts a CoT dimension token into a Location::Type enumeration value

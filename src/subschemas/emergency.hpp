@@ -1,4 +1,19 @@
 #pragma once
+/////////////////////////////////////////////////////////////////////////////////
+// @file            emergency.hpp
+// @brief           A CoT Message subschema class for emergency alert data.
+// @author          Chip Brommer
+/////////////////////////////////////////////////////////////////////////////////
+
+#include <ostream>
+#include <string>
+#include <utility>
+
+#include <pugixml.hpp>
+
+#include "../handlers/error_handler.hpp"
+#include "../result/result.hpp"
+
 namespace cot::subschemas
 {
     /// @brief A CoT Message subschema class for emergency alert data
@@ -70,9 +85,11 @@ namespace cot::subschemas
             }
             if (auto attr = node.attribute("type")) em.type = attr.as_string();
             if (auto txt = node.text()) em.text = txt.as_string();
-            if (!em.is_valid(rslt) && rslt && rslt->is_success()) {
-                *rslt = result{ result::error_code::InvalidEmergency, "Invalid emergency data after parsing" };
-                if (error_handler) error_handler(*rslt);
+            if (!em.is_valid(rslt)) {
+                auto res = result{ result::error_code::InvalidEmergency,
+                                  "Invalid emergency data after parsing" };
+                if (rslt && rslt->is_success()) *rslt = res;
+                if (error_handler) error_handler(res);
             }
             return em;
         }
@@ -87,8 +104,8 @@ namespace cot::subschemas
             return os;
         }
 
-        std::string text{ "" };
-        std::string type{ "" };
+        std::string text{ INVALID_STRING };
+        std::string type{ INVALID_STRING };
         bool cancel{ false };
         bool has_cancel{ false };
 

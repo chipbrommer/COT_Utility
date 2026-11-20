@@ -1,13 +1,24 @@
 #pragma once
+/////////////////////////////////////////////////////////////////////////////////
+// @file            detail.hpp
+// @brief           A CoT Message subschema class for detail data.
+// @author          Chip Brommer
+/////////////////////////////////////////////////////////////////////////////////
+
 #include <algorithm>
 #include <cmath>
+#include <exception>
 #include <limits>
 #include <map>
 #include <ostream>
 #include <string>
 #include <utility>
 #include <vector>
+
 #include <pugixml.hpp>
+
+#include "../handlers/error_handler.hpp"
+#include "../result/result.hpp"
 
 #include "ackrequest.hpp"
 #include "address.hpp"
@@ -50,7 +61,7 @@ namespace cot::subschemas
     class detail {
     public:
         /// @brief Constructor - Initializes everything
-        explicit detail(takv takv = takv(),
+        detail(takv takv = takv(),
             contact contact = contact(),
             uid uid = uid(),
             model model = model(),
@@ -163,6 +174,67 @@ namespace cot::subschemas
 
         /// @brief Inequality comparison
         bool operator!=(const detail& other) const noexcept { return !(*this == other); }
+
+        [[nodiscard]] bool has_fillcolor_data() const noexcept {
+            return fillcolor_ != fillcolor{};
+        }
+        [[nodiscard]] bool has_strokecolor_data() const noexcept {
+            return strokecolor_ != strokecolor{};
+        }
+        [[nodiscard]] bool has_strokestyle_data() const noexcept {
+            return strokestyle_ != strokestyle{};
+        }
+        [[nodiscard]] bool has_strokeweight_data() const noexcept {
+            return strokeweight_ != strokeweight{};
+        }
+        [[nodiscard]] bool has_image_data() const noexcept {
+            return image_ != image{};
+        }
+        [[nodiscard]] bool has_inclination_data() const noexcept {
+            return inclination_ != inclination{};
+        }
+        [[nodiscard]] bool has_labels_on_data() const noexcept {
+            return labels_on_ != labels_on{};
+        }
+        [[nodiscard]] bool has_tog_data() const noexcept {
+            return tog_ != tog{};
+        }
+        [[nodiscard]] bool has_range_data() const noexcept {
+            return range_ != range{};
+        }
+        [[nodiscard]] bool has_rangeunits_data() const noexcept {
+            return rangeunits_ != rangeunits{};
+        }
+        [[nodiscard]] bool has_link_attr_data() const noexcept {
+            return link_attr_ != link_attr{};
+        }
+        [[nodiscard]] bool has_creator_data() const noexcept {
+            return creator_ != creator{};
+        }
+        [[nodiscard]] bool has_display_data() const noexcept {
+            return display_ != display{};
+        }
+        [[nodiscard]] bool has_emergency_data() const noexcept {
+            return emergency_ != emergency{};
+        }
+        [[nodiscard]] bool has_address_data() const noexcept {
+            return address_ != address{};
+        }
+        [[nodiscard]] bool has_takcontrol_data() const noexcept {
+            return takcontrol_.has_data();
+        }
+        [[nodiscard]] bool has_ackrequest_data() const noexcept {
+            return ackrequest_ != ackrequest{};
+        }
+        [[nodiscard]] bool has_chat_data() const noexcept {
+            return chat_ != chat{};
+        }
+        [[nodiscard]] bool has_chatreceipt_data() const noexcept {
+            return chatreceipt_ != chat{};
+        }
+        [[nodiscard]] bool has_spatial_data() const noexcept {
+            return spatial_ != spatial{};
+        }
 
         /// @brief Checks if the class has valid data
         /// @param rslt Optional result structure for invalid reason
@@ -551,9 +623,11 @@ namespace cot::subschemas
                     if (error_handler) error_handler(res);
                 }
             }
-            if (!d.is_valid(rslt) && rslt && rslt->is_success()) {
-                *rslt = result{ result::error_code::InvalidDetail, "Invalid detail data after parsing" };
-                if (error_handler) error_handler(*rslt);
+            if (!d.is_valid(rslt)) {
+                auto res = result{ result::error_code::InvalidDetail,
+                                  "Invalid detail data after parsing" };
+                if (rslt && rslt->is_success()) *rslt = res;
+                if (error_handler) error_handler(res);
             }
             return d;
         }
@@ -695,8 +769,8 @@ namespace cot::subschemas
             os << d.usericon_
                 << d.remarks_;
             if (d.has_link_attr_data()) os << d.link_attr_;
-            if (!d.milicon_.id.empty()) os << d.milicon_;
-            if (!d.milsym_.id.empty() || !d.milsym_.modifiers.empty()) os << d.milsym_;
+            os << d.milicon_
+                << d.milsym_;
             if (d.has_creator_data()) os << d.creator_;
             if (d.has_display_data()) os << d.display_;
             if (d.has_emergency_data()) os << d.emergency_;
@@ -706,12 +780,8 @@ namespace cot::subschemas
             if (d.has_chat_data()) os << d.chat_;
             if (d.has_chatreceipt_data()) os << d.chatreceipt_;
             if (d.has_spatial_data()) os << d.spatial_;
-            os << "\tlinks:\n";
-            if (d.links.empty()) os << "\t\tNone\n";
-            else for (const auto& link : d.links) os << link;
-            os << "\tcustom_details:\n";
-            if (d.custom_details.empty()) os << "\t\tNone\n";
-            else for (const auto& custom : d.custom_details) os << custom;
+            for (const auto& link : d.links) os << link;
+            for (const auto& custom : d.custom_details) os << custom;
             return os;
         }
 
@@ -750,110 +820,5 @@ namespace cot::subschemas
         spatial spatial_;
         std::vector<link> links;
         std::vector<customdetail> custom_details;
-
-    private:
-        /// @brief Checks if fillcolor has a non-default value
-        [[nodiscard]] bool has_fillcolor_data() const noexcept {
-            return fillcolor_.value != std::numeric_limits<int>::min();
-        }
-
-        /// @brief Checks if strokecolor has a non-default value
-        [[nodiscard]] bool has_strokecolor_data() const noexcept {
-            return strokecolor_.value != std::numeric_limits<int>::min();
-        }
-
-        /// @brief Checks if strokestyle has a non-empty value
-        [[nodiscard]] bool has_strokestyle_data() const noexcept {
-            return !strokestyle_.value.empty();
-        }
-
-        /// @brief Checks if strokeweight has a non-NaN value
-        [[nodiscard]] bool has_strokeweight_data() const noexcept {
-            return !std::isnan(strokeweight_.value);
-        }
-
-        /// @brief Checks if any image fields are populated
-        [[nodiscard]] bool has_image_data() const noexcept {
-            return !image_.mime.empty() || !image_.text.empty();
-        }
-
-        /// @brief Checks if inclination has a non-NaN value
-        [[nodiscard]] bool has_inclination_data() const noexcept {
-            return !std::isnan(inclination_.value);
-        }
-
-        /// @brief Checks if labels_on has an explicit value set
-        [[nodiscard]] bool has_labels_on_data() const noexcept {
-            return labels_on_.has_value;
-        }
-
-        /// @brief Checks if tog has a non-empty enabled attribute
-        [[nodiscard]] bool has_tog_data() const noexcept {
-            return !tog_.enabled.empty();
-        }
-
-        /// @brief Checks if range has a non-NaN value
-        [[nodiscard]] bool has_range_data() const noexcept {
-            return !std::isnan(range_.value);
-        }
-
-        /// @brief Checks if rangeunits has a non-NaN value
-        [[nodiscard]] bool has_rangeunits_data() const noexcept {
-            return !std::isnan(rangeunits_.value);
-        }
-
-        /// @brief Checks if any link_attr fields are populated
-        [[nodiscard]] bool has_link_attr_data() const noexcept {
-            return link_attr_.has_data();
-        }
-
-        /// @brief Checks if any creator fields are populated
-        [[nodiscard]] bool has_creator_data() const noexcept {
-            return !creator_.callsign.empty() || !creator_.time.empty() ||
-                !creator_.type.empty() || !creator_.uid.empty();
-        }
-
-        /// @brief Checks if any display fields are populated
-        [[nodiscard]] bool has_display_data() const noexcept {
-            return !std::isnan(display_.maxzoom) || !std::isnan(display_.minzoom) ||
-                display_.has_rotate;
-        }
-
-        /// @brief Checks if any emergency fields are populated
-        [[nodiscard]] bool has_emergency_data() const noexcept {
-            return !emergency_.text.empty() || !emergency_.type.empty() ||
-                emergency_.has_cancel;
-        }
-
-        /// @brief Checks if any address fields are populated
-        [[nodiscard]] bool has_address_data() const noexcept {
-            return !address_.text.empty() || !address_.geocoder.empty() ||
-                !address_.time.empty();
-        }
-
-        /// @brief Checks if any TakControl child elements are populated
-        [[nodiscard]] bool has_takcontrol_data() const noexcept {
-            return takcontrol_.has_data();
-        }
-
-        /// @brief Checks if any ackrequest fields are populated
-        [[nodiscard]] bool has_ackrequest_data() const noexcept {
-            return ackrequest_.has_data();
-        }
-
-        /// @brief Checks if any __chat fields are populated
-        [[nodiscard]] bool has_chat_data() const noexcept {
-            return chat_.has_data();
-        }
-
-        /// @brief Checks if any __chatreceipt fields are populated
-        [[nodiscard]] bool has_chatreceipt_data() const noexcept {
-            return chatreceipt_.has_data();
-        }
-
-        /// @brief Checks if any spatial fields or child elements are populated
-        [[nodiscard]] bool has_spatial_data() const noexcept {
-            return spatial_.has_data();
-        }
     };
 }

@@ -1,4 +1,19 @@
 #pragma once
+/////////////////////////////////////////////////////////////////////////////////
+// @file            takv.hpp
+// @brief           A CoT Message subschema class for takv data.
+// @author          Chip Brommer
+/////////////////////////////////////////////////////////////////////////////////
+
+#include <ostream>
+#include <string>
+#include <utility>
+
+#include <pugixml.hpp>
+
+#include "../handlers/error_handler.hpp"
+#include "../result/result.hpp"
+
 namespace cot::subschemas
 {
     /// @brief A CoT Message subschema class for takv data
@@ -68,9 +83,11 @@ namespace cot::subschemas
             if (auto attr = node.attribute("device")) t.device = attr.as_string();
             if (auto attr = node.attribute("os")) t.os = attr.as_string();
             if (auto attr = node.attribute("platform")) t.platform = attr.as_string();
-            if (!t.is_valid(rslt) && rslt && rslt->is_success()) {
-                *rslt = result{ result::error_code::InvalidTakv, "Invalid takv data after parsing" };
-                if (error_handler) error_handler(*rslt);
+            if (!t.is_valid(rslt)) {
+                auto res = result{ result::error_code::InvalidTakv,
+                                  "Invalid takv data after parsing" };
+                if (rslt && rslt->is_success()) *rslt = res;
+                if (error_handler) error_handler(res);
             }
             return t;
         }
@@ -86,13 +103,12 @@ namespace cot::subschemas
             return os;
         }
 
-        std::string version{ "" };
-        std::string device{ "" };
-        std::string os{ "" };
-        std::string platform{ "" };
+        std::string version{ INVALID_VALUE };
+        std::string device{ INVALID_VALUE };
+        std::string os{ INVALID_VALUE };
+        std::string platform{ INVALID_VALUE };
 
     private:
         inline static constexpr const char* INVALID_VALUE = "";
     };
-
 }

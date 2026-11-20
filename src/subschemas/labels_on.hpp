@@ -1,4 +1,18 @@
 #pragma once
+/////////////////////////////////////////////////////////////////////////////////
+// @file            labels_on.hpp
+// @brief           A CoT Message subschema class for labels_on data.
+// @author          Chip Brommer
+/////////////////////////////////////////////////////////////////////////////////
+
+#include <ostream>
+#include <string>
+
+#include <pugixml.hpp>
+
+#include "../handlers/error_handler.hpp"
+#include "../result/result.hpp"
+
 namespace cot::subschemas
 {
     /// @brief A CoT Message subschema class for labels_on data
@@ -56,9 +70,11 @@ namespace cot::subschemas
                 std::string val = attr.as_string();
                 lo.value = (val == "true" || val == "1");
             }
-            if (!lo.is_valid(rslt) && rslt && rslt->is_success()) {
-                *rslt = result{ result::error_code::InvalidLabelsOn, "Invalid labels_on data after parsing" };
-                if (error_handler) error_handler(*rslt);
+            if (!lo.is_valid(rslt)) {
+                auto res = result{ result::error_code::InvalidLabelsOn,
+                                  "Invalid labels_on data after parsing" };
+                if (rslt && rslt->is_success()) *rslt = res;
+                if (error_handler) error_handler(res);
             }
             return lo;
         }

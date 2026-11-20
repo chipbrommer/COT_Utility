@@ -1,9 +1,20 @@
 #pragma once
+/////////////////////////////////////////////////////////////////////////////////
+// @file            ackrequest.hpp
+// @brief           A CoT Message subschema class for <ackrequest> data.
+// @author          Chip Brommer
+/////////////////////////////////////////////////////////////////////////////////
+
+#include <exception>
 #include <ostream>
 #include <string>
 #include <string_view>
 #include <utility>
+
 #include <pugixml.hpp>
+
+#include "../handlers/error_handler.hpp"
+#include "../result/result.hpp"
 
 namespace cot::subschemas
 {
@@ -137,6 +148,7 @@ namespace cot::subschemas
                 result val_res;
                 if (!req.is_valid(&val_res)) {
                     if (rslt) *rslt = val_res;
+                    if (error_handler) error_handler(val_res);
                 }
             }
             catch (const std::exception& ex) {

@@ -1,4 +1,19 @@
 #pragma once
+/////////////////////////////////////////////////////////////////////////////////
+// @file            usericon.hpp
+// @brief           A CoT Message subschema class for usericon data.
+// @author          Chip Brommer
+/////////////////////////////////////////////////////////////////////////////////
+
+#include <ostream>
+#include <string>
+#include <utility>
+
+#include <pugixml.hpp>
+
+#include "../handlers/error_handler.hpp"
+#include "../result/result.hpp"
+
 namespace cot::subschemas
 {
 	/// @brief A CoT Message subschema class for usericon data
@@ -59,10 +74,11 @@ namespace cot::subschemas
 			if (auto attr = node.attribute("iconsetpath")) {
 				ui.iconsetpath = attr.as_string();
 			}
-			if (!ui.is_valid(rslt) && rslt && rslt->is_success()) {
-				*rslt = result{ result::error_code::InvalidUserIcon,
-							   "Invalid usericon data after parsing" };
-				if (error_handler) error_handler(*rslt);
+			if (!ui.is_valid(rslt)) {
+				auto res = result{ result::error_code::InvalidUserIcon,
+								  "Invalid usericon data after parsing" };
+				if (rslt && rslt->is_success()) *rslt = res;
+				if (error_handler) error_handler(res);
 			}
 			return ui;
 		}
@@ -75,7 +91,7 @@ namespace cot::subschemas
 			return os;
 		}
 
-		std::string iconsetpath{ "" };
+		std::string iconsetpath{ INVALID_VALUE };
 
 	private:
 		inline static constexpr const char* INVALID_VALUE = "";

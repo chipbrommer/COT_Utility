@@ -1,11 +1,26 @@
 #pragma once
+/////////////////////////////////////////////////////////////////////////////////
+// @file            time.hpp
+// @brief           A CoT Message subschema class for time data.
+// @author          Chip Brommer
+/////////////////////////////////////////////////////////////////////////////////
+
+#include <cmath>
+#include <iomanip>
+#include <ostream>
+#include <sstream>
+#include <string>
+
+#include "../handlers/error_handler.hpp"
+#include "../result/result.hpp"
+
 namespace cot::subschemas
 {
     /// @brief A CoT Message subschema class for time data
     class time {
     public:
         /// @brief Constructor - Initializes everything
-        time(unsigned hour = 0, unsigned minute = 0, double second = 0.0)
+        time(unsigned hour = 0, unsigned minute = 0, double second = 0.0) noexcept
             : hour(hour), minute(minute), second(second) {
         }
 
@@ -25,7 +40,7 @@ namespace cot::subschemas
                 if (error_handler) error_handler(res);
                 return false;
             }
-            if (second < 0.0 || second >= 60.0) {
+            if (std::isnan(second) || !std::isfinite(second) || second < 0.0 || second >= 60.0) {
                 auto res = result{ result::error_code::InvalidTime, "Second must be between 0 and 59.999..." };
                 if (rslt) *rslt = res;
                 if (error_handler) error_handler(res);
@@ -37,9 +52,10 @@ namespace cot::subschemas
         /// @brief Equality comparison
         bool operator==(const time& other) const noexcept {
             constexpr double EPSILON = 1e-6;
-            return hour == other.hour && minute == other.minute &&
-                (std::isnan(second) && std::isnan(other.second) ||
+            const bool sec_eq = (std::isnan(second) && std::isnan(other.second)) ||
+                (!std::isnan(second) && !std::isnan(other.second) &&
                     std::abs(second - other.second) < EPSILON);
+            return hour == other.hour && minute == other.minute && sec_eq;
         }
 
         /// @brief Inequality comparison
@@ -65,5 +81,4 @@ namespace cot::subschemas
         unsigned int minute{ 0 };
         double second{ 0.0 };
     };
-
 }

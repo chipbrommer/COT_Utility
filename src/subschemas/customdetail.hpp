@@ -1,4 +1,21 @@
 #pragma once
+/////////////////////////////////////////////////////////////////////////////////
+// @file            customdetail.hpp
+// @brief           A CoT Message subschema class for customdetail data.
+// @author          Chip Brommer
+/////////////////////////////////////////////////////////////////////////////////
+
+#include <map>
+#include <ostream>
+#include <string>
+#include <utility>
+#include <vector>
+
+#include <pugixml.hpp>
+
+#include "../handlers/error_handler.hpp"
+#include "../result/result.hpp"
+
 namespace cot::subschemas
 {
     /// @brief A CoT Message subschema class for customdetail data
@@ -34,7 +51,7 @@ namespace cot::subschemas
                 if (error_handler) error_handler(res);
                 return false;
             }
-            if (attributes.empty() && content.empty() && !children.empty()) {
+            if (attributes.empty() && content.empty() && children.empty()) {
                 auto res = result{ result::error_code::InvalidCustomDetail,
                                   "No attributes, content, or children" };
                 if (rslt) *rslt = res;
@@ -43,7 +60,7 @@ namespace cot::subschemas
             }
             for (const auto& child : children) {
                 if (!child.is_valid(rslt)) {
-                    auto res = result{ result::error_code::InvalidCustomdetail, "Invalid child element" };
+                    auto res = result{ result::error_code::InvalidCustomDetail, "Invalid child element" };
                     if (rslt && rslt->is_success()) *rslt = res;
                     if (error_handler) error_handler(res);
                     return false;
@@ -86,6 +103,7 @@ namespace cot::subschemas
                 auto res = result{ result::error_code::InvalidCustomDetail, "Empty node name" };
                 if (rslt) *rslt = res;
                 if (error_handler) error_handler(res);
+                return detail;
             }
             for (auto attr : node.attributes()) {
                 detail.attributes[attr.name()] = attr.as_string();
@@ -96,10 +114,11 @@ namespace cot::subschemas
                     detail.children.push_back(from_xml(child_node, rslt));
                 }
             }
-            if (!detail.is_valid(rslt) && rslt && rslt->is_success()) {
-                *rslt = result{ result::error_code::InvalidCustomDetail,
-                               "Invalid customdetail data after parsing" };
-                if (error_handler) error_handler(*rslt);
+            if (!detail.is_valid(rslt)) {
+                auto res = result{ result::error_code::InvalidCustomDetail,
+                                  "Invalid customdetail data after parsing" };
+                if (rslt && rslt->is_success()) *rslt = res;
+                if (error_handler) error_handler(res);
             }
             return detail;
         }

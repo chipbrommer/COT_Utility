@@ -1,4 +1,20 @@
 #pragma once
+/////////////////////////////////////////////////////////////////////////////////
+// @file            strokecolor.hpp
+// @brief           A CoT Message subschema class for strokecolor data.
+// @author          Chip Brommer
+/////////////////////////////////////////////////////////////////////////////////
+
+#include <exception>
+#include <limits>
+#include <ostream>
+#include <string>
+
+#include <pugixml.hpp>
+
+#include "../handlers/error_handler.hpp"
+#include "../result/result.hpp"
+
 namespace cot::subschemas
 {
     /// @brief A CoT Message subschema class for strokecolor data
@@ -64,9 +80,11 @@ namespace cot::subschemas
                     sc.value = INVALID_VALUE;
                 }
             }
-            if (!sc.is_valid(rslt) && rslt && rslt->is_success()) {
-                *rslt = result{ result::error_code::InvalidStrokeColor, "Invalid strokecolor data after parsing" };
-                if (error_handler) error_handler(*rslt);
+            if (!sc.is_valid(rslt)) {
+                auto res = result{ result::error_code::InvalidStrokeColor,
+                                  "Invalid strokecolor data after parsing" };
+                if (rslt && rslt->is_success()) *rslt = res;
+                if (error_handler) error_handler(res);
             }
             return sc;
         }

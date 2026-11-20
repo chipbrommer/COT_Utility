@@ -1,5 +1,24 @@
-#pragma once 
+#pragma once
+/////////////////////////////////////////////////////////////////////////////////
+// @file            event.hpp
+// @brief           A CoT Message subschema class for event data.
+// @author          Chip Brommer
+/////////////////////////////////////////////////////////////////////////////////
 
+#include <cmath>
+#include <cstddef>
+#include <exception>
+#include <limits>
+#include <ostream>
+#include <string>
+#include <utility>
+
+#include <pugixml.hpp>
+
+#include "../cot_types.hpp"
+#include "../handlers/error_handler.hpp"
+#include "../result/result.hpp"
+#include "../xml_utils.hpp"
 #include "datetime.hpp"
 #include "detail.hpp"
 #include "point.hpp"
@@ -46,7 +65,8 @@ namespace cot::subschemas
         bool operator==(const event& other) const noexcept {
             constexpr double EPSILON = 1e-6;
             bool versionEqual = (std::isnan(version) && std::isnan(other.version)) ||
-                std::abs(version - other.version) < EPSILON;
+                (!std::isnan(version) && !std::isnan(other.version) &&
+                    std::abs(version - other.version) < EPSILON);
             return versionEqual &&
                 uid == other.uid &&
                 type == other.type &&
@@ -216,9 +236,11 @@ namespace cot::subschemas
                     if (name == "point") e.point_ = point::from_xml(child, rslt);
                     else if (name == "detail") e.detail_ = detail::from_xml(child, rslt);
                 }
-                if (!e.is_valid(rslt) && rslt && rslt->is_success()) {
-                    *rslt = result{ result::error_code::InvalidEvent, "Invalid event data after parsing" };
-                    if (error_handler) error_handler(*rslt);
+                if (!e.is_valid(rslt)) {
+                    auto res = result{ result::error_code::InvalidEvent,
+                                      "Invalid event data after parsing" };
+                    if (rslt && rslt->is_success()) *rslt = res;
+                    if (error_handler) error_handler(res);
                 }
             }
             catch (const std::exception& ex) {
@@ -232,14 +254,25 @@ namespace cot::subschemas
 
         /// @brief Stream output for printing
         friend std::ostream& operator<<(std::ostream& os, const event& e) {
+            static const std::string fallback = "Unknown";
+            auto lookup_root = [](Root::Type t) -> const std::string& {
+                auto it = Root::TypeToString.find(t);
+                return (it != Root::TypeToString.end()) ? it->second : fallback;
+                };
+            auto lookup_point = [](Point::Type t) -> const std::string& {
+                auto it = Point::TypeToString.find(t);
+                return (it != Point::TypeToString.end()) ? it->second : fallback;
+                };
+            auto lookup_location = [](Location::Type t) -> const std::string& {
+                auto it = Location::TypeToString.find(t);
+                return (it != Location::TypeToString.end()) ? it->second : fallback;
+                };
             auto lookup_entry = [](How::Entry::Type t) -> const std::string& {
                 auto it = How::Entry::TypeToString.find(t);
-                static const std::string fallback = "Unknown";
                 return (it != How::Entry::TypeToString.end()) ? it->second : fallback;
                 };
             auto lookup_data = [](How::Data::Type t) -> const std::string& {
                 auto it = How::Data::TypeToString.find(t);
-                static const std::string fallback = "Unknown";
                 return (it != How::Data::TypeToString.end()) ? it->second : fallback;
                 };
 
@@ -248,11 +281,11 @@ namespace cot::subschemas
             os << "\n\tversion: " << (std::isnan(e.version) ? "NaN" : std::to_string(e.version))
                 << "\n\ttype: " << (e.type.empty() ? "None" : e.type)
                 << "\n\trootType: " << static_cast<int>(e.rootType) << " - "
-                << Root::TypeToString.at(e.rootType)
+                << lookup_root(e.rootType)
                 << "\n\tindicator: " << static_cast<int>(e.indicator) << " - "
-                << Point::TypeToString.at(e.indicator)
+                << lookup_point(e.indicator)
                 << "\n\tlocation: " << static_cast<int>(e.location) << " - "
-                << Location::TypeToString.at(e.location)
+                << lookup_location(e.location)
                 << "\n\tuid: " << (e.uid.empty() ? "None" : e.uid)
                 << "\n\ttime: " << e.time
                 << "\n\tstart: " << e.start
@@ -323,7 +356,7 @@ namespace cot::subschemas
 
     private:
         /// @brief Synchronizes howEntry and howData enums from the raw `how` string (e.g., "m-g")
-        void sync_how_enums() noexcept {
+        void sync_how_enums() {
             if (how.empty()) {
                 howEntry = How::Entry::Type::Unknown;
                 howData = How::Data::Type::Unknown;

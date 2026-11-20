@@ -1,4 +1,19 @@
 #pragma once
+/////////////////////////////////////////////////////////////////////////////////
+// @file            group.hpp
+// @brief           A CoT Message subschema class for group data.
+// @author          Chip Brommer
+/////////////////////////////////////////////////////////////////////////////////
+
+#include <ostream>
+#include <string>
+#include <utility>
+
+#include <pugixml.hpp>
+
+#include "../handlers/error_handler.hpp"
+#include "../result/result.hpp"
+
 namespace cot::subschemas
 {
     /// @brief A CoT Message subschema class for group data
@@ -60,9 +75,11 @@ namespace cot::subschemas
             }
             if (auto attr = node.attribute("role")) g.role = attr.as_string();
             if (auto attr = node.attribute("name")) g.name = attr.as_string();
-            if (!g.is_valid(rslt) && rslt && rslt->is_success()) {
-                *rslt = result{ result::error_code::InvalidGroup, "Invalid group data after parsing" };
-                if (error_handler) error_handler(*rslt);
+            if (!g.is_valid(rslt)) {
+                auto res = result{ result::error_code::InvalidGroup,
+                                  "Invalid group data after parsing" };
+                if (rslt && rslt->is_success()) *rslt = res;
+                if (error_handler) error_handler(res);
             }
             return g;
         }
@@ -76,8 +93,8 @@ namespace cot::subschemas
             return os;
         }
 
-        std::string role{ "" };
-        std::string name{ "" };
+        std::string role{ INVALID_VALUE };
+        std::string name{ INVALID_VALUE };
 
     private:
         inline static constexpr const char* INVALID_VALUE = "";

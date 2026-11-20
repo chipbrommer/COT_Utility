@@ -1,4 +1,21 @@
 #pragma once
+/////////////////////////////////////////////////////////////////////////////////
+// @file            display.hpp
+// @brief           A CoT Message subschema class for display settings data.
+// @author          Chip Brommer
+/////////////////////////////////////////////////////////////////////////////////
+
+#include <cmath>
+#include <exception>
+#include <limits>
+#include <ostream>
+#include <string>
+
+#include <pugixml.hpp>
+
+#include "../handlers/error_handler.hpp"
+#include "../result/result.hpp"
+
 namespace cot::subschemas
 {
     /// @brief A CoT Message subschema class for display settings data
@@ -16,9 +33,11 @@ namespace cot::subschemas
         bool operator==(const display& other) const noexcept {
             constexpr double EPSILON = 1e-6;
             bool max_eq = (std::isnan(maxzoom) && std::isnan(other.maxzoom)) ||
-                std::abs(maxzoom - other.maxzoom) < EPSILON;
+                (!std::isnan(maxzoom) && !std::isnan(other.maxzoom) &&
+                    std::abs(maxzoom - other.maxzoom) < EPSILON);
             bool min_eq = (std::isnan(minzoom) && std::isnan(other.minzoom)) ||
-                std::abs(minzoom - other.minzoom) < EPSILON;
+                (!std::isnan(minzoom) && !std::isnan(other.minzoom) &&
+                    std::abs(minzoom - other.minzoom) < EPSILON);
             return max_eq && min_eq && rotate == other.rotate && has_rotate == other.has_rotate;
         }
 
@@ -30,13 +49,15 @@ namespace cot::subschemas
         /// @return True if valid, false otherwise
         bool is_valid(result* rslt = nullptr) const {
             if (!std::isnan(maxzoom) && maxzoom < 0.0) {
-                auto res = result{ result::error_code::InvalidDisplay, "Invalid maxzoom: must be >= 0" };
+                auto res = result{ result::error_code::InvalidDisplay,
+                                  "Invalid maxzoom: must be 0 or greater" };
                 if (rslt) *rslt = res;
                 if (error_handler) error_handler(res);
                 return false;
             }
             if (!std::isnan(minzoom) && minzoom < 0.0) {
-                auto res = result{ result::error_code::InvalidDisplay, "Invalid minzoom: must be >= 0" };
+                auto res = result{ result::error_code::InvalidDisplay,
+                                  "Invalid minzoom: must be 0 or greater" };
                 if (rslt) *rslt = res;
                 if (error_handler) error_handler(res);
                 return false;
@@ -101,9 +122,11 @@ namespace cot::subschemas
                 std::string val = attr.as_string();
                 d.rotate = (val == "true" || val == "1");
             }
-            if (!d.is_valid(rslt) && rslt && rslt->is_success()) {
-                *rslt = result{ result::error_code::InvalidDisplay, "Invalid display data after parsing" };
-                if (error_handler) error_handler(*rslt);
+            if (!d.is_valid(rslt)) {
+                auto res = result{ result::error_code::InvalidDisplay,
+                                  "Invalid display data after parsing" };
+                if (rslt && rslt->is_success()) *rslt = res;
+                if (error_handler) error_handler(res);
             }
             return d;
         }

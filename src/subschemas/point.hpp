@@ -1,4 +1,24 @@
 #pragma once
+/////////////////////////////////////////////////////////////////////////////////
+// @file            point.hpp
+// @brief           A CoT Message subschema class for point data.
+// @author          Chip Brommer
+/////////////////////////////////////////////////////////////////////////////////
+
+#include <cmath>
+#include <cstddef>
+#include <exception>
+#include <iomanip>
+#include <ios>
+#include <limits>
+#include <ostream>
+#include <string>
+
+#include <pugixml.hpp>
+
+#include "../handlers/error_handler.hpp"
+#include "../result/result.hpp"
+
 namespace cot::subschemas
 {
 	/// @brief A CoT Message subschema class for point data
@@ -19,7 +39,7 @@ namespace cot::subschemas
 			constexpr double EPSILON = 1e-6;
 			auto equal = [](double a, double b) noexcept {
 				return (std::isnan(a) && std::isnan(b)) ||
-					std::abs(a - b) < EPSILON;
+					(!std::isnan(a) && !std::isnan(b) && std::abs(a - b) < EPSILON);
 				};
 			return equal(latitude, other.latitude) &&
 				equal(longitude, other.longitude) &&
@@ -141,9 +161,11 @@ namespace cot::subschemas
 			ok = parse_attr("ce", p.circularError) && ok;
 			ok = parse_attr("le", p.linearError) && ok;
 
-			if (ok && !p.is_valid(rslt) && rslt && rslt->is_success()) {
-				*rslt = result{ result::error_code::InvalidPoint, "Invalid point data after parsing" };
-				if (error_handler) error_handler(*rslt);
+			if (ok && !p.is_valid(rslt)) {
+				auto res = result{ result::error_code::InvalidPoint,
+								  "Invalid point data after parsing" };
+				if (rslt && rslt->is_success()) *rslt = res;
+				if (error_handler) error_handler(res);
 			}
 			return p;
 		}

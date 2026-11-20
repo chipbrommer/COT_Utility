@@ -1,6 +1,27 @@
 #pragma once
+/////////////////////////////////////////////////////////////////////////////////
+// @file            datetime.hpp
+// @brief           A CoT Message subschema class for date and time data.
+// @author          Chip Brommer
+/////////////////////////////////////////////////////////////////////////////////
+
+#include <climits>
+#include <ctime>
+#include <exception>
+#include <iomanip>
+#include <ostream>
+#include <sstream>
+#include <string>
+#include <string_view>
+#include <vector>
+
+#include "date.hpp"
+#include "time.hpp"
+#include "../handlers/error_handler.hpp"
+#include "../result/result.hpp"
+
 namespace cot::subschemas
-{    
+{
     /// @brief A CoT Message subschema class for date and time data
     class datetime : public date, public time {
     public:
@@ -18,7 +39,7 @@ namespace cot::subschemas
             bool date_valid = date::is_valid(&date_result);
             bool time_valid = time::is_valid(&time_result);
             if (!date_valid || !time_valid) {
-                std::string error = "";
+                std::string error;
                 result::error_code code = result::error_code::InvalidDate;
                 if (!date_valid) error += "Date invalid: " + date_result.description + "; ";
                 if (!time_valid) {
@@ -111,11 +132,11 @@ namespace cot::subschemas
             }
 
             try {
-                unsigned year = std::stoul(date_parts[0]);
-                unsigned month = std::stoul(date_parts[1]);
-                unsigned day = std::stoul(date_parts[2]);
-                unsigned hour = std::stoul(time_parts[0]);
-                unsigned minute = std::stoul(time_parts[1]);
+                unsigned year = static_cast<unsigned>(std::stoul(date_parts[0]));
+                unsigned month = static_cast<unsigned>(std::stoul(date_parts[1]));
+                unsigned day = static_cast<unsigned>(std::stoul(date_parts[2]));
+                unsigned hour = static_cast<unsigned>(std::stoul(time_parts[0]));
+                unsigned minute = static_cast<unsigned>(std::stoul(time_parts[1]));
                 double second = std::stod(time_parts[2]);
 
                 datetime dt(year, month, day, hour, minute, second);
@@ -152,12 +173,12 @@ namespace cot::subschemas
                 return datetime();
             }
 
-            unsigned year = utc_time->tm_year + 1900;
-            unsigned month = utc_time->tm_mon + 1;
-            unsigned day = utc_time->tm_mday;
-            unsigned hour = utc_time->tm_hour;
-            unsigned minute = utc_time->tm_min;
-            double second = utc_time->tm_sec;
+            unsigned year = static_cast<unsigned>(utc_time->tm_year + 1900);
+            unsigned month = static_cast<unsigned>(utc_time->tm_mon + 1);
+            unsigned day = static_cast<unsigned>(utc_time->tm_mday);
+            unsigned hour = static_cast<unsigned>(utc_time->tm_hour);
+            unsigned minute = static_cast<unsigned>(utc_time->tm_min);
+            double second = static_cast<double>(utc_time->tm_sec);
 
             datetime dt(year, month, day, hour, minute, second);
             if (!dt.is_valid(rslt)) {
@@ -167,7 +188,7 @@ namespace cot::subschemas
         }
 
         /// @brief Sets datetime fields with provided values
-        /// @param year Year (>= 1970), default 0 (no change)
+        /// @param year Year (1970 or later), default 0 (no change)
         /// @param month Month (1-12), default 0 (no change)
         /// @param day Day (1-31), default 0 (no change)
         /// @param hour Hour (0-23), default UINT_MAX (no change)

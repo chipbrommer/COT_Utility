@@ -1,11 +1,23 @@
 #pragma once
+/////////////////////////////////////////////////////////////////////////////////
+// @file            link_attr.hpp
+// @brief           A CoT Message subschema class for route link attributes.
+// @author          Chip Brommer
+/////////////////////////////////////////////////////////////////////////////////
+
 #include <cmath>
+#include <cstddef>
+#include <exception>
 #include <limits>
 #include <ostream>
 #include <string>
 #include <string_view>
 #include <utility>
+
 #include <pugixml.hpp>
+
+#include "../handlers/error_handler.hpp"
+#include "../result/result.hpp"
 
 namespace cot::subschemas
 {

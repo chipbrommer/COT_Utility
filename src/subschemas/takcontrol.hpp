@@ -1,7 +1,18 @@
 #pragma once
-#include <string>
+/////////////////////////////////////////////////////////////////////////////////
+// @file            takcontrol.hpp
+// @brief           A CoT Message subschema class for TakControl data.
+// @author          Chip Brommer
+/////////////////////////////////////////////////////////////////////////////////
+
 #include <ostream>
+#include <string>
+#include <utility>
+
 #include <pugixml.hpp>
+
+#include "../handlers/error_handler.hpp"
+#include "../result/result.hpp"
 
 namespace cot::subschemas
 {
@@ -271,10 +282,11 @@ namespace cot::subschemas
                 }
             }
 
-            if (!tc.is_valid(rslt) && rslt && rslt->is_success()) {
-                *rslt = result{ result::error_code::InvalidTakControl,
+            if (!tc.is_valid(rslt)) {
+                auto res = result{ result::error_code::InvalidTakControl,
                                 "Invalid TakControl data after parsing" };
-                if (error_handler) error_handler(*rslt);
+                if (rslt && rslt->is_success()) *rslt = res;
+                if (error_handler) error_handler(res);
             }
             return tc;
         }

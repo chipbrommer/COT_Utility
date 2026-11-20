@@ -1,4 +1,19 @@
 #pragma once
+/////////////////////////////////////////////////////////////////////////////////
+// @file            creator.hpp
+// @brief           A CoT Message subschema class for creator data.
+// @author          Chip Brommer
+/////////////////////////////////////////////////////////////////////////////////
+
+#include <ostream>
+#include <string>
+#include <utility>
+
+#include <pugixml.hpp>
+
+#include "../handlers/error_handler.hpp"
+#include "../result/result.hpp"
+
 namespace cot::subschemas
 {
     /// @brief A CoT Message subschema class for creator data
@@ -74,9 +89,10 @@ namespace cot::subschemas
             if (auto attr = node.attribute("time")) cr.time = attr.as_string();
             if (auto attr = node.attribute("type")) cr.type = attr.as_string();
             if (auto attr = node.attribute("uid")) cr.uid = attr.as_string();
-            if (!cr.is_valid(rslt) && rslt && rslt->is_success()) {
-                *rslt = result{ result::error_code::InvalidCreator, "Invalid creator data after parsing" };
-                if (error_handler) error_handler(*rslt);
+            if (!cr.is_valid(rslt)) {
+                auto res = result{ result::error_code::InvalidCreator, "Invalid creator data after parsing" };
+                if (rslt && rslt->is_success()) *rslt = res;
+                if (error_handler) error_handler(res);
             }
             return cr;
         }

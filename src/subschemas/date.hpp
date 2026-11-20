@@ -1,4 +1,18 @@
 #pragma once
+/////////////////////////////////////////////////////////////////////////////////
+// @file            date.hpp
+// @brief           A CoT Message subschema class for date data.
+// @author          Chip Brommer
+/////////////////////////////////////////////////////////////////////////////////
+
+#include <iomanip>
+#include <ostream>
+#include <sstream>
+#include <string>
+
+#include "../handlers/error_handler.hpp"
+#include "../result/result.hpp"
+
 namespace cot::subschemas
 {
     /// @brief A CoT Message subschema class for date data
@@ -14,7 +28,7 @@ namespace cot::subschemas
         /// @return True if valid, false otherwise
         bool is_valid(result* rslt = nullptr) const {
             if (year < 1970) {
-                auto res = result{ result::error_code::InvalidDate, "Year must be >= 1970" };
+                auto res = result{ result::error_code::InvalidDate, "Year must be 1970 or later" };
                 if (rslt) *rslt = res;
                 if (error_handler) error_handler(res);
                 return false;
@@ -65,8 +79,9 @@ namespace cot::subschemas
         unsigned int day{ 0 };
 
     private:
-        unsigned days_in_month() const {
+        unsigned days_in_month() const noexcept {
             static constexpr unsigned days[12] = { 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
+            if (month < 1 || month > 12) return 0;
             if (month == 2 && is_leap_year()) return 29;
             return days[month - 1];
         }
@@ -75,5 +90,4 @@ namespace cot::subschemas
             return (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0);
         }
     };
-
 }

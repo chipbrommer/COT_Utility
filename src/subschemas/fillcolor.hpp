@@ -1,4 +1,20 @@
 #pragma once
+/////////////////////////////////////////////////////////////////////////////////
+// @file            fillcolor.hpp
+// @brief           A CoT Message subschema class for fillcolor data.
+// @author          Chip Brommer
+/////////////////////////////////////////////////////////////////////////////////
+
+#include <exception>
+#include <limits>
+#include <ostream>
+#include <string>
+
+#include <pugixml.hpp>
+
+#include "../handlers/error_handler.hpp"
+#include "../result/result.hpp"
+
 namespace cot::subschemas
 {
     /// @brief A CoT Message subschema class for fillcolor data
@@ -64,9 +80,11 @@ namespace cot::subschemas
                     fc.value = INVALID_VALUE;
                 }
             }
-            if (!fc.is_valid(rslt) && rslt && rslt->is_success()) {
-                *rslt = result{ result::error_code::InvalidFillColor, "Invalid fillcolor data after parsing" };
-                if (error_handler) error_handler(*rslt);
+            if (!fc.is_valid(rslt)) {
+                auto res = result{ result::error_code::InvalidFillColor,
+                                  "Invalid fillcolor data after parsing" };
+                if (rslt && rslt->is_success()) *rslt = res;
+                if (error_handler) error_handler(res);
             }
             return fc;
         }
@@ -80,7 +98,7 @@ namespace cot::subschemas
             return os;
         }
 
-        int value{ 0 };
+        int value{ INVALID_VALUE };
 
     private:
         inline static constexpr int INVALID_VALUE = std::numeric_limits<int>::min();

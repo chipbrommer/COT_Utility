@@ -1,4 +1,19 @@
 #pragma once
+/////////////////////////////////////////////////////////////////////////////////
+// @file            uid.hpp
+// @brief           A CoT Message subschema class for uid data.
+// @author          Chip Brommer
+/////////////////////////////////////////////////////////////////////////////////
+
+#include <ostream>
+#include <string>
+#include <utility>
+
+#include <pugixml.hpp>
+
+#include "../handlers/error_handler.hpp"
+#include "../result/result.hpp"
+
 namespace cot::subschemas
 {
 	/// @brief A CoT Message subschema class for uid data
@@ -8,7 +23,7 @@ namespace cot::subschemas
 		explicit uid(std::string droid = INVALID_STR,
 			std::string nett = INVALID_STR,
 			bool alertable = false,
-			bool has_alertable = false)
+			bool has_alertable = false) noexcept
 			: droid(std::move(droid)), nett(std::move(nett)),
 			alertable(alertable), has_alertable(has_alertable) {
 		}
@@ -72,9 +87,11 @@ namespace cot::subschemas
 			if (!droid_attr) droid_attr = node.attribute("droid");
 			if (droid_attr) u.droid = droid_attr.as_string();
 			if (auto attr = node.attribute("nett")) u.nett = attr.as_string();
-			if (!u.is_valid(rslt) && rslt && rslt->is_success()) {
-				*rslt = result{ result::error_code::InvalidUid, "Invalid uid data after parsing" };
-				if (error_handler) error_handler(*rslt);
+			if (!u.is_valid(rslt)) {
+				auto res = result{ result::error_code::InvalidUid,
+								  "Invalid uid data after parsing" };
+				if (rslt && rslt->is_success()) *rslt = res;
+				if (error_handler) error_handler(res);
 			}
 			return u;
 		}
@@ -89,8 +106,8 @@ namespace cot::subschemas
 			return os;
 		}
 
-		std::string droid{ "" };
-		std::string nett{ "" };
+		std::string droid{ INVALID_STR };
+		std::string nett{ INVALID_STR };
 		bool alertable{ false };
 		bool has_alertable{ false };
 

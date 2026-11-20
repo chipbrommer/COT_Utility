@@ -1,4 +1,19 @@
 #pragma once
+/////////////////////////////////////////////////////////////////////////////////
+// @file            unitmodifier.hpp
+// @brief           A CoT Message subschema class for military symbol unit modifier data.
+// @author          Chip Brommer
+/////////////////////////////////////////////////////////////////////////////////
+
+#include <ostream>
+#include <string>
+#include <utility>
+
+#include <pugixml.hpp>
+
+#include "../handlers/error_handler.hpp"
+#include "../result/result.hpp"
+
 namespace cot::subschemas
 {
 	/// @brief A CoT Message subschema class for military symbol unit modifier data
@@ -60,9 +75,11 @@ namespace cot::subschemas
 			}
 			if (auto attr = node.attribute("code")) um.code = attr.as_string();
 			if (auto txt = node.text()) um.text = txt.as_string();
-			if (!um.is_valid(rslt) && rslt && rslt->is_success()) {
-				*rslt = result{ result::error_code::InvalidUnitModifier, "Invalid unitmodifier data after parsing" };
-				if (error_handler) error_handler(*rslt);
+			if (!um.is_valid(rslt)) {
+				auto res = result{ result::error_code::InvalidUnitModifier,
+								  "Invalid unitmodifier data after parsing" };
+				if (rslt && rslt->is_success()) *rslt = res;
+				if (error_handler) error_handler(res);
 			}
 			return um;
 		}
@@ -76,8 +93,8 @@ namespace cot::subschemas
 			return os;
 		}
 
-		std::string code{ "" };
-		std::string text{ "" };
+		std::string code{ INVALID_VALUE };
+		std::string text{ INVALID_VALUE };
 
 	private:
 		inline static constexpr const char* INVALID_VALUE = "";

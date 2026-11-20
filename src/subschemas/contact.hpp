@@ -1,4 +1,19 @@
 #pragma once
+/////////////////////////////////////////////////////////////////////////////////
+// @file            contact.hpp
+// @brief           A CoT Message subschema class for contact data.
+// @author          Chip Brommer
+/////////////////////////////////////////////////////////////////////////////////
+
+#include <ostream>
+#include <string>
+#include <utility>
+
+#include <pugixml.hpp>
+
+#include "../handlers/error_handler.hpp"
+#include "../result/result.hpp"
+
 namespace cot::subschemas
 {
 	/// @brief A CoT Message subschema class for contact data
@@ -73,9 +88,10 @@ namespace cot::subschemas
 			if (auto attr = node.attribute("xmppUsername")) c.xmppUsername = attr.as_string();
 			if (auto attr = node.attribute("phone")) c.phone = attr.as_string();
 			if (auto attr = node.attribute("name")) c.name = attr.as_string();
-			if (!c.is_valid(rslt) && rslt && rslt->is_success()) {
-				*rslt = result{ result::error_code::InvalidContact, "Invalid contact data after parsing" };
-				if (error_handler) error_handler(*rslt);
+			if (!c.is_valid(rslt)) {
+				auto res = result{ result::error_code::InvalidContact, "Invalid contact data after parsing" };
+				if (rslt && rslt->is_success()) *rslt = res;
+				if (error_handler) error_handler(res);
 			}
 			return c;
 		}
@@ -101,5 +117,4 @@ namespace cot::subschemas
 	private:
 		inline static constexpr const char* INVALID_VALUE = "";
 	};
-
 }

@@ -1,10 +1,22 @@
 #pragma once
+/////////////////////////////////////////////////////////////////////////////////
+// @file            chat.hpp
+// @brief           A CoT Message subschema class for <__chat> and
+//                  <__chatreceipt> elements.
+// @author          Chip Brommer
+/////////////////////////////////////////////////////////////////////////////////
+
+#include <exception>
 #include <map>
 #include <ostream>
 #include <string>
 #include <string_view>
 #include <utility>
+
 #include <pugixml.hpp>
+
+#include "../handlers/error_handler.hpp"
+#include "../result/result.hpp"
 
 namespace cot::subschemas
 {
@@ -198,8 +210,9 @@ namespace cot::subschemas
                 }
 
                 result val_res;
-                if (!c.is_valid(&val_res) && rslt && rslt->is_success()) {
-                    *rslt = val_res;
+                if (!c.is_valid(&val_res)) {
+                    if (rslt && rslt->is_success()) *rslt = val_res;
+                    if (error_handler) error_handler(val_res);
                 }
             }
             catch (const std::exception& ex) {

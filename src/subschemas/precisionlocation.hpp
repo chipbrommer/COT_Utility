@@ -1,4 +1,19 @@
 #pragma once
+/////////////////////////////////////////////////////////////////////////////////
+// @file            precisionlocation.hpp
+// @brief           A CoT Message subschema class for precisionlocation data.
+// @author          Chip Brommer
+/////////////////////////////////////////////////////////////////////////////////
+
+#include <ostream>
+#include <string>
+#include <utility>
+
+#include <pugixml.hpp>
+
+#include "../handlers/error_handler.hpp"
+#include "../result/result.hpp"
+
 namespace cot::subschemas
 {
     /// @brief A CoT Message subschema class for precisionlocation data
@@ -61,10 +76,11 @@ namespace cot::subschemas
             }
             if (auto attr = node.attribute("altsrc")) pl.altsrc = attr.as_string();
             if (auto attr = node.attribute("geopointsrc")) pl.geopointsrc = attr.as_string();
-            if (!pl.is_valid(rslt) && rslt && rslt->is_success()) {
-                *rslt = result{ result::error_code::InvalidPrecisionLocation,
+            if (!pl.is_valid(rslt)) {
+                auto res = result{ result::error_code::InvalidPrecisionLocation,
                                "Invalid precisionlocation data after parsing" };
-                if (error_handler) error_handler(*rslt);
+                if (rslt && rslt->is_success()) *rslt = res;
+                if (error_handler) error_handler(res);
             }
             return pl;
         }
@@ -78,11 +94,10 @@ namespace cot::subschemas
             return os;
         }
 
-        std::string altsrc{""};
-        std::string geopointsrc{""};
+        std::string altsrc{ INVALID_VALUE };
+        std::string geopointsrc{ INVALID_VALUE };
 
     private:
         inline static constexpr const char* INVALID_VALUE = "";
     };
-
 }

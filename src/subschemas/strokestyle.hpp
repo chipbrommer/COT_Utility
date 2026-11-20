@@ -1,4 +1,19 @@
 #pragma once
+/////////////////////////////////////////////////////////////////////////////////
+// @file            strokestyle.hpp
+// @brief           A CoT Message subschema class for strokestyle data.
+// @author          Chip Brommer
+/////////////////////////////////////////////////////////////////////////////////
+
+#include <ostream>
+#include <string>
+#include <utility>
+
+#include <pugixml.hpp>
+
+#include "../handlers/error_handler.hpp"
+#include "../result/result.hpp"
+
 namespace cot::subschemas
 {
 	/// @brief A CoT Message subschema class for strokestyle data
@@ -55,9 +70,11 @@ namespace cot::subschemas
 				return ss;
 			}
 			if (auto attr = node.attribute("value")) ss.value = attr.as_string();
-			if (!ss.is_valid(rslt) && rslt && rslt->is_success()) {
-				*rslt = result{ result::error_code::InvalidStrokeStyle, "Invalid strokestyle data after parsing" };
-				if (error_handler) error_handler(*rslt);
+			if (!ss.is_valid(rslt)) {
+				auto res = result{ result::error_code::InvalidStrokeStyle,
+								  "Invalid strokestyle data after parsing" };
+				if (rslt && rslt->is_success()) *rslt = res;
+				if (error_handler) error_handler(res);
 			}
 			return ss;
 		}
@@ -70,7 +87,7 @@ namespace cot::subschemas
 			return os;
 		}
 
-		std::string value{ "" };
+		std::string value{ INVALID_VALUE };
 
 	private:
 		inline static constexpr const char* INVALID_VALUE = "";

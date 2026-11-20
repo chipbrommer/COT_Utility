@@ -1,12 +1,23 @@
 #pragma once
-#include <algorithm>
+/////////////////////////////////////////////////////////////////////////////////
+// @file            message.hpp
+// @brief           A root XML CoT message schema class.
+// @author          Chip Brommer
+/////////////////////////////////////////////////////////////////////////////////
+
 #include <cctype>
+#include <cstddef>
+#include <exception>
 #include <ostream>
 #include <string>
 #include <string_view>
 #include <utility>
+
 #include <pugixml.hpp>
 
+#include "../handlers/error_handler.hpp"
+#include "../result/result.hpp"
+#include "../xml_utils.hpp"
 #include "event.hpp"
 
 namespace cot::subschemas

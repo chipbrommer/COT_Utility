@@ -1,40 +1,23 @@
 #pragma once
 /////////////////////////////////////////////////////////////////////////////////
 // @file            cot.hpp
-// @brief           a single include api for handling CoT messages
+// @brief           A single include API for handling CoT messages.
 // @author          Chip Brommer
 /////////////////////////////////////////////////////////////////////////////////
 
-/////////////////////////////////////////////////////////////////////////////////
-//
-//  Include files:
-//          name                            reason included
-//          --------------------            ------------------------------------
-#include <algorithm>
-#include <climits>                          // MAX and MIN
-#include <cmath>                            // isnan, isfinite
-#include <cstddef>                          // size_t
-#include <functional>                       // function
-#include <iomanip>                          // setw, setprecision
-#include <iostream>                         // ostream
-#include <limits>                           // numeric_limits
-#include <map>                              // ordered map
-#include <optional>
-#include <sstream>                          // stringstream
+#include <cstddef>
+#include <functional>
+#include <sstream>
 #include <string>
 #include <string_view>
-#include <unordered_map>                    // maps
-#include <utility>                          // move
-#include <vector>
-//
-#include <pugixml.hpp>                      // pugi xml
-//
+#include <utility>
+
+#include <pugixml.hpp>
+
 #include "version.hpp"
 #include "result/result.hpp"
 #include "handlers/error_handler.hpp"
 #include "subschemas/message.hpp"
-//
-/////////////////////////////////////////////////////////////////////////////////
 
 namespace cot
 {
@@ -71,10 +54,27 @@ namespace cot
             }
             return count;
         }
+
+        inline result trim_leading_noise(std::string& xml, result* rslt = nullptr) {
+            if (xml.empty()) {
+                return report_error(
+                    result{ result::error_code::InvalidInput, "Empty input buffer" }, rslt);
+            }
+
+            const std::size_t tag_start = xml.find('<');
+            if (tag_start == std::string::npos) {
+                return report_error(
+                    result{ result::error_code::InvalidXml, "No XML markup found in buffer" }, rslt);
+            }
+            if (tag_start > 0) {
+                xml.erase(0, tag_start);
+            }
+            return result{ result::error_code::Success };
+        }
     } // namespace detail_impl
 
     /// @brief Get the current version information
-    /// @return String containing version (e.g., "cot::utility v1.0.0")
+    /// @return String containing version (e.g., "cot::utility v0.5.0")
     [[nodiscard]] inline std::string get_version() {
         std::ostringstream oss;
         oss << "cot::utility v" << COT_UTILITY_MAJOR << '.' << COT_UTILITY_MINOR << '.' << COT_UTILITY_BUILD;
@@ -92,7 +92,7 @@ namespace cot
         }
 
         pugi::xml_document doc;
-        pugi::xml_parse_result parse_result = doc.load_buffer(buffer.data(), buffer.size());
+        const pugi::xml_parse_result parse_result = doc.load_buffer(buffer.data(), buffer.size());
         if (!parse_result) {
             return detail_impl::report_error(
                 result{ result::error_code::InvalidXml,
@@ -110,20 +110,10 @@ namespace cot
     /// @param rslt Optional result structure receiving outcome details
     /// @return result indicating success or failure with description
     [[nodiscard]] inline result prep_xml_message(std::string& xml, result* rslt = nullptr) {
-        if (xml.empty()) {
-            return detail_impl::report_error(
-                result{ result::error_code::InvalidInput, "Empty input buffer" }, rslt);
+        result trim_res = detail_impl::trim_leading_noise(xml, rslt);
+        if (trim_res.is_failed()) {
+            return trim_res;
         }
-
-        const std::size_t tag_start = xml.find('<');
-        if (tag_start == std::string::npos) {
-            return detail_impl::report_error(
-                result{ result::error_code::InvalidXml, "No XML markup found in buffer" }, rslt);
-        }
-        if (tag_start > 0) {
-            xml.erase(0, tag_start);
-        }
-
         return verify_xml(xml, rslt);
     }
 
@@ -136,17 +126,19 @@ namespace cot
         result* rslt = nullptr,
         pugi::xml_document* document = nullptr) {
         std::string cleaned(buffer);
-        result prep_res;
-        if (prep_xml_message(cleaned, &prep_res).is_failed()) {
-            if (rslt) *rslt = prep_res;
+        result trim_res;
+        if (detail_impl::trim_leading_noise(cleaned, &trim_res).is_failed()) {
+            if (rslt) *rslt = trim_res;
             return false;
         }
 
         pugi::xml_document doc;
-        pugi::xml_parse_result xml_result = doc.load_buffer(cleaned.data(), cleaned.size());
+        const pugi::xml_parse_result xml_result = doc.load_buffer(cleaned.data(), cleaned.size());
         if (!xml_result) {
             detail_impl::report_error(
-                result{ result::error_code::InvalidXml, xml_result.description() }, rslt);
+                result{ result::error_code::InvalidXml,
+                        std::string(xml_result.description()) + " at offset " +
+                        std::to_string(xml_result.offset) }, rslt);
             return false;
         }
 
@@ -212,7 +204,7 @@ namespace cot
         }
 
         pugi::xml_document verify_doc;
-        pugi::xml_parse_result parse_result = verify_doc.load_buffer(temp.data(), temp.size());
+        const pugi::xml_parse_result parse_result = verify_doc.load_buffer(temp.data(), temp.size());
         if (!parse_result) {
             return detail_impl::report_error(
                 result{ result::error_code::InvalidXml,
@@ -235,17 +227,19 @@ namespace cot
         response.clear();
 
         std::string cleaned(received);
-        result prep_res;
-        if (prep_xml_message(cleaned, &prep_res).is_failed()) {
-            if (rslt) *rslt = prep_res;
-            return prep_res;
+        result trim_res;
+        if (detail_impl::trim_leading_noise(cleaned, &trim_res).is_failed()) {
+            if (rslt) *rslt = trim_res;
+            return trim_res;
         }
 
         pugi::xml_document doc;
-        pugi::xml_parse_result res = doc.load_buffer(cleaned.data(), cleaned.size());
+        const pugi::xml_parse_result res = doc.load_buffer(cleaned.data(), cleaned.size());
         if (!res) {
             return detail_impl::report_error(
-                result{ result::error_code::ProcessingError, res.description() }, rslt);
+                result{ result::error_code::InvalidXml,
+                        std::string(res.description()) + " at offset " +
+                        std::to_string(res.offset) }, rslt);
         }
 
         pugi::xml_node status_node = detail_impl::find_first_element_by_name(doc, "status");

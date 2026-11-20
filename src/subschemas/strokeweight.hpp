@@ -1,4 +1,21 @@
 #pragma once
+/////////////////////////////////////////////////////////////////////////////////
+// @file            strokeweight.hpp
+// @brief           A CoT Message subschema class for strokeweight data.
+// @author          Chip Brommer
+/////////////////////////////////////////////////////////////////////////////////
+
+#include <cmath>
+#include <exception>
+#include <limits>
+#include <ostream>
+#include <string>
+
+#include <pugixml.hpp>
+
+#include "../handlers/error_handler.hpp"
+#include "../result/result.hpp"
+
 namespace cot::subschemas
 {
     /// @brief A CoT Message subschema class for strokeweight data
@@ -11,7 +28,8 @@ namespace cot::subschemas
         bool operator==(const strokeweight& other) const noexcept {
             constexpr double EPSILON = 1e-6;
             return (std::isnan(value) && std::isnan(other.value)) ||
-                std::abs(value - other.value) < EPSILON;
+                (!std::isnan(value) && !std::isnan(other.value) &&
+                    std::abs(value - other.value) < EPSILON);
         }
 
         /// @brief Inequality comparison
@@ -23,6 +41,12 @@ namespace cot::subschemas
         bool is_valid(result* rslt = nullptr) const {
             if (std::isnan(value)) {
                 auto res = result{ result::error_code::InvalidStrokeWeight, "strokeweight value is unset" };
+                if (rslt) *rslt = res;
+                if (error_handler) error_handler(res);
+                return false;
+            }
+            if (!std::isfinite(value)) {
+                auto res = result{ result::error_code::InvalidStrokeWeight, "strokeweight value is non-finite" };
                 if (rslt) *rslt = res;
                 if (error_handler) error_handler(res);
                 return false;
@@ -68,9 +92,11 @@ namespace cot::subschemas
                     sw.value = INVALID_NUM;
                 }
             }
-            if (!sw.is_valid(rslt) && rslt && rslt->is_success()) {
-                *rslt = result{ result::error_code::InvalidStrokeWeight, "Invalid strokeweight data after parsing" };
-                if (error_handler) error_handler(*rslt);
+            if (!sw.is_valid(rslt)) {
+                auto res = result{ result::error_code::InvalidStrokeWeight,
+                                  "Invalid strokeweight data after parsing" };
+                if (rslt && rslt->is_success()) *rslt = res;
+                if (error_handler) error_handler(res);
             }
             return sw;
         }

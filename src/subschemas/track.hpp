@@ -1,4 +1,21 @@
 #pragma once
+/////////////////////////////////////////////////////////////////////////////////
+// @file            track.hpp
+// @brief           A CoT Message subschema class for track data.
+// @author          Chip Brommer
+/////////////////////////////////////////////////////////////////////////////////
+
+#include <cmath>
+#include <iomanip>
+#include <limits>
+#include <ostream>
+#include <string>
+
+#include <pugixml.hpp>
+
+#include "../handlers/error_handler.hpp"
+#include "../result/result.hpp"
+
 namespace cot::subschemas
 {
 	/// @brief A CoT Message subschema class for track data
@@ -11,7 +28,7 @@ namespace cot::subschemas
 			double eCourse = INVALID_VALUE,
 			double eSpeed = INVALID_VALUE,
 			double eSlope = INVALID_VALUE,
-			double version = INVALID_VALUE)
+			double version = INVALID_VALUE) noexcept
 			: course(course), speed(speed), slope(slope),
 			eCourse(eCourse), eSpeed(eSpeed), eSlope(eSlope), version(version) {
 		}
@@ -19,9 +36,9 @@ namespace cot::subschemas
 		/// @brief Equality comparison
 		bool operator==(const track& other) const noexcept {
 			constexpr double EPSILON = 1e-6;
-			auto equal = [](double a, double b) {
-				return std::isnan(a) && std::isnan(b) ||
-					std::abs(a - b) < EPSILON;
+			auto equal = [](double a, double b) noexcept {
+				return (std::isnan(a) && std::isnan(b)) ||
+					(!std::isnan(a) && !std::isnan(b) && std::abs(a - b) < EPSILON);
 				};
 			return equal(course, other.course) &&
 				equal(speed, other.speed) &&
@@ -45,7 +62,7 @@ namespace cot::subschemas
 				if (error_handler) error_handler(res);
 				return false;
 			}
-			if (course < COURSE_MIN || course > COURSE_MAX) {
+			if (!std::isfinite(course) || course < COURSE_MIN || course > COURSE_MAX) {
 				auto res = result{ result::error_code::InvalidTrack, "Course out of range [0, 360]" };
 				if (rslt) *rslt = res;
 				if (error_handler) error_handler(res);
@@ -57,38 +74,38 @@ namespace cot::subschemas
 				if (error_handler) error_handler(res);
 				return false;
 			}
-			if (speed < SPEED_MIN) {
-				auto res = result{ result::error_code::InvalidTrack, "Speed is negative" };
+			if (!std::isfinite(speed) || speed < SPEED_MIN) {
+				auto res = result{ result::error_code::InvalidTrack, "Speed is invalid or negative" };
 				if (rslt) *rslt = res;
 				if (error_handler) error_handler(res);
 				return false;
 			}
-			if (!std::isnan(slope) && (slope < SLOPE_MIN || slope > SLOPE_MAX)) {
+			if (!std::isnan(slope) && (!std::isfinite(slope) || slope < SLOPE_MIN || slope > SLOPE_MAX)) {
 				auto res = result{ result::error_code::InvalidTrack, "Slope out of range [-90, 90]" };
 				if (rslt) *rslt = res;
 				if (error_handler) error_handler(res);
 				return false;
 			}
-			if (!std::isnan(eCourse) && eCourse < 0) {
-				auto res = result{ result::error_code::InvalidTrack, "eCourse is negative" };
+			if (!std::isnan(eCourse) && (!std::isfinite(eCourse) || eCourse < 0.0)) {
+				auto res = result{ result::error_code::InvalidTrack, "eCourse is invalid or negative" };
 				if (rslt) *rslt = res;
 				if (error_handler) error_handler(res);
 				return false;
 			}
-			if (!std::isnan(eSpeed) && eSpeed < 0) {
-				auto res = result{ result::error_code::InvalidTrack, "eSpeed is negative" };
+			if (!std::isnan(eSpeed) && (!std::isfinite(eSpeed) || eSpeed < 0.0)) {
+				auto res = result{ result::error_code::InvalidTrack, "eSpeed is invalid or negative" };
 				if (rslt) *rslt = res;
 				if (error_handler) error_handler(res);
 				return false;
 			}
-			if (!std::isnan(eSlope) && eSlope < 0) {
-				auto res = result{ result::error_code::InvalidTrack, "eSlope is negative" };
+			if (!std::isnan(eSlope) && (!std::isfinite(eSlope) || eSlope < 0.0)) {
+				auto res = result{ result::error_code::InvalidTrack, "eSlope is invalid or negative" };
 				if (rslt) *rslt = res;
 				if (error_handler) error_handler(res);
 				return false;
 			}
-			if (!std::isnan(version) && version <= 0) {
-				auto res = result{ result::error_code::InvalidTrack, "Version is non-positive" };
+			if (!std::isnan(version) && (!std::isfinite(version) || version <= 0.0)) {
+				auto res = result{ result::error_code::InvalidTrack, "Version is invalid or non-positive" };
 				if (rslt) *rslt = res;
 				if (error_handler) error_handler(res);
 				return false;
@@ -135,9 +152,11 @@ namespace cot::subschemas
 			t.eSpeed = node.attribute("eSpeed").as_double(INVALID_VALUE);
 			t.eSlope = node.attribute("eSlope").as_double(INVALID_VALUE);
 			t.version = node.attribute("version").as_double(INVALID_VALUE);
-			if (!t.is_valid(rslt) && rslt && rslt->is_success()) {
-				*rslt = result{ result::error_code::InvalidTrack, "Invalid track data after parsing" };
-				if (error_handler) error_handler(*rslt);
+			if (!t.is_valid(rslt)) {
+				auto res = result{ result::error_code::InvalidTrack,
+								  "Invalid track data after parsing" };
+				if (rslt && rslt->is_success()) *rslt = res;
+				if (error_handler) error_handler(res);
 			}
 			return t;
 		}
@@ -158,13 +177,13 @@ namespace cot::subschemas
 			return os;
 		}
 
-		double course{ 0.0 };
-		double speed{ 0.0 };
-		double slope{ 0.0 };
-		double eCourse{ std::numeric_limits<double>::quiet_NaN() };
-		double eSpeed{ std::numeric_limits<double>::quiet_NaN() };
-		double eSlope{ std::numeric_limits<double>::quiet_NaN() };
-		double version{ std::numeric_limits<double>::quiet_NaN() };
+		double course{ INVALID_VALUE };
+		double speed{ INVALID_VALUE };
+		double slope{ INVALID_VALUE };
+		double eCourse{ INVALID_VALUE };
+		double eSpeed{ INVALID_VALUE };
+		double eSlope{ INVALID_VALUE };
+		double version{ INVALID_VALUE };
 
 	private:
 		inline static constexpr double INVALID_VALUE = std::numeric_limits<double>::quiet_NaN();

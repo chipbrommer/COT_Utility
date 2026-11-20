@@ -1,4 +1,23 @@
 #pragma once
+/////////////////////////////////////////////////////////////////////////////////
+// @file            status.hpp
+// @brief           A CoT Message subschema class for status data.
+// @author          Chip Brommer
+/////////////////////////////////////////////////////////////////////////////////
+
+#include <cmath>
+#include <exception>
+#include <iomanip>
+#include <limits>
+#include <ostream>
+#include <string>
+#include <utility>
+
+#include <pugixml.hpp>
+
+#include "../handlers/error_handler.hpp"
+#include "../result/result.hpp"
+
 namespace cot::subschemas
 {
 	/// @brief A CoT Message subschema class for status data
@@ -14,7 +33,8 @@ namespace cot::subschemas
 		bool operator==(const status& other) const noexcept {
 			constexpr double EPSILON = 1e-6;
 			bool battery_eq = (std::isnan(battery) && std::isnan(other.battery)) ||
-				std::abs(battery - other.battery) < EPSILON;
+				(!std::isnan(battery) && !std::isnan(other.battery) &&
+					std::abs(battery - other.battery) < EPSILON);
 			return battery_eq && readiness == other.readiness;
 		}
 
@@ -25,7 +45,7 @@ namespace cot::subschemas
 		/// @param rslt Optional result structure for invalid reason
 		/// @return True if valid, false otherwise
 		bool is_valid(result* rslt = nullptr) const {
-			if (!std::isnan(battery) && (battery < 0.0 || battery > 100.0)) {
+			if (!std::isnan(battery) && (!std::isfinite(battery) || battery < 0.0 || battery > 100.0)) {
 				auto res = result{ result::error_code::InvalidStatus, "Battery out of range (0-100)" };
 				if (rslt) *rslt = res;
 				if (error_handler) error_handler(res);
@@ -80,9 +100,10 @@ namespace cot::subschemas
 				}
 			}
 			if (auto attr = node.attribute("readiness")) s.readiness = attr.as_string();
-			if (!s.is_valid(rslt) && rslt && rslt->is_success()) {
-				*rslt = result{ result::error_code::InvalidStatus, "Invalid status data after parsing" };
-				if (error_handler) error_handler(*rslt);
+			if (!s.is_valid(rslt)) {
+				auto res = result{ result::error_code::InvalidStatus, "Invalid status data after parsing" };
+				if (rslt && rslt->is_success()) *rslt = res;
+				if (error_handler) error_handler(res);
 			}
 			return s;
 		}
@@ -99,7 +120,7 @@ namespace cot::subschemas
 		}
 
 		double battery{ INVALID_NUM };
-		std::string readiness{ "" };
+		std::string readiness{ INVALID_STR };
 
 	private:
 		inline static constexpr double INVALID_NUM = std::numeric_limits<double>::quiet_NaN();

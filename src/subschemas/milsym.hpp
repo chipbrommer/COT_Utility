@@ -1,4 +1,21 @@
 #pragma once
+/////////////////////////////////////////////////////////////////////////////////
+// @file            milsym.hpp
+// @brief           A CoT Message subschema class for military symbol data.
+// @author          Chip Brommer
+/////////////////////////////////////////////////////////////////////////////////
+
+#include <ostream>
+#include <string>
+#include <utility>
+#include <vector>
+
+#include <pugixml.hpp>
+
+#include "../handlers/error_handler.hpp"
+#include "../result/result.hpp"
+#include "unitmodifier.hpp"
+
 namespace cot::subschemas
 {
     /// @brief A CoT Message subschema class for military symbol data
@@ -72,9 +89,10 @@ namespace cot::subschemas
                     ms.modifiers.push_back(unitmodifier::from_xml(child, rslt));
                 }
             }
-            if (!ms.is_valid(rslt) && rslt && rslt->is_success()) {
-                *rslt = result{ result::error_code::InvalidMilSym, "Invalid milsym data after parsing" };
-                if (error_handler) error_handler(*rslt);
+            if (!ms.is_valid(rslt)) {
+                auto res = result{ result::error_code::InvalidMilSym, "Invalid milsym data after parsing" };
+                if (rslt && rslt->is_success()) *rslt = res;
+                if (error_handler) error_handler(res);
             }
             return ms;
         }

@@ -1,4 +1,10 @@
 #pragma once
+/////////////////////////////////////////////////////////////////////////////////
+// @file            result.hpp
+// @brief           Result structure and error codes for CoT operations.
+// @author          Chip Brommer
+/////////////////////////////////////////////////////////////////////////////////
+
 #include <string>
 #include <string_view>
 #include <utility>
@@ -9,63 +15,63 @@ namespace cot
 	struct result {
 		/// @brief Error code indicating the operation outcome
 		enum class error_code : int {
-			Success,                ///< Operation completed successfully
-			InvalidEvent,           ///< XML is missing or has invalid <event> tag
-			InvalidPoint,           ///< XML is missing or has invalid <point> tag
-			InvalidDetail,          ///< XML has invalid <detail> tag
-			InvalidColor,           ///< Invalid color data (strokecolor, fillcolor, color)
-			InvalidFillColor,       ///< Invalid fillColor data
-			InvalidImage,           ///< Invalid image data
-			InvalidInclination,     ///< Invalid inclination data
-			InvalidLabelsOn,        ///< Invalid labels_on data
-			InvalidStrokeColor,     ///< Invalid strokeColor data
-			InvalidStrokeStyle,     ///< Invalid strokeStyle data
-			InvalidStrokeWeight,    ///< Invalid strokeWeight data
-			InvalidUserIcon,        ///< Invalid usericon data
-			InvalidModel,           ///< Invalid model data
-			InvalidTrack,           ///< Invalid track data
-			InvalidLink,            ///< Invalid link data
-			InvalidLinkAttr,        ///< Invalid link_attr data
-			InvalidRemarks,         ///< Invalid remarks data
-			InvalidUnitModifier,    ///< Invalid unitmodifier data
-			InvalidMilIcon,         ///< Invalid milicon data
-			InvalidMilSym,          ///< Invalid milsym data
-			InvalidCreator,         ///< Invalid creator data
-			InvalidDisplay,         ///< Invalid display data
-			InvalidEmergency,       ///< Invalid emergency data
-			InvalidAddress,         ///< Invalid address data
-			InvalidCustomDetail,    ///< Invalid custom detail data
-			InvalidTakv,            ///< Invalid takv data
-			InvalidContact,         ///< Invalid contact data
-			InvalidUid,             ///< Invalid uid data
-			InvalidTog,             ///< Invalid tog data
-			InvalidRange,           ///< Invalid range data
-			InvalidRangeUnits,      ///< Invalid rangeunits data
-			InvalidTakControl,      ///< Invalid TakControl data
-			InvalidAckRequest,      ///< Invalid ackrequest data
+			Success,                  ///< Operation completed successfully
+			InvalidEvent,             ///< XML is missing or has invalid <event> tag
+			InvalidPoint,             ///< XML is missing or has invalid <point> tag
+			InvalidDetail,            ///< XML has invalid <detail> tag
+			InvalidColor,             ///< Invalid color data (strokecolor, fillcolor, color)
+			InvalidFillColor,         ///< Invalid fillColor data
+			InvalidImage,             ///< Invalid image data
+			InvalidInclination,       ///< Invalid inclination data
+			InvalidLabelsOn,          ///< Invalid labels_on data
+			InvalidStrokeColor,       ///< Invalid strokeColor data
+			InvalidStrokeStyle,       ///< Invalid strokeStyle data
+			InvalidStrokeWeight,      ///< Invalid strokeWeight data
+			InvalidUserIcon,          ///< Invalid usericon data
+			InvalidModel,             ///< Invalid model data
+			InvalidTrack,             ///< Invalid track data
+			InvalidLink,              ///< Invalid link data
+			InvalidLinkAttr,          ///< Invalid link_attr data
+			InvalidRemarks,           ///< Invalid remarks data
+			InvalidUnitModifier,      ///< Invalid unitmodifier data
+			InvalidMilIcon,           ///< Invalid milicon data
+			InvalidMilSym,            ///< Invalid milsym data
+			InvalidCreator,           ///< Invalid creator data
+			InvalidDisplay,           ///< Invalid display data
+			InvalidEmergency,         ///< Invalid emergency data
+			InvalidAddress,           ///< Invalid address data
+			InvalidCustomDetail,      ///< Invalid custom detail data
+			InvalidTakv,              ///< Invalid takv data
+			InvalidContact,           ///< Invalid contact data
+			InvalidUid,               ///< Invalid uid data
+			InvalidTog,               ///< Invalid tog data
+			InvalidRange,             ///< Invalid range data
+			InvalidRangeUnits,        ///< Invalid rangeunits data
+			InvalidTakControl,        ///< Invalid TakControl data
+			InvalidAckRequest,        ///< Invalid ackrequest data
 			InvalidPrecisionLocation, ///< Invalid precisionlocation data
-			InvalidGroup,           ///< Invalid group data
-			InvalidStatus,          ///< Invalid status data
-			InvalidDate,            ///< Invalid date; must have Year, Month, Day
-			InvalidTime,            ///< Invalid time; must have Hour, Minute, Seconds
-			InvalidHow,             ///< Invalid how attribute
-			InvalidType,            ///< Invalid type attribute
-			InvalidXml,             ///< String is not valid XML
-			InvalidInput,           ///< Input is empty or malformed
-			InsufficientData,       ///< Not enough data provided
-			ProcessingError,        ///< Generic processing failure
-			NoModificationMade,     ///< No modification was made
-			StructureDataInvalid,   ///< Structure has invalid data (restored)
-			InvalidData,            ///< Invalid data (restored)
-			InvalidChat,            ///< Invalid chat / chatreceipt data
-			InvalidSpatial          ///< Invalid spatial / attitude / spin data
+			InvalidGroup,             ///< Invalid group data
+			InvalidStatus,            ///< Invalid status data
+			InvalidDate,              ///< Invalid date; must have Year, Month, Day
+			InvalidTime,              ///< Invalid time; must have Hour, Minute, Seconds
+			InvalidHow,               ///< Invalid how attribute
+			InvalidType,              ///< Invalid type attribute
+			InvalidXml,               ///< String is not valid XML
+			InvalidInput,             ///< Input is empty or malformed
+			InsufficientData,         ///< Not enough data provided
+			ProcessingError,          ///< Generic processing failure
+			NoModificationMade,       ///< No modification was made
+			StructureDataInvalid,     ///< Structure has invalid data (restored)
+			InvalidData,              ///< Invalid data (restored)
+			InvalidChat,              ///< Invalid chat / chatreceipt data
+			InvalidSpatial            ///< Invalid spatial / attitude / spin data
 		};
 
 		/// @brief Constructs a successful result
 		result() noexcept : m_code(error_code::Success) {}
 
 		/// @brief Constructs a result with an error code
-		result(error_code code) noexcept : m_code(code) {}
+		explicit result(error_code code) noexcept : m_code(code) {}
 
 		/// @brief Constructs a result with an error code and description
 		result(error_code code, std::string desc) noexcept
@@ -84,6 +90,17 @@ namespace cot
 		/// @brief Move assignment operator
 		result& operator=(result&& other) noexcept = default;
 
+		/// @brief Equality comparison
+		bool operator==(const result& other) const noexcept {
+			return m_code == other.m_code && m_description == other.m_description;
+		}
+
+		/// @brief Inequality comparison
+		bool operator!=(const result& other) const noexcept { return !(*this == other); }
+
+		/// @brief Gets the error code
+		[[nodiscard]] constexpr error_code code() const noexcept { return m_code; }
+
 		/// @brief Checks if the operation was successful
 		[[nodiscard]] bool is_success() const noexcept { return m_code == error_code::Success; }
 
@@ -92,13 +109,13 @@ namespace cot
 
 		/// @brief Converts to string for debugging or logging
 		[[nodiscard]] std::string to_string() const {
-			std::string result = "Result: ";
-			auto code_str = to_string(m_code);
-			result += code_str;
+			std::string out = "Result: ";
+			const auto code_str = to_string(m_code);
+			out += code_str;
 			if (!m_description.empty() && m_description != code_str) {
-				result += "; Description: " + m_description;
+				out += "; Description: " + m_description;
 			}
-			return result;
+			return out;
 		}
 
 		/// @brief Implicit conversion to string

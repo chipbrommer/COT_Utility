@@ -1,4 +1,19 @@
 #pragma once
+/////////////////////////////////////////////////////////////////////////////////
+// @file            milicon.hpp
+// @brief           A CoT Message subschema class for military icon data.
+// @author          Chip Brommer
+/////////////////////////////////////////////////////////////////////////////////
+
+#include <ostream>
+#include <string>
+#include <utility>
+
+#include <pugixml.hpp>
+
+#include "../handlers/error_handler.hpp"
+#include "../result/result.hpp"
+
 namespace cot::subschemas
 {
     /// @brief A CoT Message subschema class for military icon data
@@ -57,9 +72,11 @@ namespace cot::subschemas
                 return mi;
             }
             if (auto attr = node.attribute("id")) mi.id = attr.as_string();
-            if (!mi.is_valid(rslt) && rslt && rslt->is_success()) {
-                *rslt = result{ result::error_code::InvalidMilIcon, "Invalid milicon data after parsing" };
-                if (error_handler) error_handler(*rslt);
+            if (!mi.is_valid(rslt)) {
+                auto res = result{ result::error_code::InvalidMilIcon,
+                                  "Invalid milicon data after parsing" };
+                if (rslt && rslt->is_success()) *rslt = res;
+                if (error_handler) error_handler(res);
             }
             return mi;
         }
@@ -72,7 +89,7 @@ namespace cot::subschemas
             return os;
         }
 
-        std::string id{ "" };
+        std::string id{ INVALID_VALUE };
 
     private:
         inline static constexpr const char* INVALID_VALUE = "";

@@ -1,12 +1,25 @@
 #pragma once
+/////////////////////////////////////////////////////////////////////////////////
+// @file            spatial.hpp
+// @brief           A CoT Message subschema class for <spatial> orientation and spin data.
+// @author          Chip Brommer
+/////////////////////////////////////////////////////////////////////////////////
+
 #include <cmath>
+#include <cstddef>
+#include <exception>
 #include <iomanip>
 #include <limits>
 #include <ostream>
+#include <sstream>
 #include <string>
 #include <string_view>
 #include <utility>
+
 #include <pugixml.hpp>
+
+#include "../handlers/error_handler.hpp"
+#include "../result/result.hpp"
 
 namespace cot::subschemas
 {
@@ -172,8 +185,8 @@ namespace cot::subschemas
             if (!parse_number_attr(node, "eYaw", vec.eYaw, rslt)) return vec;
 
             result val_res;
-            if (!vec.is_valid(expected_tag, &val_res) && rslt && rslt->is_success()) {
-                *rslt = val_res;
+            if (!vec.is_valid(expected_tag, &val_res)) {
+                if (rslt && rslt->is_success()) *rslt = val_res;
             }
             return vec;
         }
@@ -284,10 +297,18 @@ namespace cot::subschemas
             for (auto child : node.children()) {
                 const std::string_view child_name = child.name();
                 if (child_name == "attitude") {
-                    sp.attitude = spatial_vector::from_xml(child, "attitude", rslt);
+                    result child_res;
+                    sp.attitude = spatial_vector::from_xml(child, "attitude", &child_res);
+                    if (child_res.is_failed() && rslt && rslt->is_success()) {
+                        *rslt = child_res;
+                    }
                 }
                 else if (child_name == "spin") {
-                    sp.spin = spatial_vector::from_xml(child, "spin", rslt);
+                    result child_res;
+                    sp.spin = spatial_vector::from_xml(child, "spin", &child_res);
+                    if (child_res.is_failed() && rslt && rslt->is_success()) {
+                        *rslt = child_res;
+                    }
                 }
             }
 
