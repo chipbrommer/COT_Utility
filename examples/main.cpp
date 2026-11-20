@@ -1,7 +1,7 @@
 #include <iostream>
 #include <string>
 
-#include "cot.hpp"
+#include "cot_utility.hpp"
 
 int main() {
     // Optional centralized error observer for subschema & utility failures

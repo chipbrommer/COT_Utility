@@ -1,7 +1,7 @@
 #pragma once
 /////////////////////////////////////////////////////////////////////////////////
-// @file            cot.hpp
-// @brief           A single include API for handling CoT messages.
+// @file            cot_utility.hpp
+// @brief           A utility for parsing, validating, and generating CoT messages.
 // @author          Chip Brommer
 /////////////////////////////////////////////////////////////////////////////////
 

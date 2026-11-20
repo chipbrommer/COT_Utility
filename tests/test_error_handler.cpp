@@ -5,7 +5,7 @@
 
 #include <gtest/gtest.h>
 
-#include "cot.hpp"
+#include "cot_utility.hpp"
 
 namespace {
 
