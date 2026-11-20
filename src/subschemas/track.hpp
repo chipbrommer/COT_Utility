@@ -36,7 +36,7 @@ namespace cot::subschemas
 		/// @brief Equality comparison
 		bool operator==(const track& other) const noexcept {
 			constexpr double EPSILON = 1e-6;
-			auto equal = [](double a, double b) noexcept {
+			auto equal = [EPSILON](double a, double b) noexcept {
 				return (std::isnan(a) && std::isnan(b)) ||
 					(!std::isnan(a) && !std::isnan(b) && std::abs(a - b) < EPSILON);
 				};
@@ -153,10 +153,7 @@ namespace cot::subschemas
 			t.eSlope = node.attribute("eSlope").as_double(INVALID_VALUE);
 			t.version = node.attribute("version").as_double(INVALID_VALUE);
 			if (!t.is_valid(rslt)) {
-				auto res = result{ result::error_code::InvalidTrack,
-								  "Invalid track data after parsing" };
-				if (rslt && rslt->is_success()) *rslt = res;
-				if (error_handler) error_handler(res);
+				return t;
 			}
 			return t;
 		}

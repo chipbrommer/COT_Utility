@@ -6,9 +6,8 @@
 /////////////////////////////////////////////////////////////////////////////////
 
 #include <algorithm>
-#include <cmath>
+#include <cstddef>
 #include <exception>
-#include <limits>
 #include <map>
 #include <ostream>
 #include <string>
@@ -19,7 +18,6 @@
 
 #include "../handlers/error_handler.hpp"
 #include "../result/result.hpp"
-
 #include "ackrequest.hpp"
 #include "address.hpp"
 #include "chat.hpp"
@@ -61,76 +59,76 @@ namespace cot::subschemas
     class detail {
     public:
         /// @brief Constructor - Initializes everything
-        detail(takv takv = takv(),
-            contact contact = contact(),
-            uid uid = uid(),
-            model model = model(),
-            precisionlocation precisionlocation = precisionlocation(),
-            group group = group(),
-            status status = status(),
-            track track = track(),
-            color color = color(),
-            fillcolor fillcolor = fillcolor(),
-            strokecolor strokecolor = strokecolor(),
-            strokestyle strokestyle = strokestyle(),
-            strokeweight strokeweight = strokeweight(),
-            image image = image(),
-            inclination inclination = inclination(),
-            labels_on labels_on = labels_on(),
-            tog tog = tog(),
-            range range = range(),
-            rangeunits rangeunits = rangeunits(),
-            usericon usericon = usericon(),
-            remarks remarks = remarks(),
-            link_attr link_attr = link_attr(),
-            milicon milicon = milicon(),
-            milsym milsym = milsym(),
-            creator creator = creator(),
-            display display = display(),
-            emergency emergency = emergency(),
-            address address = address(),
-            takcontrol takcontrol = takcontrol(),
-            ackrequest ackrequest = ackrequest(),
-            chat chat = chat(),
-            chat chatreceipt = chat(),
-            spatial spatial = spatial(),
-            std::vector<link> links = {},
-            std::vector<customdetail> custom_details = {})
-            : takv_(std::move(takv)),
-            contact_(std::move(contact)),
-            uid_(std::move(uid)),
-            model_(std::move(model)),
-            precisionlocation_(std::move(precisionlocation)),
-            group_(std::move(group)),
-            status_(std::move(status)),
-            track_(std::move(track)),
-            color_(std::move(color)),
-            fillcolor_(std::move(fillcolor)),
-            strokecolor_(std::move(strokecolor)),
-            strokestyle_(std::move(strokestyle)),
-            strokeweight_(std::move(strokeweight)),
-            image_(std::move(image)),
-            inclination_(std::move(inclination)),
-            labels_on_(std::move(labels_on)),
-            tog_(std::move(tog)),
-            range_(std::move(range)),
-            rangeunits_(std::move(rangeunits)),
-            usericon_(std::move(usericon)),
-            remarks_(std::move(remarks)),
-            link_attr_(std::move(link_attr)),
-            milicon_(std::move(milicon)),
-            milsym_(std::move(milsym)),
-            creator_(std::move(creator)),
-            display_(std::move(display)),
-            emergency_(std::move(emergency)),
-            address_(std::move(address)),
-            takcontrol_(std::move(takcontrol)),
-            ackrequest_(std::move(ackrequest)),
-            chat_(std::move(chat)),
-            chatreceipt_(std::move(chatreceipt)),
-            spatial_(std::move(spatial)),
-            links(std::move(links)),
-            custom_details(std::move(custom_details)) {
+        detail(takv takv_val = takv(),
+            contact contact_val = contact(),
+            uid uid_val = uid(),
+            model model_val = model(),
+            precisionlocation precisionlocation_val = precisionlocation(),
+            group group_val = group(),
+            status status_val = status(),
+            track track_val = track(),
+            color color_val = color(),
+            fillcolor fillcolor_val = fillcolor(),
+            strokecolor strokecolor_val = strokecolor(),
+            strokestyle strokestyle_val = strokestyle(),
+            strokeweight strokeweight_val = strokeweight(),
+            image image_val = image(),
+            inclination inclination_val = inclination(),
+            labels_on labels_on_val = labels_on(),
+            tog tog_val = tog(),
+            range range_val = range(),
+            rangeunits rangeunits_val = rangeunits(),
+            usericon usericon_val = usericon(),
+            remarks remarks_val = remarks(),
+            link_attr link_attr_val = link_attr(),
+            milicon milicon_val = milicon(),
+            milsym milsym_val = milsym(),
+            creator creator_val = creator(),
+            display display_val = display(),
+            emergency emergency_val = emergency(),
+            address address_val = address(),
+            takcontrol takcontrol_val = takcontrol(),
+            ackrequest ackrequest_val = ackrequest(),
+            chat chat_val = chat(),
+            chat chatreceipt_val = chat(),
+            spatial spatial_val = spatial(),
+            std::vector<link> links_val = {},
+            std::vector<customdetail> custom_details_val = {})
+            : takv_(std::move(takv_val)),
+            contact_(std::move(contact_val)),
+            uid_(std::move(uid_val)),
+            model_(std::move(model_val)),
+            precisionlocation_(std::move(precisionlocation_val)),
+            group_(std::move(group_val)),
+            status_(std::move(status_val)),
+            track_(std::move(track_val)),
+            color_(std::move(color_val)),
+            fillcolor_(std::move(fillcolor_val)),
+            strokecolor_(std::move(strokecolor_val)),
+            strokestyle_(std::move(strokestyle_val)),
+            strokeweight_(std::move(strokeweight_val)),
+            image_(std::move(image_val)),
+            inclination_(std::move(inclination_val)),
+            labels_on_(std::move(labels_on_val)),
+            tog_(std::move(tog_val)),
+            range_(std::move(range_val)),
+            rangeunits_(std::move(rangeunits_val)),
+            usericon_(std::move(usericon_val)),
+            remarks_(std::move(remarks_val)),
+            link_attr_(std::move(link_attr_val)),
+            milicon_(std::move(milicon_val)),
+            milsym_(std::move(milsym_val)),
+            creator_(std::move(creator_val)),
+            display_(std::move(display_val)),
+            emergency_(std::move(emergency_val)),
+            address_(std::move(address_val)),
+            takcontrol_(std::move(takcontrol_val)),
+            ackrequest_(std::move(ackrequest_val)),
+            chat_(std::move(chat_val)),
+            chatreceipt_(std::move(chatreceipt_val)),
+            spatial_(std::move(spatial_val)),
+            links(std::move(links_val)),
+            custom_details(std::move(custom_details_val)) {
         }
 
         /// @brief Equality comparison
@@ -175,6 +173,33 @@ namespace cot::subschemas
         /// @brief Inequality comparison
         bool operator!=(const detail& other) const noexcept { return !(*this == other); }
 
+        [[nodiscard]] bool has_takv_data() const noexcept {
+            return takv_ != takv{};
+        }
+        [[nodiscard]] bool has_contact_data() const noexcept {
+            return contact_ != contact{};
+        }
+        [[nodiscard]] bool has_uid_data() const noexcept {
+            return uid_ != uid{};
+        }
+        [[nodiscard]] bool has_model_data() const noexcept {
+            return model_ != model{};
+        }
+        [[nodiscard]] bool has_precisionlocation_data() const noexcept {
+            return precisionlocation_ != precisionlocation{};
+        }
+        [[nodiscard]] bool has_group_data() const noexcept {
+            return group_ != group{};
+        }
+        [[nodiscard]] bool has_status_data() const noexcept {
+            return status_ != status{};
+        }
+        [[nodiscard]] bool has_track_data() const noexcept {
+            return track_ != track{};
+        }
+        [[nodiscard]] bool has_color_data() const noexcept {
+            return color_ != color{};
+        }
         [[nodiscard]] bool has_fillcolor_data() const noexcept {
             return fillcolor_ != fillcolor{};
         }
@@ -205,8 +230,20 @@ namespace cot::subschemas
         [[nodiscard]] bool has_rangeunits_data() const noexcept {
             return rangeunits_ != rangeunits{};
         }
+        [[nodiscard]] bool has_usericon_data() const noexcept {
+            return usericon_ != usericon{};
+        }
+        [[nodiscard]] bool has_remarks_data() const noexcept {
+            return remarks_ != remarks{};
+        }
         [[nodiscard]] bool has_link_attr_data() const noexcept {
             return link_attr_ != link_attr{};
+        }
+        [[nodiscard]] bool has_milicon_data() const noexcept {
+            return milicon_ != milicon{};
+        }
+        [[nodiscard]] bool has_milsym_data() const noexcept {
+            return milsym_ != milsym{};
         }
         [[nodiscard]] bool has_creator_data() const noexcept {
             return creator_ != creator{};
@@ -240,158 +277,206 @@ namespace cot::subschemas
         /// @param rslt Optional result structure for invalid reason
         /// @return True if valid, false otherwise
         bool is_valid(result* rslt = nullptr) const {
-            if (!contact_.is_valid()) {
+            if (has_takv_data() && !takv_.is_valid(rslt)) {
+                auto res = result{ result::error_code::InvalidDetail, "Invalid takv data" };
+                if (rslt) *rslt = res;
+                if (error_handler) error_handler(res);
+                return false;
+            }
+            if (has_contact_data() && !contact_.is_valid(rslt)) {
                 auto res = result{ result::error_code::InvalidDetail, "Invalid contact data" };
                 if (rslt) *rslt = res;
                 if (error_handler) error_handler(res);
                 return false;
             }
-            if (!group_.is_valid()) {
+            if (has_uid_data() && !uid_.is_valid(rslt)) {
+                auto res = result{ result::error_code::InvalidDetail, "Invalid uid data" };
+                if (rslt) *rslt = res;
+                if (error_handler) error_handler(res);
+                return false;
+            }
+            if (has_model_data() && !model_.is_valid(rslt)) {
+                auto res = result{ result::error_code::InvalidDetail, "Invalid model data" };
+                if (rslt) *rslt = res;
+                if (error_handler) error_handler(res);
+                return false;
+            }
+            if (has_precisionlocation_data() && !precisionlocation_.is_valid(rslt)) {
+                auto res = result{ result::error_code::InvalidDetail, "Invalid precisionlocation data" };
+                if (rslt) *rslt = res;
+                if (error_handler) error_handler(res);
+                return false;
+            }
+            if (has_group_data() && !group_.is_valid(rslt)) {
                 auto res = result{ result::error_code::InvalidDetail, "Invalid group data" };
                 if (rslt) *rslt = res;
                 if (error_handler) error_handler(res);
                 return false;
             }
-            if (!remarks_.is_valid()) {
-                auto res = result{ result::error_code::InvalidDetail, "Invalid remarks data" };
+            if (has_status_data() && !status_.is_valid(rslt)) {
+                auto res = result{ result::error_code::InvalidDetail, "Invalid status data" };
                 if (rslt) *rslt = res;
                 if (error_handler) error_handler(res);
                 return false;
             }
-            if (has_fillcolor_data() && !fillcolor_.is_valid()) {
+            if (has_track_data() && !track_.is_valid(rslt)) {
+                auto res = result{ result::error_code::InvalidDetail, "Invalid track data" };
+                if (rslt) *rslt = res;
+                if (error_handler) error_handler(res);
+                return false;
+            }
+            if (has_color_data() && !color_.is_valid(rslt)) {
+                auto res = result{ result::error_code::InvalidDetail, "Invalid color data" };
+                if (rslt) *rslt = res;
+                if (error_handler) error_handler(res);
+                return false;
+            }
+            if (has_fillcolor_data() && !fillcolor_.is_valid(rslt)) {
                 auto res = result{ result::error_code::InvalidDetail, "Invalid fillcolor data" };
                 if (rslt) *rslt = res;
                 if (error_handler) error_handler(res);
                 return false;
             }
-            if (has_strokecolor_data() && !strokecolor_.is_valid()) {
+            if (has_strokecolor_data() && !strokecolor_.is_valid(rslt)) {
                 auto res = result{ result::error_code::InvalidDetail, "Invalid strokecolor data" };
                 if (rslt) *rslt = res;
                 if (error_handler) error_handler(res);
                 return false;
             }
-            if (has_strokestyle_data() && !strokestyle_.is_valid()) {
+            if (has_strokestyle_data() && !strokestyle_.is_valid(rslt)) {
                 auto res = result{ result::error_code::InvalidDetail, "Invalid strokestyle data" };
                 if (rslt) *rslt = res;
                 if (error_handler) error_handler(res);
                 return false;
             }
-            if (has_strokeweight_data() && !strokeweight_.is_valid()) {
+            if (has_strokeweight_data() && !strokeweight_.is_valid(rslt)) {
                 auto res = result{ result::error_code::InvalidDetail, "Invalid strokeweight data" };
                 if (rslt) *rslt = res;
                 if (error_handler) error_handler(res);
                 return false;
             }
-            if (has_image_data() && !image_.is_valid()) {
+            if (has_image_data() && !image_.is_valid(rslt)) {
                 auto res = result{ result::error_code::InvalidDetail, "Invalid image data" };
                 if (rslt) *rslt = res;
                 if (error_handler) error_handler(res);
                 return false;
             }
-            if (has_inclination_data() && !inclination_.is_valid()) {
+            if (has_inclination_data() && !inclination_.is_valid(rslt)) {
                 auto res = result{ result::error_code::InvalidDetail, "Invalid inclination data" };
                 if (rslt) *rslt = res;
                 if (error_handler) error_handler(res);
                 return false;
             }
-            if (!labels_on_.is_valid()) {
+            if (has_labels_on_data() && !labels_on_.is_valid(rslt)) {
                 auto res = result{ result::error_code::InvalidDetail, "Invalid labels_on data" };
                 if (rslt) *rslt = res;
                 if (error_handler) error_handler(res);
                 return false;
             }
-            if (has_tog_data() && !tog_.is_valid()) {
+            if (has_tog_data() && !tog_.is_valid(rslt)) {
                 auto res = result{ result::error_code::InvalidDetail, "Invalid tog data" };
                 if (rslt) *rslt = res;
                 if (error_handler) error_handler(res);
                 return false;
             }
-            if (has_range_data() && !range_.is_valid()) {
+            if (has_range_data() && !range_.is_valid(rslt)) {
                 auto res = result{ result::error_code::InvalidDetail, "Invalid range data" };
                 if (rslt) *rslt = res;
                 if (error_handler) error_handler(res);
                 return false;
             }
-            if (has_rangeunits_data() && !rangeunits_.is_valid()) {
+            if (has_rangeunits_data() && !rangeunits_.is_valid(rslt)) {
                 auto res = result{ result::error_code::InvalidDetail, "Invalid rangeunits data" };
                 if (rslt) *rslt = res;
                 if (error_handler) error_handler(res);
                 return false;
             }
-            if (has_link_attr_data() && !link_attr_.is_valid()) {
+            if (has_usericon_data() && !usericon_.is_valid(rslt)) {
+                auto res = result{ result::error_code::InvalidDetail, "Invalid usericon data" };
+                if (rslt) *rslt = res;
+                if (error_handler) error_handler(res);
+                return false;
+            }
+            if (has_remarks_data() && !remarks_.is_valid(rslt)) {
+                auto res = result{ result::error_code::InvalidDetail, "Invalid remarks data" };
+                if (rslt) *rslt = res;
+                if (error_handler) error_handler(res);
+                return false;
+            }
+            if (has_link_attr_data() && !link_attr_.is_valid(rslt)) {
                 auto res = result{ result::error_code::InvalidDetail, "Invalid link_attr data" };
                 if (rslt) *rslt = res;
                 if (error_handler) error_handler(res);
                 return false;
             }
-            if (!milicon_.id.empty() && !milicon_.is_valid()) {
+            if (has_milicon_data() && !milicon_.is_valid(rslt)) {
                 auto res = result{ result::error_code::InvalidDetail, "Invalid milicon data" };
                 if (rslt) *rslt = res;
                 if (error_handler) error_handler(res);
                 return false;
             }
-            if ((!milsym_.id.empty() || !milsym_.modifiers.empty()) && !milsym_.is_valid()) {
+            if (has_milsym_data() && !milsym_.is_valid(rslt)) {
                 auto res = result{ result::error_code::InvalidDetail, "Invalid milsym data" };
                 if (rslt) *rslt = res;
                 if (error_handler) error_handler(res);
                 return false;
             }
-            if (has_creator_data() && !creator_.is_valid()) {
+            if (has_creator_data() && !creator_.is_valid(rslt)) {
                 auto res = result{ result::error_code::InvalidDetail, "Invalid creator data" };
                 if (rslt) *rslt = res;
                 if (error_handler) error_handler(res);
                 return false;
             }
-            if (!display_.is_valid()) {
+            if (has_display_data() && !display_.is_valid(rslt)) {
                 auto res = result{ result::error_code::InvalidDetail, "Invalid display data" };
                 if (rslt) *rslt = res;
                 if (error_handler) error_handler(res);
                 return false;
             }
-            if (has_emergency_data() && !emergency_.is_valid()) {
+            if (has_emergency_data() && !emergency_.is_valid(rslt)) {
                 auto res = result{ result::error_code::InvalidDetail, "Invalid emergency data" };
                 if (rslt) *rslt = res;
                 if (error_handler) error_handler(res);
                 return false;
             }
-            if (has_address_data() && !address_.is_valid()) {
+            if (has_address_data() && !address_.is_valid(rslt)) {
                 auto res = result{ result::error_code::InvalidDetail, "Invalid address data" };
                 if (rslt) *rslt = res;
                 if (error_handler) error_handler(res);
                 return false;
             }
-            if (has_takcontrol_data() && !takcontrol_.is_valid()) {
+            if (has_takcontrol_data() && !takcontrol_.is_valid(rslt)) {
                 auto res = result{ result::error_code::InvalidDetail, "Invalid TakControl data" };
                 if (rslt) *rslt = res;
                 if (error_handler) error_handler(res);
                 return false;
             }
-            if (has_ackrequest_data() && !ackrequest_.is_valid()) {
+            if (has_ackrequest_data() && !ackrequest_.is_valid(rslt)) {
                 auto res = result{ result::error_code::InvalidDetail, "Invalid ackrequest data" };
                 if (rslt) *rslt = res;
                 if (error_handler) error_handler(res);
                 return false;
             }
-            if (has_chat_data() && !chat_.is_valid()) {
+            if (has_chat_data() && !chat_.is_valid(rslt)) {
                 auto res = result{ result::error_code::InvalidDetail, "Invalid __chat data" };
                 if (rslt) *rslt = res;
                 if (error_handler) error_handler(res);
                 return false;
             }
-            if (has_chatreceipt_data() && !chatreceipt_.is_valid()) {
+            if (has_chatreceipt_data() && !chatreceipt_.is_valid(rslt)) {
                 auto res = result{ result::error_code::InvalidDetail, "Invalid __chatreceipt data" };
                 if (rslt) *rslt = res;
                 if (error_handler) error_handler(res);
                 return false;
             }
-            if (has_spatial_data() && !spatial_.is_valid()) {
+            if (has_spatial_data() && !spatial_.is_valid(rslt)) {
                 auto res = result{ result::error_code::InvalidDetail, "Invalid spatial data" };
                 if (rslt) *rslt = res;
                 if (error_handler) error_handler(res);
                 return false;
             }
-            for (const auto& link : links) {
-                if (!link.is_valid()) {
+            for (const auto& link_item : links) {
+                if (!link_item.is_valid(rslt)) {
                     auto res = result{ result::error_code::InvalidDetail, "Invalid link data" };
                     if (rslt) *rslt = res;
                     if (error_handler) error_handler(res);
@@ -399,7 +484,7 @@ namespace cot::subschemas
                 }
             }
             for (const auto& custom : custom_details) {
-                if (!custom.is_valid()) {
+                if (!custom.is_valid(rslt)) {
                     auto res = result{ result::error_code::InvalidDetail, "Invalid custom detail data" };
                     if (rslt) *rslt = res;
                     if (error_handler) error_handler(res);
@@ -552,8 +637,8 @@ namespace cot::subschemas
                 auto res = spatial_.to_xml(node);
                 if (!res.is_success()) return res;
             }
-            for (const auto& link : links) {
-                auto res = link.to_xml(node);
+            for (const auto& link_item : links) {
+                auto res = link_item.to_xml(node);
                 if (!res.is_success()) return res;
             }
             for (const auto& custom : custom_details) {
@@ -623,12 +708,7 @@ namespace cot::subschemas
                     if (error_handler) error_handler(res);
                 }
             }
-            if (!d.is_valid(rslt)) {
-                auto res = result{ result::error_code::InvalidDetail,
-                                  "Invalid detail data after parsing" };
-                if (rslt && rslt->is_success()) *rslt = res;
-                if (error_handler) error_handler(res);
-            }
+            d.is_valid(rslt);
             return d;
         }
 
@@ -652,7 +732,7 @@ namespace cot::subschemas
                 return res;
             }
             if (std::any_of(custom_details.begin(), custom_details.end(),
-                [&cd](const auto& d) { return d.name == cd.name; })) {
+                [&cd](const auto& item) { return item.name == cd.name; })) {
                 auto res = result{ result::error_code::InvalidDetail, "Custom detail name already exists" };
                 if (error_handler) error_handler(res);
                 return res;
@@ -679,10 +759,10 @@ namespace cot::subschemas
                 return res;
             }
             auto it = std::find_if(custom_details.begin(), custom_details.end(),
-                [&name, &matchAttributes, &matchContent](const customdetail& detail) {
-                    bool nameMatch = detail.name == name;
-                    bool attrMatch = matchAttributes.empty() || detail.attributes == matchAttributes;
-                    bool contentMatch = matchContent.empty() || detail.content == matchContent;
+                [&name, &matchAttributes, &matchContent](const customdetail& item) {
+                    bool nameMatch = item.name == name;
+                    bool attrMatch = matchAttributes.empty() || item.attributes == matchAttributes;
+                    bool contentMatch = matchContent.empty() || item.content == matchContent;
                     return nameMatch && attrMatch && contentMatch;
                 });
             if (it == custom_details.end()) {
@@ -727,10 +807,10 @@ namespace cot::subschemas
                 return res;
             }
             auto it = std::find_if(custom_details.begin(), custom_details.end(),
-                [&name, &attributes, &content](const customdetail& detail) {
-                    bool nameMatch = detail.name == name;
-                    bool attrMatch = attributes.empty() || detail.attributes == attributes;
-                    bool contentMatch = content.empty() || detail.content == content;
+                [&name, &attributes, &content](const customdetail& item) {
+                    bool nameMatch = item.name == name;
+                    bool attrMatch = attributes.empty() || item.attributes == attributes;
+                    bool contentMatch = content.empty() || item.content == content;
                     return nameMatch && attrMatch && contentMatch;
                 });
             if (it == custom_details.end()) {
@@ -744,18 +824,16 @@ namespace cot::subschemas
 
         /// @brief Stream output for printing
         friend std::ostream& operator<<(std::ostream& os, const detail& d) {
-            os << "detail: ";
-            if (!d.is_valid()) os << " -NOT VALID- ";
-            os << "\n"
-                << d.takv_
-                << d.contact_
-                << d.uid_
-                << d.model_
-                << d.precisionlocation_
-                << d.group_
-                << d.status_
-                << d.track_
-                << d.color_;
+            os << "detail:\n";
+            if (d.has_takv_data()) os << d.takv_;
+            if (d.has_contact_data()) os << d.contact_;
+            if (d.has_uid_data()) os << d.uid_;
+            if (d.has_model_data()) os << d.model_;
+            if (d.has_precisionlocation_data()) os << d.precisionlocation_;
+            if (d.has_group_data()) os << d.group_;
+            if (d.has_status_data()) os << d.status_;
+            if (d.has_track_data()) os << d.track_;
+            if (d.has_color_data()) os << d.color_;
             if (d.has_fillcolor_data()) os << d.fillcolor_;
             if (d.has_strokecolor_data()) os << d.strokecolor_;
             if (d.has_strokestyle_data()) os << d.strokestyle_;
@@ -766,11 +844,11 @@ namespace cot::subschemas
             if (d.has_tog_data()) os << d.tog_;
             if (d.has_range_data()) os << d.range_;
             if (d.has_rangeunits_data()) os << d.rangeunits_;
-            os << d.usericon_
-                << d.remarks_;
+            if (d.has_usericon_data()) os << d.usericon_;
+            if (d.has_remarks_data()) os << d.remarks_;
             if (d.has_link_attr_data()) os << d.link_attr_;
-            os << d.milicon_
-                << d.milsym_;
+            if (d.has_milicon_data()) os << d.milicon_;
+            if (d.has_milsym_data()) os << d.milsym_;
             if (d.has_creator_data()) os << d.creator_;
             if (d.has_display_data()) os << d.display_;
             if (d.has_emergency_data()) os << d.emergency_;
@@ -780,7 +858,7 @@ namespace cot::subschemas
             if (d.has_chat_data()) os << d.chat_;
             if (d.has_chatreceipt_data()) os << d.chatreceipt_;
             if (d.has_spatial_data()) os << d.spatial_;
-            for (const auto& link : d.links) os << link;
+            for (const auto& link_item : d.links) os << link_item;
             for (const auto& custom : d.custom_details) os << custom;
             return os;
         }

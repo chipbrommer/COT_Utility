@@ -183,24 +183,27 @@ namespace cot
     }
 
     /// @brief Create an XML CoT message from a schema
-    /// @param cot Schema to convert to XML
+    /// @param msg Schema to convert to XML
     /// @param xml Output string containing XML text (cleared on error)
     /// @return result indicating success or failure with description
-    [[nodiscard]] inline result generate_xml_cot(const message& cot, std::string& xml) {
+    [[nodiscard]] inline result generate_xml_cot(const subschemas::message& msg, std::string& xml) {
         xml.clear();
 
         result val_res;
-        if (!cot.is_valid(&val_res)) {
+        if (!msg.is_valid(&val_res)) {
             return detail_impl::report_error(
                 result{ result::error_code::InvalidData,
                         "Invalid CoT schema: " + val_res.description() });
         }
 
-        std::string temp = cot.to_xml();
-        if (temp.empty()) {
+        result ser_res;
+        std::string temp = msg.to_xml_string(&ser_res);
+        if (temp.empty() || ser_res.is_failed()) {
             return detail_impl::report_error(
                 result{ result::error_code::ProcessingError,
-                        "Failed to serialize CoT message to XML string" });
+                        ser_res.description().empty()
+                            ? std::string("Failed to serialize CoT message to XML string")
+                            : ser_res.description() });
         }
 
         pugi::xml_document verify_doc;
@@ -267,9 +270,9 @@ namespace cot
 
     /// @brief Parse a CoT message from a string_view buffer
     /// @param buffer Input buffer containing XML data
-    /// @param cot Output message schema to store parsed data
+    /// @param msg Output message schema to store parsed data
     /// @return Result indicating success or failure with description
-    [[nodiscard]] inline result parse_cot(std::string_view buffer, message& cot) {
+    [[nodiscard]] inline result parse_cot(std::string_view buffer, subschemas::message& msg) {
         pugi::xml_document doc;
         result struct_res;
         if (!validate_cot_structure(buffer, &struct_res, &doc)) {
@@ -278,13 +281,13 @@ namespace cot
 
         pugi::xml_node event_node = doc.child("event");
         result ev_res;
-        cot.event_ = subschemas::event::from_xml(event_node, &ev_res);
+        msg.event_ = subschemas::event::from_xml(event_node, &ev_res);
         if (ev_res.is_failed()) {
             return ev_res;
         }
 
         result val_res;
-        if (!cot.is_valid(&val_res)) {
+        if (!msg.is_valid(&val_res)) {
             return val_res;
         }
 
@@ -293,14 +296,14 @@ namespace cot
 
     /// @brief Parse a CoT message from a null-terminated character buffer
     /// @param buffer Input buffer containing XML data
-    /// @param cot Output message schema to store parsed data
+    /// @param msg Output message schema to store parsed data
     /// @return Result indicating success or failure with description
-    [[nodiscard]] inline result parse_cot(const char* buffer, message& cot) {
+    [[nodiscard]] inline result parse_cot(const char* buffer, subschemas::message& msg) {
         if (!buffer) {
             return detail_impl::report_error(
                 result{ result::error_code::InvalidInput, "Null input buffer" });
         }
-        return parse_cot(std::string_view(buffer), cot);
+        return parse_cot(std::string_view(buffer), msg);
     }
 
     /// @brief Parse the <event> element from a CoT message

@@ -6,6 +6,7 @@
 /////////////////////////////////////////////////////////////////////////////////
 
 #include <climits>
+#include <cmath>
 #include <ctime>
 #include <exception>
 #include <iomanip>
@@ -41,9 +42,9 @@ namespace cot::subschemas
             if (!date_valid || !time_valid) {
                 std::string error;
                 result::error_code code = result::error_code::InvalidDate;
-                if (!date_valid) error += "Date invalid: " + date_result.description + "; ";
+                if (!date_valid) error += "Date invalid: " + date_result.description() + "; ";
                 if (!time_valid) {
-                    error += "Time invalid: " + time_result.description;
+                    error += "Time invalid: " + time_result.description();
                     code = result::error_code::InvalidTime;
                 }
                 auto res = result{ code, error };
@@ -165,13 +166,24 @@ namespace cot::subschemas
                 return datetime();
             }
 
-            std::tm* utc_time = std::gmtime(&now);
+            std::tm utc_buf{};
+#if defined(_WIN32)
+            if (gmtime_s(&utc_buf, &now) != 0) {
+                auto res = result{ result::error_code::ProcessingError, "Failed to convert to UTC" };
+                if (rslt) *rslt = res;
+                if (error_handler) error_handler(res);
+                return datetime();
+            }
+            const std::tm* utc_time = &utc_buf;
+#else
+            const std::tm* utc_time = std::gmtime(&now);
             if (!utc_time) {
                 auto res = result{ result::error_code::ProcessingError, "Failed to convert to UTC" };
                 if (rslt) *rslt = res;
                 if (error_handler) error_handler(res);
                 return datetime();
             }
+#endif
 
             unsigned year = static_cast<unsigned>(utc_time->tm_year + 1900);
             unsigned month = static_cast<unsigned>(utc_time->tm_mon + 1);
@@ -205,7 +217,7 @@ namespace cot::subschemas
             if (day != 0) temp.day = day;
             if (hour != UINT_MAX) temp.hour = hour;
             if (minute != UINT_MAX) temp.minute = minute;
-            if (second >= 0.0) temp.second = second;
+            if (std::isfinite(second) && second >= 0.0) temp.second = second;
 
             if (!temp.is_valid(rslt)) {
                 return false;

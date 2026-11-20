@@ -9,6 +9,7 @@
 #include <cstddef>
 #include <exception>
 #include <ostream>
+#include <sstream>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -17,7 +18,6 @@
 
 #include "../handlers/error_handler.hpp"
 #include "../result/result.hpp"
-#include "../xml_utils.hpp"
 #include "event.hpp"
 
 namespace cot::subschemas
@@ -109,7 +109,7 @@ namespace cot::subschemas
                 if (error_handler) error_handler(res);
                 return "";
             }
-            return xml_document_to_string(doc, true, rslt);
+            return serialize_document(doc, true, rslt);
         }
 
         /// @brief Deserializes from an XML node
@@ -119,15 +119,18 @@ namespace cot::subschemas
         static message from_xml(const pugi::xml_node& node, result* rslt = nullptr) {
             message m;
             try {
-                if (auto decl = node.child(pugi::node_declaration)) {
-                    if (auto v = decl.attribute("version")) {
-                        m.xml_version = v.as_string("1.0");
-                    }
-                    if (auto enc = decl.attribute("encoding")) {
-                        m.xml_encoding = enc.as_string("utf-8");
-                    }
-                    if (auto sa = decl.attribute("standalone")) {
-                        m.xml_standalone = sa.as_string("yes");
+                for (pugi::xml_node child : node.children()) {
+                    if (child.type() == pugi::node_declaration) {
+                        if (auto v = child.attribute("version")) {
+                            m.xml_version = v.as_string("1.0");
+                        }
+                        if (auto enc = child.attribute("encoding")) {
+                            m.xml_encoding = enc.as_string("utf-8");
+                        }
+                        if (auto sa = child.attribute("standalone")) {
+                            m.xml_standalone = sa.as_string("yes");
+                        }
+                        break;
                     }
                 }
 
@@ -207,6 +210,27 @@ namespace cot::subschemas
         std::string xml_standalone{ "yes" };
 
     private:
+        /// @brief Serializes a pugixml document to a string
+        static std::string serialize_document(const pugi::xml_document& doc,
+            bool pretty,
+            result* rslt = nullptr) {
+            try {
+                std::ostringstream oss;
+                const unsigned int flags = pretty
+                    ? (pugi::format_default | pugi::format_indent)
+                    : pugi::format_raw;
+                doc.save(oss, "  ", flags);
+                return oss.str();
+            }
+            catch (const std::exception& ex) {
+                auto res = result{ result::error_code::ProcessingError,
+                                  "Failed to serialize XML document: " + std::string(ex.what()) };
+                if (rslt) *rslt = res;
+                if (error_handler) error_handler(res);
+                return "";
+            }
+        }
+
         /// @brief Compares two strings for equality without regard to ASCII case
         /// @param a First string view to compare
         /// @param b Second string view to compare

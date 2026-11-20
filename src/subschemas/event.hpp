@@ -10,6 +10,7 @@
 #include <exception>
 #include <limits>
 #include <ostream>
+#include <sstream>
 #include <string>
 #include <utility>
 
@@ -18,13 +19,33 @@
 #include "../cot_types.hpp"
 #include "../handlers/error_handler.hpp"
 #include "../result/result.hpp"
-#include "../xml_utils.hpp"
 #include "datetime.hpp"
 #include "detail.hpp"
 #include "point.hpp"
 
 namespace cot::subschemas
 {
+    inline std::string xml_node_to_string(const pugi::xml_node& target, result* rslt = nullptr) {
+        if (!target) {
+            auto res = result{ result::error_code::InvalidEvent, "Null XML node passed to xml_node_to_string" };
+            if (rslt) *rslt = res;
+            if (error_handler) error_handler(res);
+            return "";
+        }
+        try {
+            std::ostringstream oss;
+            target.print(oss, "  ", pugi::format_default | pugi::format_indent);
+            return oss.str();
+        }
+        catch (const std::exception& ex) {
+            auto res = result{ result::error_code::InvalidEvent,
+                              "Failed serializing XML node: " + std::string(ex.what()) };
+            if (rslt) *rslt = res;
+            if (error_handler) error_handler(res);
+            return "";
+        }
+    }
+
     /// @brief A CoT Message subschema class for event data
     class event {
     public:
@@ -162,9 +183,7 @@ namespace cot::subschemas
         result to_xml(pugi::xml_node& parent) const {
             result val_res;
             if (!is_valid(&val_res)) {
-                auto res = result{ result::error_code::InvalidEvent, val_res.description() };
-                if (error_handler) error_handler(res);
-                return res;
+                return val_res;
             }
             auto node = parent.append_child("event");
             node.append_attribute("version") = version;
@@ -236,12 +255,7 @@ namespace cot::subschemas
                     if (name == "point") e.point_ = point::from_xml(child, rslt);
                     else if (name == "detail") e.detail_ = detail::from_xml(child, rslt);
                 }
-                if (!e.is_valid(rslt)) {
-                    auto res = result{ result::error_code::InvalidEvent,
-                                      "Invalid event data after parsing" };
-                    if (rslt && rslt->is_success()) *rslt = res;
-                    if (error_handler) error_handler(res);
-                }
+                e.is_valid(rslt);
             }
             catch (const std::exception& ex) {
                 auto res = result{ result::error_code::InvalidEvent,

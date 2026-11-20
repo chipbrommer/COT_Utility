@@ -37,7 +37,7 @@ namespace cot::subschemas
 		/// @brief Equality comparison
 		bool operator==(const point& other) const noexcept {
 			constexpr double EPSILON = 1e-6;
-			auto equal = [](double a, double b) noexcept {
+			auto equal = [EPSILON](double a, double b) noexcept {
 				return (std::isnan(a) && std::isnan(b)) ||
 					(!std::isnan(a) && !std::isnan(b) && std::abs(a - b) < EPSILON);
 				};
@@ -99,9 +99,7 @@ namespace cot::subschemas
 		result to_xml(pugi::xml_node& parent) const {
 			result val_res;
 			if (!is_valid(&val_res)) {
-				auto res = result{ result::error_code::InvalidPoint, val_res.description() };
-				if (error_handler) error_handler(res);
-				return res;
+				return val_res;
 			}
 			auto node = parent.append_child("point");
 			node.append_attribute("lat") = latitude;
@@ -125,7 +123,7 @@ namespace cot::subschemas
 				return p;
 			}
 
-			auto parse_attr = [&rslt](const char* attr_name, double& target) -> bool {
+			auto parse_attr = [&node, &rslt](const char* attr_name, double& target) -> bool {
 				auto attr = node.attribute(attr_name);
 				if (!attr) return true;
 				std::string raw = attr.as_string();
@@ -133,9 +131,9 @@ namespace cot::subschemas
 				try {
 					std::size_t idx = 0;
 					double parsed = std::stod(raw, &idx);
-					if (idx != raw.size()) {
+					if (idx != raw.size() || !std::isfinite(parsed)) {
 						auto res = result{ result::error_code::InvalidPoint,
-										  std::string("Trailing characters in point attribute '") + attr_name + "'" };
+										  std::string("Invalid value in point attribute '") + attr_name + "'" };
 						if (rslt) *rslt = res;
 						if (error_handler) error_handler(res);
 						target = INVALID_VALUE;
@@ -161,11 +159,8 @@ namespace cot::subschemas
 			ok = parse_attr("ce", p.circularError) && ok;
 			ok = parse_attr("le", p.linearError) && ok;
 
-			if (ok && !p.is_valid(rslt)) {
-				auto res = result{ result::error_code::InvalidPoint,
-								  "Invalid point data after parsing" };
-				if (rslt && rslt->is_success()) *rslt = res;
-				if (error_handler) error_handler(res);
+			if (ok) {
+				p.is_valid(rslt);
 			}
 			return p;
 		}

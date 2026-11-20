@@ -37,7 +37,7 @@ namespace cot::subschemas
         /// @brief Equality comparison using a small floating-point tolerance
         bool operator==(const spatial_vector& other) const noexcept {
             constexpr double EPSILON = 1e-6;
-            auto near_or_nan = [](double a, double b) noexcept {
+            auto near_or_nan = [EPSILON](double a, double b) noexcept {
                 return (std::isnan(a) && std::isnan(b)) ||
                     (std::isfinite(a) && std::isfinite(b) && std::abs(a - b) < EPSILON);
                 };
